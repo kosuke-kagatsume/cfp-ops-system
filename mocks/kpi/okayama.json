@@ -1,0 +1,58 @@
+{
+  "current": {
+    "ts": "2025-08-01T14:30:00+09:00",
+    "plantId": "okayama",
+    "availability": 94.5,
+    "conversionEff": 87.3,
+    "throughput_tph": 2.45,
+    "energyPerTon_kWh": 85.7
+  },
+  "history": [
+    {
+      "ts": "2025-08-01T14:00:00+09:00",
+      "plantId": "okayama",
+      "availability": 94.2,
+      "conversionEff": 86.8,
+      "throughput_tph": 2.42,
+      "energyPerTon_kWh": 86.2
+    },
+    {
+      "ts": "2025-08-01T13:00:00+09:00",
+      "plantId": "okayama",
+      "availability": 93.8,
+      "conversionEff": 87.1,
+      "throughput_tph": 2.38,
+      "energyPerTon_kWh": 87.1
+    },
+    {
+      "ts": "2025-08-01T12:00:00+09:00",
+      "plantId": "okayama",
+      "availability": 95.1,
+      "conversionEff": 88.2,
+      "throughput_tph": 2.51,
+      "energyPerTon_kWh": 84.3
+    },
+    {
+      "ts": "2025-08-01T11:00:00+09:00",
+      "plantId": "okayama",
+      "availability": 94.7,
+      "conversionEff": 86.5,
+      "throughput_tph": 2.47,
+      "energyPerTon_kWh": 85.8
+    },
+    {
+      "ts": "2025-08-01T10:00:00+09:00",
+      "plantId": "okayama",
+      "availability": 92.3,
+      "conversionEff": 85.9,
+      "throughput_tph": 2.33,
+      "energyPerTon_kWh": 88.4
+    }
+  ],
+  "targets": {
+    "availability": 95.0,
+    "conversionEff": 88.0,
+    "throughput_tph": 2.5,
+    "energyPerTon_kWh": 85.0
+  }
+}

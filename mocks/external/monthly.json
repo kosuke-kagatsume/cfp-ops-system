@@ -1,0 +1,47 @@
+{
+  "reports": [
+    {
+      "month": "2025-08",
+      "orgId": "mitsubishi-chemical",
+      "category": "化学原料",
+      "recycled_pct": 78.5,
+      "co2_saved_t": 145.2,
+      "shipment_t": 82.4,
+      "note": "ISCC認証取得済み原料使用"
+    },
+    {
+      "month": "2025-08",
+      "orgId": "sumitomo-chemical",
+      "category": "工業用油",
+      "recycled_pct": 82.3,
+      "co2_saved_t": 198.7,
+      "shipment_t": 95.6,
+      "note": "環境配慮型製品"
+    },
+    {
+      "month": "2025-07",
+      "orgId": "mitsubishi-chemical",
+      "category": "化学原料",
+      "recycled_pct": 76.8,
+      "co2_saved_t": 138.5,
+      "shipment_t": 78.9,
+      "note": "ISCC認証取得済み原料使用"
+    },
+    {
+      "month": "2025-07",
+      "orgId": "sumitomo-chemical",
+      "category": "工業用油",
+      "recycled_pct": 80.1,
+      "co2_saved_t": 187.3,
+      "shipment_t": 91.2,
+      "note": "環境配慮型製品"
+    }
+  ],
+  "isccSummary": {
+    "quarter": "Q3 2025",
+    "totalRecycled_t": 542.8,
+    "totalCo2Saved_t": 1245.6,
+    "certificationStatus": "有効",
+    "validUntil": "2026-03-31"
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "tanks": [
+    {
+      "id": "tank-A",
+      "plantId": "okayama",
+      "name": "タンクA",
+      "level_pct": 44.2,
+      "capacity_m3": 500,
+      "density": 0.85,
+      "est_mass_t": 187.85,
+      "note": "軽質油用"
+    },
+    {
+      "id": "tank-B",
+      "plantId": "okayama",
+      "name": "タンクB",
+      "level_pct": 61.8,
+      "capacity_m3": 500,
+      "density": 0.92,
+      "est_mass_t": 284.28,
+      "note": "重質油用"
+    },
+    {
+      "id": "tank-C",
+      "plantId": "okayama",
+      "name": "タンクC",
+      "level_pct": 78.3,
+      "capacity_m3": 300,
+      "density": 0.88,
+      "est_mass_t": 206.71,
+      "note": "中間貯蔵"
+    },
+    {
+      "id": "tank-D",
+      "plantId": "okayama",
+      "name": "タンクD",
+      "level_pct": 23.5,
+      "capacity_m3": 400,
+      "density": 1.05,
+      "est_mass_t": 98.7,
+      "note": "残渣用"
+    }
+  ],
+  "lastUpdate": "2025-08-01T14:30:00+09:00"
+}

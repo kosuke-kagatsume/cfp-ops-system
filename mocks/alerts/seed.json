@@ -1,0 +1,74 @@
+{
+  "alerts": [
+    {
+      "id": "alert-001",
+      "plantId": "okayama",
+      "ts": "2025-08-01T14:25:00+09:00",
+      "severity": "P2",
+      "tag": "temp_reactor_c",
+      "title": "反応炉温度低下",
+      "message": "反応炉温度が下限値を下回りました (現在値: 398.5°C, 下限: 400°C)",
+      "status": "open",
+      "rule": "combustion_efficiency"
+    },
+    {
+      "id": "alert-002",
+      "plantId": "okayama",
+      "ts": "2025-08-01T13:45:00+09:00",
+      "severity": "P1",
+      "tag": "feed_rate_kgph",
+      "title": "供給レート急変",
+      "message": "供給レートが5分移動平均から15%以上逸脱しました",
+      "status": "ack",
+      "ackBy": "operator01@cfp.jp",
+      "ackTs": "2025-08-01T13:50:00+09:00",
+      "comment": "原料ホッパーの詰まりを確認、対処中",
+      "rule": "rate_sudden_change"
+    },
+    {
+      "id": "alert-003",
+      "plantId": "okayama",
+      "ts": "2025-08-01T12:30:00+09:00",
+      "severity": "P2",
+      "tag": "pressure_reactor_kpa",
+      "title": "反応炉圧力上昇",
+      "message": "反応炉圧力が上限値に接近しています (現在値: 148.5kPa, 上限: 150kPa)",
+      "status": "closed",
+      "ackBy": "manager01@cfp.jp",
+      "ackTs": "2025-08-01T12:35:00+09:00",
+      "comment": "バルブ調整により正常化"
+    },
+    {
+      "id": "alert-004",
+      "plantId": "okayama",
+      "ts": "2025-08-01T11:15:00+09:00",
+      "severity": "P2",
+      "tag": "tank_A_level_pct",
+      "title": "タンクA低レベル",
+      "message": "タンクAのレベルが20%を下回りました",
+      "status": "open",
+      "rule": "tank_level"
+    },
+    {
+      "id": "alert-005",
+      "plantId": "okayama",
+      "ts": "2025-08-01T10:00:00+09:00",
+      "severity": "P2",
+      "tag": "power_kw",
+      "title": "消費電力異常",
+      "message": "消費電力が通常値より20%上昇しています",
+      "status": "ack",
+      "ackBy": "operator02@cfp.jp",
+      "ackTs": "2025-08-01T10:05:00+09:00",
+      "comment": "モーター負荷確認中"
+    }
+  ],
+  "statistics": {
+    "total": 45,
+    "open": 12,
+    "acknowledged": 8,
+    "closed": 25,
+    "p1Count": 5,
+    "p2Count": 40
+  }
+}

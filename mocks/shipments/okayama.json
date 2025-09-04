@@ -1,0 +1,68 @@
+{
+  "shipments": [
+    {
+      "id": "ship-001",
+      "plantId": "okayama",
+      "shipTs": "2025-08-01T09:00:00+09:00",
+      "oil": "light",
+      "mass_t": 24.5,
+      "customer": "三菱ケミカル株式会社",
+      "destinationCode": "MC-OSAKA-01",
+      "invoiceNo": "INV-2025-0801"
+    },
+    {
+      "id": "ship-002",
+      "plantId": "okayama",
+      "shipTs": "2025-08-01T11:30:00+09:00",
+      "oil": "heavy",
+      "mass_t": 32.8,
+      "customer": "住友化学株式会社",
+      "destinationCode": "SC-EHIME-02",
+      "invoiceNo": "INV-2025-0802"
+    },
+    {
+      "id": "ship-003",
+      "plantId": "okayama",
+      "shipTs": "2025-08-01T13:15:00+09:00",
+      "oil": "light",
+      "mass_t": 18.2,
+      "customer": "旭化成株式会社",
+      "destinationCode": "AK-MIZUSHIMA-01",
+      "invoiceNo": "INV-2025-0803"
+    },
+    {
+      "id": "ship-004",
+      "plantId": "okayama",
+      "shipTs": "2025-07-31T15:45:00+09:00",
+      "oil": "residue",
+      "mass_t": 8.5,
+      "customer": "岡山産業廃棄物処理センター",
+      "destinationCode": "OWMC-01",
+      "invoiceNo": "INV-2025-0799"
+    },
+    {
+      "id": "ship-005",
+      "plantId": "okayama",
+      "shipTs": "2025-07-31T10:20:00+09:00",
+      "oil": "heavy",
+      "mass_t": 28.7,
+      "customer": "JXTGエネルギー株式会社",
+      "destinationCode": "JXTG-KURASHIKI-03",
+      "invoiceNo": "INV-2025-0798"
+    }
+  ],
+  "summary": {
+    "currentMonth": {
+      "light_t": 245.8,
+      "heavy_t": 312.4,
+      "residue_t": 45.2,
+      "total_t": 603.4
+    },
+    "previousMonth": {
+      "light_t": 238.5,
+      "heavy_t": 298.7,
+      "residue_t": 42.1,
+      "total_t": 579.3
+    }
+  }
+}

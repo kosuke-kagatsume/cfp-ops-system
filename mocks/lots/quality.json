@@ -1,0 +1,81 @@
+{
+  "lots": [
+    {
+      "id": "lot-001",
+      "kintoneRecordId": "KT-2025-0801",
+      "supplier": "エコリサイクル株式会社",
+      "code": {
+        "name": "PET-MIX-A",
+        "shape": "フレーク",
+        "color": "透明混合",
+        "grade": "グレードA"
+      },
+      "arrivalTs": "2025-08-01T08:00:00+09:00",
+      "mass_t": 12.5,
+      "plantId": "okayama"
+    },
+    {
+      "id": "lot-002",
+      "kintoneRecordId": "KT-2025-0802",
+      "supplier": "グリーンプラスチック回収",
+      "code": {
+        "name": "PP-BLACK-B",
+        "shape": "ペレット",
+        "color": "黒",
+        "grade": "グレードB"
+      },
+      "arrivalTs": "2025-08-01T10:30:00+09:00",
+      "mass_t": 8.3,
+      "plantId": "okayama"
+    },
+    {
+      "id": "lot-003",
+      "kintoneRecordId": "KT-2025-0799",
+      "supplier": "関西リサイクルセンター",
+      "code": {
+        "name": "PE-MIX-C",
+        "shape": "フレーク",
+        "color": "混合色",
+        "grade": "グレードC"
+      },
+      "arrivalTs": "2025-07-31T14:00:00+09:00",
+      "mass_t": 15.7,
+      "plantId": "okayama"
+    }
+  ],
+  "quality": [
+    {
+      "id": "qc-001",
+      "lotId": "lot-001",
+      "testTs": "2025-08-01T09:30:00+09:00",
+      "viscosity": 2.45,
+      "sulfur_ppm": 125,
+      "gcms": "https://lab.cfp.jp/results/gcms-2025-0801-001.pdf",
+      "result": "pass",
+      "note": "基準値内",
+      "plantId": "okayama"
+    },
+    {
+      "id": "qc-002",
+      "lotId": "lot-002",
+      "testTs": "2025-08-01T11:45:00+09:00",
+      "viscosity": 3.12,
+      "sulfur_ppm": 285,
+      "gcms": "https://lab.cfp.jp/results/gcms-2025-0801-002.pdf",
+      "result": "warn",
+      "note": "硫黄分がやや高め、要観察",
+      "plantId": "okayama"
+    },
+    {
+      "id": "qc-003",
+      "lotId": "lot-003",
+      "testTs": "2025-07-31T15:30:00+09:00",
+      "viscosity": 2.87,
+      "sulfur_ppm": 156,
+      "gcms": "https://lab.cfp.jp/results/gcms-2025-0731-003.pdf",
+      "result": "pass",
+      "note": "良好",
+      "plantId": "okayama"
+    }
+  ]
+}
