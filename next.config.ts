@@ -1,15 +1,5 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  turbopack: {
-    root: process.cwd()
-  },
-  eslint: {
-    ignoreDuringBuilds: true
-  },
-  typescript: {
-    ignoreBuildErrors: true
-  }
-};
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
