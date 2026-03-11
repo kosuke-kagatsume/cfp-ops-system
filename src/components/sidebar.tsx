@@ -14,11 +14,31 @@ import {
   ChevronDown,
   ChevronRight,
   Settings,
+  ShoppingCart,
+  Boxes,
+  Cog,
+  CalendarDays,
+  Truck,
+  PackageCheck,
+  FileText,
 } from "lucide-react";
 import { useState } from "react";
 
 const navigation = [
   { name: "ダッシュボード", href: "/dashboard", icon: LayoutDashboard },
+  {
+    name: "MR事業部",
+    icon: Boxes,
+    children: [
+      { name: "仕入・受入", href: "/purchases", icon: ShoppingCart },
+      { name: "在庫管理", href: "/inventory", icon: Package },
+      { name: "加工管理", href: "/processing", icon: Cog },
+      { name: "生産カレンダー", href: "/production-calendar", icon: CalendarDays },
+      { name: "出荷管理", href: "/shipments", icon: PackageCheck },
+      { name: "配車管理", href: "/dispatch", icon: Truck },
+      { name: "帳票管理", href: "/documents", icon: FileText },
+    ],
+  },
   {
     name: "マスタ管理",
     icon: Settings,
@@ -43,7 +63,8 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
-    "マスタ管理": true,
+    "MR事業部": true,
+    "マスタ管理": false,
     "システム設定": false,
   });
 
