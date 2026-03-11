@@ -21,6 +21,23 @@ import {
   Truck,
   PackageCheck,
   FileText,
+  Receipt,
+  ClipboardList,
+  CreditCard,
+  Banknote,
+  ArrowRightLeft,
+  CalendarCheck,
+  Wallet,
+  Globe,
+  TrendingUp,
+  Droplets,
+  FlaskConical,
+  Beaker,
+  TestTube,
+  Award,
+  Fuel,
+  Container,
+  Trash2,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -37,6 +54,43 @@ const navigation = [
       { name: "出荷管理", href: "/shipments", icon: PackageCheck },
       { name: "配車管理", href: "/dispatch", icon: Truck },
       { name: "帳票管理", href: "/documents", icon: FileText },
+    ],
+  },
+  {
+    name: "販売管理",
+    icon: Receipt,
+    children: [
+      { name: "見積管理", href: "/sales/quotations", icon: ClipboardList },
+      { name: "受注管理", href: "/sales/orders", icon: FileText },
+      { name: "売上管理", href: "/sales/revenue", icon: TrendingUp },
+      { name: "納品書管理", href: "/sales/delivery-notes", icon: FileText },
+      { name: "請求管理", href: "/sales/invoices", icon: Receipt },
+      { name: "入金管理", href: "/sales/payments-received", icon: CreditCard },
+      { name: "支払管理", href: "/sales/payments-payable", icon: Wallet },
+      { name: "月次締め", href: "/sales/monthly-closing", icon: CalendarCheck },
+      { name: "為替管理", href: "/sales/exchange-rates", icon: ArrowRightLeft },
+      { name: "運賃管理", href: "/sales/freight", icon: Banknote },
+      { name: "海外帳票", href: "/sales/export-docs", icon: Globe },
+    ],
+  },
+  {
+    name: "CR事業部",
+    icon: Droplets,
+    children: [
+      { name: "原料受入", href: "/cr/materials", icon: ShoppingCart },
+      { name: "製造指図", href: "/cr/production-orders", icon: ClipboardList },
+      { name: "タンク管理", href: "/cr/tanks", icon: Container },
+      { name: "出荷管理(油化)", href: "/cr/oil-shipments", icon: Fuel },
+      { name: "残渣管理", href: "/cr/residue", icon: Trash2 },
+    ],
+  },
+  {
+    name: "研究室",
+    icon: FlaskConical,
+    children: [
+      { name: "サンプル受付", href: "/lab/samples", icon: TestTube },
+      { name: "分析入力", href: "/lab/analysis", icon: Beaker },
+      { name: "成績書発行", href: "/lab/certificates", icon: Award },
     ],
   },
   {
@@ -64,6 +118,9 @@ export function Sidebar() {
   const pathname = usePathname();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "MR事業部": true,
+    "販売管理": false,
+    "CR事業部": false,
+    "研究室": false,
     "マスタ管理": false,
     "システム設定": false,
   });
