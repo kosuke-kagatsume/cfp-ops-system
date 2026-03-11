@@ -38,11 +38,22 @@ import {
   Fuel,
   Container,
   Trash2,
+  CheckSquare,
+  GitBranch,
+  ShieldCheck,
+  Calculator,
+  Microscope,
+  Briefcase,
+  Coins,
+  FileSignature,
+  BookOpen,
+  Plane,
 } from "lucide-react";
 import { useState } from "react";
 
 const navigation = [
   { name: "ダッシュボード", href: "/dashboard", icon: LayoutDashboard },
+  { name: "承認管理", href: "/approvals", icon: CheckSquare },
   {
     name: "MR事業部",
     icon: Boxes,
@@ -54,6 +65,7 @@ const navigation = [
       { name: "出荷管理", href: "/shipments", icon: PackageCheck },
       { name: "配車管理", href: "/dispatch", icon: Truck },
       { name: "帳票管理", href: "/documents", icon: FileText },
+      { name: "トレーサビリティ", href: "/traceability", icon: GitBranch },
     ],
   },
   {
@@ -71,6 +83,7 @@ const navigation = [
       { name: "為替管理", href: "/sales/exchange-rates", icon: ArrowRightLeft },
       { name: "運賃管理", href: "/sales/freight", icon: Banknote },
       { name: "海外帳票", href: "/sales/export-docs", icon: Globe },
+      { name: "仕訳連携", href: "/sales/journal-entries", icon: BookOpen },
     ],
   },
   {
@@ -82,6 +95,8 @@ const navigation = [
       { name: "タンク管理", href: "/cr/tanks", icon: Container },
       { name: "出荷管理(油化)", href: "/cr/oil-shipments", icon: Fuel },
       { name: "残渣管理", href: "/cr/residue", icon: Trash2 },
+      { name: "ISCC管理", href: "/cr/iscc", icon: ShieldCheck },
+      { name: "税務帳票", href: "/cr/tax-reports", icon: Calculator },
     ],
   },
   {
@@ -91,8 +106,18 @@ const navigation = [
       { name: "サンプル受付", href: "/lab/samples", icon: TestTube },
       { name: "分析入力", href: "/lab/analysis", icon: Beaker },
       { name: "成績書発行", href: "/lab/certificates", icon: Award },
+      { name: "外部受託分析", href: "/lab/external", icon: Microscope },
     ],
   },
+  {
+    name: "経費・総務",
+    icon: Briefcase,
+    children: [
+      { name: "経費管理", href: "/expenses", icon: Coins },
+      { name: "契約書管理", href: "/contracts", icon: FileSignature },
+    ],
+  },
+  { name: "CTS管理", href: "/cts", icon: Plane },
   {
     name: "マスタ管理",
     icon: Settings,
@@ -121,6 +146,7 @@ export function Sidebar() {
     "販売管理": false,
     "CR事業部": false,
     "研究室": false,
+    "経費・総務": false,
     "マスタ管理": false,
     "システム設定": false,
   });

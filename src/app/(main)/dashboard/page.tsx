@@ -2,133 +2,269 @@
 
 import { Header } from "@/components/header";
 import { useToast } from "@/components/toast";
-import { dashboardStats, auditLogs } from "@/lib/dummy-data";
+import { kpiData, approvalItems } from "@/lib/dummy-data-phase3";
 import {
-  Building2,
-  Package,
-  Factory,
-  Users,
   TrendingUp,
+  TrendingDown,
   Clock,
   AlertCircle,
   CheckCircle,
-  X,
+  DollarSign,
+  Package,
+  Factory,
+  Droplets,
+  ArrowRight,
+  BarChart3,
 } from "lucide-react";
 import Link from "next/link";
 
-const statCards = [
-  { label: "取引先", value: dashboardStats.totalPartners, sub: `稼働中 ${dashboardStats.activePartners}`, icon: Building2, color: "bg-blue-50 text-blue-600", href: "/masters/partners" },
-  { label: "品目", value: dashboardStats.totalProducts, sub: "4軸コード体系", icon: Package, color: "bg-emerald-50 text-emerald-600", href: "/masters/products" },
-  { label: "工場・拠点", value: dashboardStats.totalPlants, sub: `倉庫 ${dashboardStats.totalWarehouses}`, icon: Factory, color: "bg-amber-50 text-amber-600", href: "/masters/plants" },
-  { label: "ユーザー", value: dashboardStats.totalUsers, sub: `アクティブ ${dashboardStats.activeUsers}`, icon: Users, color: "bg-purple-50 text-purple-600", href: "/settings/users" },
-];
+function formatJpy(n: number) {
+  if (n >= 10000000) return `¥${(n / 10000000).toFixed(1)}千万`;
+  if (n >= 10000) return `¥${Math.round(n / 10000).toLocaleString()}万`;
+  return `¥${n.toLocaleString()}`;
+}
+
+function changeRate(current: number, prev: number) {
+  const rate = ((current - prev) / prev) * 100;
+  return { rate: rate.toFixed(1), isUp: rate >= 0 };
+}
 
 export default function DashboardPage() {
   const { showToast } = useToast();
+  const d = kpiData;
+  const pendingApprovals = approvalItems.filter((a) => a.status === "承認待ち");
+
+  const revenueChange = changeRate(d.revenue.total, d.revenue.prevMonth);
+  const costChange = changeRate(d.cost.total, d.cost.prevMonth);
+  const profitChange = changeRate(d.grossProfit.total, d.grossProfit.prevMonth);
 
   return (
     <>
-      <Header title="ダッシュボード" />
+      <Header title="経営ダッシュボード" />
       <div className="p-6 space-y-6">
+        {/* 期間表示 */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold text-text">{d.currentMonth}</h2>
+            <p className="text-xs text-text-tertiary">経営KPI概要</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {["月次", "四半期", "年次"].map((period) => (
+              <button key={period} onClick={() => showToast(`${period}表示（開発中）`, "info")}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${period === "月次" ? "bg-primary-100 text-primary-700 font-medium" : "text-text-secondary hover:bg-surface-tertiary"}`}>
+                {period}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 主要KPI 4カード */}
         <div className="grid grid-cols-4 gap-4">
-          {statCards.map((card) => (
-            <Link key={card.label} href={card.href} className="bg-surface rounded-xl border border-border p-5 hover:border-primary-300 transition-colors">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-sm text-text-secondary">{card.label}</p>
-                  <p className="text-2xl font-bold text-text mt-1">{card.value}</p>
-                  <p className="text-xs text-text-tertiary mt-1">{card.sub}</p>
-                </div>
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${card.color}`}>
-                  <card.icon className="w-5 h-5" />
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-text-tertiary">売上高</p>
+                <p className="text-2xl font-bold text-text mt-1">{formatJpy(d.revenue.total)}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {revenueChange.isUp ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-red-500" />}
+                  <span className={`text-xs font-medium ${revenueChange.isUp ? "text-emerald-600" : "text-red-600"}`}>{revenueChange.isUp ? "+" : ""}{revenueChange.rate}%</span>
+                  <span className="text-xs text-text-tertiary">前月比</span>
                 </div>
               </div>
-            </Link>
-          ))}
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+                <DollarSign className="w-5 h-5 text-blue-600" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-center justify-between text-xs text-text-tertiary mb-1">
+                <span>目標達成率</span><span>{Math.round((d.revenue.total / d.revenue.target) * 100)}%</span>
+              </div>
+              <div className="h-2 bg-surface-tertiary rounded-full">
+                <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (d.revenue.total / d.revenue.target) * 100)}%` }} />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-text-tertiary">仕入高</p>
+                <p className="text-2xl font-bold text-text mt-1">{formatJpy(d.cost.total)}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {!costChange.isUp ? <TrendingDown className="w-3 h-3 text-emerald-500" /> : <TrendingUp className="w-3 h-3 text-red-500" />}
+                  <span className={`text-xs font-medium ${!costChange.isUp ? "text-emerald-600" : "text-red-600"}`}>{costChange.isUp ? "+" : ""}{costChange.rate}%</span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-orange-50 flex items-center justify-center">
+                <Package className="w-5 h-5 text-orange-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-text-tertiary">粗利</p>
+                <p className="text-2xl font-bold text-text mt-1">{formatJpy(d.grossProfit.total)}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  {profitChange.isUp ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-red-500" />}
+                  <span className={`text-xs font-medium ${profitChange.isUp ? "text-emerald-600" : "text-red-600"}`}>{profitChange.isUp ? "+" : ""}{profitChange.rate}%</span>
+                  <span className="text-xs text-text-tertiary">粗利率 {d.grossProfit.margin}%</span>
+                </div>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs text-text-tertiary">在庫評価額</p>
+                <p className="text-2xl font-bold text-text mt-1">{formatJpy(d.inventory.valuationJpy)}</p>
+                <p className="text-xs text-text-tertiary mt-1">{(d.inventory.totalKg / 1000).toFixed(0)}t / 回転率 {d.inventory.turnover}ヶ月</p>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="grid grid-cols-3 gap-6">
+          {/* 売上推移チャート（モック） */}
+          <div className="col-span-2 bg-surface rounded-xl border border-border p-5">
+            <h3 className="text-sm font-medium text-text mb-4">売上・仕入・粗利 推移</h3>
+            <div className="flex items-end gap-3 h-40">
+              {d.monthlyTrend.map((m) => {
+                const maxVal = Math.max(...d.monthlyTrend.map((t) => t.revenue));
+                const revenueH = (m.revenue / maxVal) * 100;
+                const costH = (m.cost / maxVal) * 100;
+                return (
+                  <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full flex items-end gap-0.5 h-32">
+                      <div className="flex-1 bg-blue-200 rounded-t" style={{ height: `${revenueH}%` }} title={`売上: ¥${m.revenue.toLocaleString()}`} />
+                      <div className="flex-1 bg-orange-200 rounded-t" style={{ height: `${costH}%` }} title={`仕入: ¥${m.cost.toLocaleString()}`} />
+                    </div>
+                    <span className="text-xs text-text-tertiary">{m.month.split("-")[1]}月</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex items-center gap-4 mt-3 text-xs">
+              <div className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-200 rounded" />売上</div>
+              <div className="flex items-center gap-1"><div className="w-3 h-3 bg-orange-200 rounded" />仕入</div>
+            </div>
+          </div>
+
+          {/* 承認待ち */}
           <div className="bg-surface rounded-xl border border-border p-5">
             <div className="flex items-center gap-2 mb-4">
               <AlertCircle className="w-5 h-5 text-warning" />
-              <h2 className="font-bold text-text">承認待ち</h2>
-              <span className="ml-auto bg-warning/10 text-warning text-xs font-bold px-2 py-0.5 rounded-full">
-                {dashboardStats.pendingApprovals}件
-              </span>
+              <h3 className="text-sm font-medium text-text">承認待ち</h3>
+              <span className="ml-auto bg-warning/10 text-warning text-xs font-bold px-2 py-0.5 rounded-full">{pendingApprovals.length}件</span>
             </div>
-            <div className="space-y-3">
-              {[
-                { title: "単価変更申請", desc: "東洋プラスチック PP-PEL-N-A1", time: "10分前" },
-                { title: "新規取引先登録", desc: "株式会社中部リサイクル", time: "1時間前" },
-                { title: "ユーザー追加申請", desc: "中村 太一（営業部）", time: "3時間前" },
-              ].map((item) => (
-                <button
-                  key={item.title}
-                  onClick={() => showToast(`${item.title}の承認画面を開きます（開発中）`, "info")}
-                  className="w-full flex items-center gap-3 p-3 bg-surface-secondary rounded-lg hover:bg-surface-tertiary transition-colors text-left"
-                >
+            <div className="space-y-2">
+              {pendingApprovals.slice(0, 4).map((item) => (
+                <Link key={item.id} href="/approvals"
+                  className="flex items-center gap-3 p-2.5 bg-surface-secondary rounded-lg hover:bg-surface-tertiary transition-colors">
                   <div className="w-2 h-2 bg-warning rounded-full shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-text">{item.title}</p>
-                    <p className="text-xs text-text-tertiary">{item.desc}</p>
+                    <p className="text-xs font-medium text-text truncate">{item.title}</p>
+                    <p className="text-xs text-text-tertiary">{item.applicant}</p>
                   </div>
-                  <span className="text-xs text-text-tertiary">{item.time}</span>
-                </button>
+                  {item.amount && <span className="text-xs font-medium text-text">¥{(item.amount / 10000).toFixed(0)}万</span>}
+                </Link>
+              ))}
+            </div>
+            <Link href="/approvals" className="flex items-center justify-center gap-1 mt-3 text-xs text-primary-600 hover:underline">
+              すべて見る<ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-6">
+          {/* MR生産実績 */}
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Factory className="w-5 h-5 text-text-secondary" />
+              <h3 className="text-sm font-medium text-text">MR事業部 生産実績</h3>
+            </div>
+            <div className="space-y-3">
+              {d.production.mr.map((p) => (
+                <div key={p.plant} className="flex items-center gap-3">
+                  <div className="w-28 text-xs text-text-secondary">{p.plant}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="font-medium text-text">{(p.produced / 1000).toFixed(0)}t</span>
+                      <span className="text-text-tertiary">歩留 {p.yieldRate}%</span>
+                    </div>
+                    <div className="h-2 bg-surface-tertiary rounded-full">
+                      <div className="h-2 bg-primary-500 rounded-full" style={{ width: `${(p.produced / 50000) * 100}%` }} />
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
 
-          <div className="col-span-2 bg-surface rounded-xl border border-border p-5">
+          {/* CR生産実績 */}
+          <div className="bg-surface rounded-xl border border-border p-5">
             <div className="flex items-center gap-2 mb-4">
-              <Clock className="w-5 h-5 text-info" />
-              <h2 className="font-bold text-text">最近の変更</h2>
-              <Link href="/audit" className="ml-auto text-xs text-primary-600 hover:underline">
-                すべて見る
-              </Link>
+              <Droplets className="w-5 h-5 text-text-secondary" />
+              <h3 className="text-sm font-medium text-text">CR事業部 油化実績</h3>
             </div>
-            <div className="space-y-2">
-              {auditLogs.slice(0, 5).map((log) => (
-                <div key={log.id} className="flex items-center gap-3 py-2 border-b border-border last:border-0">
-                  <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${
-                    log.action === "INSERT" ? "bg-emerald-50 text-emerald-600"
-                      : log.action === "UPDATE" ? "bg-blue-50 text-blue-600"
-                      : "bg-red-50 text-red-600"
-                  }`}>
-                    {log.action === "INSERT" ? "+" : log.action === "UPDATE" ? "U" : "-"}
+            <div className="space-y-3">
+              {d.production.cr.map((p) => (
+                <div key={p.plant}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-text-secondary">{p.plant}</span>
+                    <span className="text-xs font-medium text-text">収率 {p.yieldRate}%</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-text">{log.summary}</p>
-                    <p className="text-xs text-text-tertiary">{log.user} - {log.table}</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="p-2 bg-blue-50 rounded">
+                      <p className="text-blue-600">投入</p>
+                      <p className="font-medium text-blue-800">{(p.inputKg / 1000).toFixed(0)}t</p>
+                    </div>
+                    <div className="p-2 bg-amber-50 rounded">
+                      <p className="text-amber-600">生成油</p>
+                      <p className="font-medium text-amber-800">{(p.outputOilKg / 1000).toFixed(1)}t</p>
+                    </div>
+                    <div className="p-2 bg-gray-100 rounded">
+                      <p className="text-gray-600">残渣</p>
+                      <p className="font-medium text-gray-800">{(p.outputResidueKg / 1000).toFixed(1)}t</p>
+                    </div>
                   </div>
-                  <span className="text-xs text-text-tertiary whitespace-nowrap">{log.timestamp.split(" ")[1]}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
+        {/* タンク稼働率 */}
         <div className="bg-surface rounded-xl border border-border p-5">
-          <h2 className="font-bold text-text mb-4">クイックアクセス</h2>
-          <div className="grid grid-cols-4 gap-3">
-            {[
-              { label: "取引先を登録", href: "/masters/partners", icon: Building2, desc: "顧客・仕入先・運送会社" },
-              { label: "品目を登録", href: "/masters/products", icon: Package, desc: "4軸コード体系" },
-              { label: "単価を設定", href: "/masters/prices", icon: TrendingUp, desc: "顧客×品目×有効期間" },
-              { label: "ユーザーを追加", href: "/settings/users", icon: Users, desc: "Microsoft 365 SSO" },
-            ].map((action) => (
-              <Link
-                key={action.label}
-                href={action.href}
-                className="flex items-center gap-3 p-4 rounded-lg border border-border hover:border-primary-300 hover:bg-primary-50/50 transition-colors group"
-              >
-                <div className="w-10 h-10 rounded-lg bg-surface-tertiary flex items-center justify-center group-hover:bg-primary-100 transition-colors">
-                  <action.icon className="w-5 h-5 text-text-secondary group-hover:text-primary-600" />
+          <div className="flex items-center gap-2 mb-4">
+            <Droplets className="w-5 h-5 text-text-secondary" />
+            <h3 className="text-sm font-medium text-text">タンク稼働率</h3>
+            <Link href="/cr/tanks" className="ml-auto text-xs text-primary-600 hover:underline">
+              詳細 →
+            </Link>
+          </div>
+          <div className="flex items-end gap-4">
+            {d.tankUtilization.map((tank) => (
+              <div key={tank.name} className="flex-1 text-center">
+                <div className="relative h-24 bg-surface-tertiary rounded-lg mx-auto w-full max-w-[60px] overflow-hidden">
+                  <div className={`absolute bottom-0 left-0 right-0 rounded-b-lg ${
+                    tank.percentage >= 80 ? "bg-red-200" : tank.percentage <= 20 ? "bg-amber-200" : "bg-blue-200"
+                  }`} style={{ height: `${tank.percentage}%` }} />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs font-bold text-text">{tank.percentage}%</span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-text">{action.label}</p>
-                  <p className="text-xs text-text-tertiary">{action.desc}</p>
-                </div>
-              </Link>
+                <p className="text-xs text-text-secondary mt-1">{tank.name}</p>
+                <p className="text-xs text-text-tertiary">{tank.plant}</p>
+              </div>
             ))}
           </div>
         </div>
