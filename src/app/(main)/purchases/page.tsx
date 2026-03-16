@@ -3,9 +3,70 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { purchases, purchaseStatusColors } from "@/lib/dummy-data-phase1";
-import { Plus, Download, Search, Eye, Filter } from "lucide-react";
+import { Plus, Download, Search, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type Purchase = {
+  id: string;
+  purchaseNumber: string;
+  purchaseDate: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  freightCost: number | null;
+  packagingType: string | null;
+  status: string;
+  supplier: { id: string; code: string; name: string };
+  pickupPartner: { id: string; name: string } | null;
+  product: {
+    id: string;
+    code: string;
+    name: { name: string } | null;
+    shape: { name: string } | null;
+    color: { name: string } | null;
+    grade: { name: string } | null;
+  };
+  warehouse: { id: string; code: string; name: string } | null;
+};
+
+const statusEnum: { value: string; label: string }[] = [
+  { value: "PLANNED", label: "予定" },
+  { value: "RECEIVED", label: "入荷済" },
+  { value: "INSPECTED", label: "検査済" },
+  { value: "CONFIRMED", label: "確定" },
+  { value: "RETURNED", label: "返品" },
+];
+
+const statusLabels: Record<string, string> = {
+  PLANNED: "予定",
+  RECEIVED: "入荷済",
+  INSPECTED: "検査済",
+  CONFIRMED: "確定",
+  RETURNED: "返品",
+};
+
+const statusColors: Record<string, string> = {
+  PLANNED: "bg-gray-100 text-gray-700",
+  RECEIVED: "bg-blue-50 text-blue-700",
+  INSPECTED: "bg-amber-50 text-amber-700",
+  CONFIRMED: "bg-emerald-50 text-emerald-700",
+  RETURNED: "bg-red-50 text-red-700",
+};
+
+const packagingLabels: Record<string, string> = {
+  FLECON: "フレコン",
+  PALLET: "パレット",
+  STEEL_BOX: "スチール箱",
+  PAPER_BAG: "紙袋",
+  POST_PALLET: "ポストパレット",
+};
+
+type PartnerOption = { id: string; code: string; name: string };
+type ProductOption = { id: string; code: string; name: { name: string } | null };
+type WarehouseOption = { id: string; code: string; name: string };
 
 export default function PurchasesPage() {
   const [search, setSearch] = useState("");
@@ -14,16 +75,80 @@ export default function PurchasesPage() {
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const filtered = purchases.filter((p) => {
-    if (statusFilter !== "all" && p.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return p.purchaseNumber.toLowerCase().includes(q) || p.supplier.includes(q) || p.productName.includes(q);
-    }
-    return true;
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (statusFilter !== "all") params.set("status", statusFilter);
+
+  const { data: purchases, isLoading, mutate } = useSWR<Purchase[]>(
+    `/api/mr/purchases?${params.toString()}`,
+    fetcher
+  );
+
+  // For counting by status (without filter)
+  const { data: allPurchases } = useSWR<Purchase[]>("/api/mr/purchases", fetcher);
+
+  // Master data for create form
+  const { data: suppliers } = useSWR<PartnerOption[]>(
+    showNewModal ? "/api/masters/partners?type=supplier" : null,
+    fetcher
+  );
+  const { data: products } = useSWR<ProductOption[]>(
+    showNewModal ? "/api/masters/products" : null,
+    fetcher
+  );
+  const { data: warehouses } = useSWR<WarehouseOption[]>(
+    showNewModal ? "/api/masters/warehouses" : null,
+    fetcher
+  );
+
+  const selected = purchases?.find((p) => p.id === showDetail);
+
+  const [newForm, setNewForm] = useState({
+    supplierId: "",
+    pickupPartnerId: "",
+    productId: "",
+    packagingType: "",
+    warehouseId: "",
+    quantity: "",
+    unitPrice: "",
+    freightCost: "",
+    purchaseDate: new Date().toISOString().split("T")[0],
   });
 
-  const selected = purchases.find((p) => p.id === showDetail);
+  const resetForm = () => {
+    setNewForm({
+      supplierId: "", pickupPartnerId: "", productId: "", packagingType: "",
+      warehouseId: "", quantity: "", unitPrice: "", freightCost: "",
+      purchaseDate: new Date().toISOString().split("T")[0],
+    });
+  };
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/mr/purchases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          supplierId: newForm.supplierId,
+          pickupPartnerId: newForm.pickupPartnerId || undefined,
+          productId: newForm.productId,
+          packagingType: newForm.packagingType || undefined,
+          warehouseId: newForm.warehouseId || undefined,
+          quantity: parseFloat(newForm.quantity),
+          unitPrice: parseFloat(newForm.unitPrice),
+          freightCost: newForm.freightCost ? parseFloat(newForm.freightCost) : undefined,
+          purchaseDate: newForm.purchaseDate,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create");
+      setShowNewModal(false);
+      resetForm();
+      mutate();
+      showToast("入荷を登録しました", "success");
+    } catch {
+      showToast("登録に失敗しました", "error");
+    }
+  };
 
   return (
     <>
@@ -31,13 +156,13 @@ export default function PurchasesPage() {
       <div className="p-6 space-y-4">
         {/* 統計 */}
         <div className="grid grid-cols-5 gap-3">
-          {(["予定", "入荷済", "検査済", "確定", "返品"] as const).map((st) => {
-            const count = purchases.filter((p) => p.status === st).length;
+          {statusEnum.map(({ value, label }) => {
+            const count = allPurchases?.filter((p) => p.status === value).length ?? 0;
             return (
-              <button key={st} onClick={() => setStatusFilter(statusFilter === st ? "all" : st)}
-                className={`p-3 rounded-xl border text-center transition-colors ${statusFilter === st ? "border-primary-400 bg-primary-50" : "border-border bg-surface hover:border-primary-200"}`}>
+              <button key={value} onClick={() => setStatusFilter(statusFilter === value ? "all" : value)}
+                className={`p-3 rounded-xl border text-center transition-colors ${statusFilter === value ? "border-primary-400 bg-primary-50" : "border-border bg-surface hover:border-primary-200"}`}>
                 <p className="text-lg font-bold text-text">{count}</p>
-                <p className="text-xs text-text-secondary">{st}</p>
+                <p className="text-xs text-text-secondary">{label}</p>
               </button>
             );
           })}
@@ -65,50 +190,68 @@ export default function PurchasesPage() {
         </div>
 
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary">
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">仕入番号</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">日付</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">仕入先 / 引取先</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量(kg)</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">金額</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((p) => (
-                <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-mono text-primary-600">{p.purchaseNumber}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{p.date}</td>
-                  <td className="px-4 py-3">
-                    <p className="text-sm text-text">{p.supplier}</p>
-                    <p className="text-xs text-text-tertiary">{p.collectionSource}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs font-mono bg-surface-tertiary px-1.5 py-0.5 rounded">{p.product}</span>
-                    <p className="text-xs text-text-tertiary mt-0.5">{p.packaging}</p>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text text-right font-medium">{p.quantity.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-text text-right">¥{p.amount.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${purchaseStatusColors[p.status]}`}>{p.status}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => setShowDetail(p.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                      <Eye className="w-4 h-4 text-text-tertiary" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-            <p className="text-xs text-text-tertiary">{filtered.length}件 / {purchases.length}件</p>
-            <p className="text-xs text-text-secondary">合計: ¥{filtered.reduce((s, p) => s + p.amount, 0).toLocaleString()}</p>
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+              <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
+            </div>
+          ) : (
+            <>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-surface-secondary">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">仕入番号</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">日付</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">仕入先 / 引取先</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量(kg)</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">金額</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchases?.map((p) => (
+                    <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-mono text-primary-600">{p.purchaseNumber}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{new Date(p.purchaseDate).toLocaleDateString("ja-JP")}</td>
+                      <td className="px-4 py-3">
+                        <p className="text-sm text-text">{p.supplier.name}</p>
+                        <p className="text-xs text-text-tertiary">{p.pickupPartner?.name ?? "-"}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-mono bg-surface-tertiary px-1.5 py-0.5 rounded">{p.product.code}</span>
+                        <p className="text-xs text-text-tertiary mt-0.5">{p.packagingType ? packagingLabels[p.packagingType] ?? p.packagingType : "-"}</p>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text text-right font-medium">{p.quantity.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-text text-right">¥{p.amount.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[p.status] ?? "bg-gray-100 text-gray-700"}`}>
+                          {statusLabels[p.status] ?? p.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => setShowDetail(p.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <Eye className="w-4 h-4 text-text-tertiary" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {purchases?.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">
+                        データがありません
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
+                <p className="text-xs text-text-tertiary">{purchases?.length ?? 0}件</p>
+                <p className="text-xs text-text-secondary">合計: ¥{(purchases?.reduce((s, p) => s + p.amount, 0) ?? 0).toLocaleString()}</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -116,60 +259,91 @@ export default function PurchasesPage() {
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="入荷登録"
         footer={<>
           <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
-          <button onClick={() => { setShowNewModal(false); showToast("入荷を登録しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
         </>}>
         <div className="space-y-4">
-          <FormField label="仕入先" required><FormSelect placeholder="選択" options={[
-            { value: "1", label: "九州リサイクル株式会社" }, { value: "2", label: "広島産業廃棄物処理株式会社" }, { value: "3", label: "北陸ポリマー株式会社" },
-          ]} /></FormField>
-          <FormField label="引取先（原料の出所）" required><FormInput placeholder="例: 福岡第一工場" /></FormField>
+          <FormField label="仕入先" required>
+            <FormSelect
+              placeholder="選択"
+              value={newForm.supplierId}
+              onChange={(e) => setNewForm({ ...newForm, supplierId: e.target.value })}
+              options={(suppliers ?? []).map((s) => ({ value: s.id, label: `${s.code} ${s.name}` }))}
+            />
+          </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="受入工場" required><FormSelect placeholder="選択" options={[
-              { value: "1", label: "美の浜工場" }, { value: "2", label: "高松工場" }, { value: "3", label: "四日市工場" },
-            ]} /></FormField>
-            <FormField label="倉庫" required><FormSelect placeholder="選択" options={[
-              { value: "1", label: "第1倉庫" }, { value: "2", label: "第2倉庫" },
-            ]} /></FormField>
+            <FormField label="倉庫">
+              <FormSelect
+                placeholder="選択"
+                value={newForm.warehouseId}
+                onChange={(e) => setNewForm({ ...newForm, warehouseId: e.target.value })}
+                options={(warehouses ?? []).map((w) => ({ value: w.id, label: `${w.code} ${w.name}` }))}
+              />
+            </FormField>
+            <FormField label="荷姿">
+              <FormSelect
+                placeholder="選択"
+                value={newForm.packagingType}
+                onChange={(e) => setNewForm({ ...newForm, packagingType: e.target.value })}
+                options={[
+                  { value: "FLECON", label: "フレコン" },
+                  { value: "PALLET", label: "パレット" },
+                  { value: "STEEL_BOX", label: "スチール箱" },
+                  { value: "PAPER_BAG", label: "紙袋" },
+                  { value: "POST_PALLET", label: "ポストパレット" },
+                ]}
+              />
+            </FormField>
           </div>
-          <FormField label="品目" required><FormSelect placeholder="4軸コードで選択" options={[
-            { value: "1", label: "PP-CRS-W-B1 PP 粉砕 白 B級" }, { value: "2", label: "PE-FLM-N-A2 PE フィルム ナチュラル A級" },
-            { value: "3", label: "ABS-INJ-BK-A1 ABS 射出 黒 A級" },
-          ]} /></FormField>
+          <FormField label="品目" required>
+            <FormSelect
+              placeholder="4軸コードで選択"
+              value={newForm.productId}
+              onChange={(e) => setNewForm({ ...newForm, productId: e.target.value })}
+              options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))}
+            />
+          </FormField>
           <div className="grid grid-cols-3 gap-4">
-            <FormField label="数量(kg)" required><FormInput type="number" placeholder="例: 3200" /></FormField>
-            <FormField label="単価(円/kg)" required><FormInput type="number" placeholder="例: 85" /></FormField>
-            <FormField label="荷姿" required><FormSelect placeholder="選択" options={[
-              { value: "1", label: "フレコン" }, { value: "2", label: "パレット" }, { value: "3", label: "スチール箱" }, { value: "4", label: "紙袋" },
-            ]} /></FormField>
+            <FormField label="数量(kg)" required>
+              <FormInput type="number" placeholder="例: 3200" value={newForm.quantity} onChange={(e) => setNewForm({ ...newForm, quantity: e.target.value })} />
+            </FormField>
+            <FormField label="単価(円/kg)" required>
+              <FormInput type="number" placeholder="例: 85" value={newForm.unitPrice} onChange={(e) => setNewForm({ ...newForm, unitPrice: e.target.value })} />
+            </FormField>
+            <FormField label="運賃(円)">
+              <FormInput type="number" placeholder="例: 35000" value={newForm.freightCost} onChange={(e) => setNewForm({ ...newForm, freightCost: e.target.value })} />
+            </FormField>
           </div>
-          <FormField label="運賃(円)"><FormInput type="number" placeholder="例: 35000" /></FormField>
-          <FormField label="ロット番号"><FormInput placeholder="自動採番（入力で上書き可）" defaultValue="L260312-02" /></FormField>
+          <FormField label="仕入日" required>
+            <FormInput type="date" value={newForm.purchaseDate} onChange={(e) => setNewForm({ ...newForm, purchaseDate: e.target.value })} />
+          </FormField>
         </div>
       </Modal>
 
       {/* 詳細モーダル */}
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `仕入詳細: ${selected.purchaseNumber}` : ""}
         footer={<>
-          {selected?.status === "入荷済" && <button onClick={() => { setShowDetail(null); showToast("受入検査画面へ（開発中）", "info"); }} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">受入検査</button>}
-          {selected?.status === "検査済" && <button onClick={() => { setShowDetail(null); showToast("確定しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">確定する</button>}
+          {selected?.status === "RECEIVED" && <button onClick={() => { setShowDetail(null); showToast("受入検査画面へ（開発中）", "info"); }} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">受入検査</button>}
+          {selected?.status === "INSPECTED" && <button onClick={() => { setShowDetail(null); showToast("確定しました（開発中）", "info"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">確定する</button>}
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm font-mono font-medium text-text">{selected.purchaseNumber}</span>
-              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${purchaseStatusColors[selected.status]}`}>{selected.status}</span>
+              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status] ?? "bg-gray-100 text-gray-700"}`}>
+                {statusLabels[selected.status] ?? selected.status}
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">仕入先</p><p className="text-sm text-text">{selected.supplier}</p></div>
-              <div><p className="text-xs text-text-tertiary">引取先</p><p className="text-sm text-text">{selected.collectionSource}</p></div>
-              <div><p className="text-xs text-text-tertiary">日付</p><p className="text-sm text-text">{selected.date}</p></div>
-              <div><p className="text-xs text-text-tertiary">ロット</p><p className="text-sm font-mono text-text">{selected.lotNumber}</p></div>
+              <div><p className="text-xs text-text-tertiary">仕入先</p><p className="text-sm text-text">{selected.supplier.name}</p></div>
+              <div><p className="text-xs text-text-tertiary">引取先</p><p className="text-sm text-text">{selected.pickupPartner?.name ?? "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">日付</p><p className="text-sm text-text">{new Date(selected.purchaseDate).toLocaleDateString("ja-JP")}</p></div>
+              <div><p className="text-xs text-text-tertiary">倉庫</p><p className="text-sm text-text">{selected.warehouse?.name ?? "-"}</p></div>
             </div>
             <div className="p-3 bg-surface-tertiary rounded-lg">
               <div className="grid grid-cols-2 gap-3">
-                <div><p className="text-xs text-text-tertiary">品目</p><p className="text-sm font-mono text-text">{selected.product}</p><p className="text-xs text-text-secondary">{selected.productName}</p></div>
-                <div><p className="text-xs text-text-tertiary">荷姿</p><p className="text-sm text-text">{selected.packaging}</p></div>
+                <div><p className="text-xs text-text-tertiary">品目</p><p className="text-sm font-mono text-text">{selected.product.code}</p><p className="text-xs text-text-secondary">{selected.product.name?.name ?? "-"}</p></div>
+                <div><p className="text-xs text-text-tertiary">荷姿</p><p className="text-sm text-text">{selected.packagingType ? packagingLabels[selected.packagingType] ?? selected.packagingType : "-"}</p></div>
               </div>
             </div>
             <div className="grid grid-cols-3 gap-4">
@@ -178,12 +352,8 @@ export default function PurchasesPage() {
               <div><p className="text-xs text-text-tertiary">小計</p><p className="text-sm font-medium text-text">¥{selected.amount.toLocaleString()}</p></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">運賃</p><p className="text-sm text-text">¥{selected.freight.toLocaleString()}</p></div>
-              <div><p className="text-xs text-text-tertiary">合計（在庫原価算入）</p><p className="text-sm font-bold text-primary-700">¥{(selected.amount + selected.freight).toLocaleString()}</p></div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">受入工場</p><p className="text-sm text-text">{selected.plant}</p></div>
-              <div><p className="text-xs text-text-tertiary">倉庫</p><p className="text-sm text-text">{selected.warehouse}</p></div>
+              <div><p className="text-xs text-text-tertiary">運賃</p><p className="text-sm text-text">{selected.freightCost != null ? `¥${selected.freightCost.toLocaleString()}` : "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">合計（在庫原価算入）</p><p className="text-sm font-bold text-primary-700">¥{(selected.amount + (selected.freightCost ?? 0)).toLocaleString()}</p></div>
             </div>
           </div>
         )}

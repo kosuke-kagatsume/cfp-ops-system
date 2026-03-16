@@ -1,0 +1,69 @@
+import { prisma } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const search = searchParams.get("search") ?? "";
+  const status = searchParams.get("status");
+
+  const where: Record<string, unknown> = {};
+
+  if (search) {
+    where.OR = [
+      { shipmentNumber: { contains: search, mode: "insensitive" } },
+      { customer: { name: { contains: search, mode: "insensitive" } } },
+      { product: { name: { name: { contains: search, mode: "insensitive" } } } },
+    ];
+  }
+
+  if (status) {
+    where.status = status;
+  }
+
+  const shipments = await prisma.shipment.findMany({
+    where,
+    include: {
+      customer: { select: { id: true, code: true, name: true } },
+      deliveryPartner: { select: { id: true, name: true } },
+      product: { include: { name: true, shape: true, color: true, grade: true } },
+      warehouse: { select: { id: true, code: true, name: true } },
+      dispatch: { select: { id: true, carrierId: true, carrier: { select: { name: true } } } },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return NextResponse.json(shipments);
+}
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const seq = await prisma.numberSequence.update({
+    where: { prefix_year: { prefix: "SHP", year: new Date().getFullYear() } },
+    data: { currentNumber: { increment: 1 } },
+  });
+  const shipmentNumber = `SHP-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+
+  const shipment = await prisma.shipment.create({
+    data: {
+      shipmentNumber,
+      customerId: body.customerId,
+      deliveryPartnerId: body.deliveryPartnerId,
+      productId: body.productId,
+      packagingType: body.packagingType,
+      warehouseId: body.warehouseId,
+      quantity: body.quantity,
+      unitPrice: body.unitPrice,
+      amount: body.unitPrice ? body.quantity * body.unitPrice : null,
+      deliveryDate: body.deliveryDate ? new Date(body.deliveryDate) : null,
+      shipmentDate: body.shipmentDate ? new Date(body.shipmentDate) : null,
+      status: "SHIPPING_LIST",
+    },
+    include: {
+      customer: { select: { id: true, code: true, name: true } },
+      product: { include: { name: true, shape: true, color: true, grade: true } },
+    },
+  });
+
+  return NextResponse.json(shipment, { status: 201 });
+}
