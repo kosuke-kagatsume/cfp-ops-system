@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { type ReactNode } from "react";
+import { type ReactNode, type ChangeEvent } from "react";
 
 interface ModalProps {
   isOpen: boolean;
@@ -62,16 +62,22 @@ export function FormInput({
   placeholder,
   type = "text",
   defaultValue,
+  value,
+  onChange,
 }: {
   placeholder?: string;
   type?: string;
   defaultValue?: string;
+  value?: string;
+  onChange?: (e: ChangeEvent<HTMLInputElement>) => void;
 }) {
   return (
     <input
       type={type}
       placeholder={placeholder}
       defaultValue={defaultValue}
+      value={value}
+      onChange={onChange}
       className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
     />
   );
@@ -80,14 +86,22 @@ export function FormInput({
 export function FormSelect({
   options,
   placeholder,
+  value,
+  onChange,
 }: {
   options: { value: string; label: string }[];
   placeholder?: string;
+  value?: string;
+  onChange?: (e: ChangeEvent<HTMLSelectElement>) => void;
 }) {
   return (
-    <select className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+    <select
+      value={value}
+      onChange={onChange}
+      className="w-full px-3 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+    >
       {placeholder && (
-        <option value="" disabled selected>
+        <option value="">
           {placeholder}
         </option>
       )}

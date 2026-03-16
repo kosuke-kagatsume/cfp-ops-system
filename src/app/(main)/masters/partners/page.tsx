@@ -3,9 +3,56 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { partners, partnerTypeLabels } from "@/lib/dummy-data";
-import { Plus, Download, Search, MoreHorizontal, CheckCircle, Edit, Trash2, Eye } from "lucide-react";
+import { Plus, Download, Search, MoreHorizontal, CheckCircle, Edit, Trash2, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type Partner = {
+  id: string;
+  code: string;
+  name: string;
+  nameKana: string | null;
+  isCustomer: boolean;
+  isSupplier: boolean;
+  isCarrier: boolean;
+  closingDay: string | null;
+  tel: string | null;
+  fax: string | null;
+  email: string | null;
+  address: string | null;
+  prefecture: string | null;
+  city: string | null;
+  isIsccCertified: boolean;
+  isActive: boolean;
+  isOverseas: boolean;
+};
+
+function getPartnerType(p: Partner): string {
+  if (p.isCustomer && p.isSupplier) return "mixed";
+  if (p.isCustomer) return "customer";
+  if (p.isSupplier) return "supplier";
+  if (p.isCarrier) return "carrier";
+  return "other";
+}
+
+const typeLabels: Record<string, string> = {
+  customer: "顧客",
+  supplier: "仕入先",
+  carrier: "運送会社",
+  mixed: "複合",
+  other: "その他",
+};
+
+const closingDayLabels: Record<string, string> = {
+  DAY_5: "5日",
+  DAY_10: "10日",
+  DAY_15: "15日",
+  DAY_20: "20日",
+  DAY_25: "25日",
+  END_OF_MONTH: "末日",
+};
 
 export default function PartnersPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -16,14 +63,62 @@ export default function PartnersPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const filtered = partners.filter((p) => {
-    if (typeFilter !== "all" && p.type !== typeFilter) return false;
-    if (statusFilter !== "all" && p.status !== statusFilter) return false;
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !p.code.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
+  // Build query params
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (typeFilter !== "all") params.set("type", typeFilter);
+  if (statusFilter !== "all") params.set("status", statusFilter);
+
+  const { data: partners, isLoading, mutate } = useSWR<Partner[]>(
+    `/api/masters/partners?${params.toString()}`,
+    fetcher
+  );
+
+  const selectedPartner = partners?.find((p) => p.id === showDetailModal);
+
+  // 新規登録
+  const [newForm, setNewForm] = useState({
+    code: "", name: "", nameKana: "", type: "",
+    closingDay: "", currency: "JPY",
+    address: "", tel: "", fax: "", email: "",
+    isIsccCertified: false,
   });
 
-  const selectedPartner = partners.find((p) => p.id === showDetailModal);
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/masters/partners", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newForm,
+          isCustomer: newForm.type === "customer" || newForm.type === "mixed",
+          isSupplier: newForm.type === "supplier" || newForm.type === "mixed",
+          isCarrier: newForm.type === "carrier",
+          closingDay: newForm.closingDay || undefined,
+          currency: newForm.currency || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create");
+      setShowNewModal(false);
+      setNewForm({ code: "", name: "", nameKana: "", type: "", closingDay: "", currency: "JPY", address: "", tel: "", fax: "", email: "", isIsccCertified: false });
+      mutate();
+      showToast("取引先を登録しました", "success");
+    } catch {
+      showToast("登録に失敗しました", "error");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この取引先を削除しますか？")) return;
+    try {
+      await fetch(`/api/masters/partners/${id}`, { method: "DELETE" });
+      mutate();
+      showToast("取引先を削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
+    }
+    setMenuOpen(null);
+  };
 
   return (
     <>
@@ -82,96 +177,113 @@ export default function PartnersPage() {
 
         {/* テーブル */}
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary">
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">コード</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">取引先名</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">種別</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">締日</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">電話番号</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ISCC</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((partner) => (
-                <tr key={partner.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-mono text-text-secondary">{partner.code}</td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => setShowDetailModal(partner.id)} className="text-left hover:underline">
-                      <p className="text-sm font-medium text-text">{partner.name}</p>
-                      <p className="text-xs text-text-tertiary">{partner.address}</p>
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      partner.type === "customer" ? "bg-blue-50 text-blue-700"
-                        : partner.type === "supplier" ? "bg-amber-50 text-amber-700"
-                        : "bg-purple-50 text-purple-700"
-                    }`}>
-                      {partnerTypeLabels[partner.type]}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{partner.closingDay}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{partner.tel}</td>
-                  <td className="px-4 py-3 text-center">
-                    {partner.isIscCertified ? (
-                      <CheckCircle className="w-4 h-4 text-emerald-500 mx-auto" />
-                    ) : (
-                      <span className="text-text-tertiary">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      partner.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
-                    }`}>
-                      {partner.status === "active" ? "有効" : "無効"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 relative">
-                    <button
-                      onClick={() => setMenuOpen(menuOpen === partner.id ? null : partner.id)}
-                      className="p-1 hover:bg-surface-tertiary rounded transition-colors"
-                    >
-                      <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
-                    </button>
-                    {menuOpen === partner.id && (
-                      <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-36">
-                        <button
-                          onClick={() => { setShowDetailModal(partner.id); setMenuOpen(null); }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"
-                        >
-                          <Eye className="w-4 h-4" /> 詳細
-                        </button>
-                        <button
-                          onClick={() => { showToast("編集画面を開きます（開発中）", "info"); setMenuOpen(null); }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"
-                        >
-                          <Edit className="w-4 h-4" /> 編集
-                        </button>
-                        <button
-                          onClick={() => { showToast("削除機能は開発中です", "warning"); setMenuOpen(null); }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-surface-tertiary"
-                        >
-                          <Trash2 className="w-4 h-4" /> 削除
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-            <p className="text-xs text-text-tertiary">{filtered.length}件 / {partners.length}件</p>
-            <div className="flex items-center gap-1">
-              <button onClick={() => showToast("先頭ページです", "info")} className="px-3 py-1 text-xs border border-border rounded bg-surface hover:bg-surface-tertiary">前へ</button>
-              <button className="px-3 py-1 text-xs bg-primary-600 text-text-inverse rounded">1</button>
-              <button onClick={() => showToast("最終ページです", "info")} className="px-3 py-1 text-xs border border-border rounded bg-surface hover:bg-surface-tertiary">次へ</button>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+              <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
             </div>
-          </div>
+          ) : (
+            <>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-surface-secondary">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">コード</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">取引先名</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">種別</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">締日</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">電話番号</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ISCC</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {partners?.map((partner) => {
+                    const pType = getPartnerType(partner);
+                    return (
+                      <tr key={partner.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                        <td className="px-4 py-3 text-sm font-mono text-text-secondary">{partner.code}</td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => setShowDetailModal(partner.id)} className="text-left hover:underline">
+                            <p className="text-sm font-medium text-text">{partner.name}</p>
+                            <p className="text-xs text-text-tertiary">{[partner.prefecture, partner.city, partner.address].filter(Boolean).join("") || "-"}</p>
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                            pType === "customer" ? "bg-blue-50 text-blue-700"
+                              : pType === "supplier" ? "bg-amber-50 text-amber-700"
+                              : pType === "carrier" ? "bg-purple-50 text-purple-700"
+                              : "bg-gray-50 text-gray-700"
+                          }`}>
+                            {typeLabels[pType]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">
+                          {partner.closingDay ? closingDayLabels[partner.closingDay] ?? partner.closingDay : "-"}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">{partner.tel ?? "-"}</td>
+                        <td className="px-4 py-3 text-center">
+                          {partner.isIsccCertified ? (
+                            <CheckCircle className="w-4 h-4 text-emerald-500 mx-auto" />
+                          ) : (
+                            <span className="text-text-tertiary">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
+                            partner.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                          }`}>
+                            {partner.isActive ? "有効" : "無効"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 relative">
+                          <button
+                            onClick={() => setMenuOpen(menuOpen === partner.id ? null : partner.id)}
+                            className="p-1 hover:bg-surface-tertiary rounded transition-colors"
+                          >
+                            <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          {menuOpen === partner.id && (
+                            <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-36">
+                              <button
+                                onClick={() => { setShowDetailModal(partner.id); setMenuOpen(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"
+                              >
+                                <Eye className="w-4 h-4" /> 詳細
+                              </button>
+                              <button
+                                onClick={() => { showToast("編集画面を開きます（開発中）", "info"); setMenuOpen(null); }}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"
+                              >
+                                <Edit className="w-4 h-4" /> 編集
+                              </button>
+                              <button
+                                onClick={() => handleDelete(partner.id)}
+                                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-surface-tertiary"
+                              >
+                                <Trash2 className="w-4 h-4" /> 削除
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {partners?.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">
+                        取引先が登録されていません
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <div className="px-4 py-3 border-t border-border bg-surface-secondary">
+                <p className="text-xs text-text-tertiary">{partners?.length ?? 0}件</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -189,7 +301,7 @@ export default function PartnersPage() {
               キャンセル
             </button>
             <button
-              onClick={() => { setShowNewModal(false); showToast("取引先を登録しました（モック）", "success"); }}
+              onClick={handleCreate}
               className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors"
             >
               登録する
@@ -199,17 +311,19 @@ export default function PartnersPage() {
       >
         <div className="space-y-4">
           <FormField label="取引先コード" required>
-            <FormInput placeholder="例: C-005" />
+            <FormInput placeholder="例: C-005" value={newForm.code} onChange={(e) => setNewForm({ ...newForm, code: e.target.value })} />
           </FormField>
           <FormField label="取引先名" required>
-            <FormInput placeholder="例: 株式会社〇〇" />
+            <FormInput placeholder="例: 株式会社〇〇" value={newForm.name} onChange={(e) => setNewForm({ ...newForm, name: e.target.value })} />
           </FormField>
           <FormField label="取引先名カナ">
-            <FormInput placeholder="例: カブシキガイシャマルマル" />
+            <FormInput placeholder="例: カブシキガイシャマルマル" value={newForm.nameKana} onChange={(e) => setNewForm({ ...newForm, nameKana: e.target.value })} />
           </FormField>
           <FormField label="種別" required>
             <FormSelect
               placeholder="選択してください"
+              value={newForm.type}
+              onChange={(e) => setNewForm({ ...newForm, type: e.target.value })}
               options={[
                 { value: "customer", label: "顧客" },
                 { value: "supplier", label: "仕入先" },
@@ -219,19 +333,23 @@ export default function PartnersPage() {
             />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="締日" required>
+            <FormField label="締日">
               <FormSelect
                 placeholder="選択"
+                value={newForm.closingDay}
+                onChange={(e) => setNewForm({ ...newForm, closingDay: e.target.value })}
                 options={[
-                  { value: "15", label: "15日" },
-                  { value: "20", label: "20日" },
-                  { value: "末日", label: "末日" },
+                  { value: "DAY_15", label: "15日" },
+                  { value: "DAY_20", label: "20日" },
+                  { value: "END_OF_MONTH", label: "末日" },
                 ]}
               />
             </FormField>
             <FormField label="通貨">
               <FormSelect
                 placeholder="選択"
+                value={newForm.currency}
+                onChange={(e) => setNewForm({ ...newForm, currency: e.target.value })}
                 options={[
                   { value: "JPY", label: "JPY" },
                   { value: "USD", label: "USD" },
@@ -241,21 +359,21 @@ export default function PartnersPage() {
             </FormField>
           </div>
           <FormField label="住所">
-            <FormInput placeholder="例: 東京都中央区日本橋1-1-1" />
+            <FormInput placeholder="例: 東京都中央区日本橋1-1-1" value={newForm.address} onChange={(e) => setNewForm({ ...newForm, address: e.target.value })} />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="電話番号">
-              <FormInput placeholder="例: 03-1234-5678" />
+              <FormInput placeholder="例: 03-1234-5678" value={newForm.tel} onChange={(e) => setNewForm({ ...newForm, tel: e.target.value })} />
             </FormField>
             <FormField label="FAX">
-              <FormInput placeholder="例: 03-1234-5679" />
+              <FormInput placeholder="例: 03-1234-5679" value={newForm.fax} onChange={(e) => setNewForm({ ...newForm, fax: e.target.value })} />
             </FormField>
           </div>
           <FormField label="メールアドレス">
-            <FormInput type="email" placeholder="例: info@example.co.jp" />
+            <FormInput type="email" placeholder="例: info@example.co.jp" value={newForm.email} onChange={(e) => setNewForm({ ...newForm, email: e.target.value })} />
           </FormField>
           <div className="flex items-center gap-2 pt-2">
-            <input type="checkbox" id="iscc" className="rounded border-border" />
+            <input type="checkbox" id="iscc" className="rounded border-border" checked={newForm.isIsccCertified} onChange={(e) => setNewForm({ ...newForm, isIsccCertified: e.target.checked })} />
             <label htmlFor="iscc" className="text-sm text-text">ISCC PLUS認証取得済み</label>
           </div>
         </div>
@@ -284,39 +402,39 @@ export default function PartnersPage() {
               </div>
               <div>
                 <p className="text-xs text-text-tertiary">種別</p>
-                <p className="text-sm text-text">{partnerTypeLabels[selectedPartner.type]}</p>
+                <p className="text-sm text-text">{typeLabels[getPartnerType(selectedPartner)]}</p>
               </div>
             </div>
             <div>
               <p className="text-xs text-text-tertiary">取引先名</p>
               <p className="text-sm font-medium text-text">{selectedPartner.name}</p>
-              <p className="text-xs text-text-tertiary mt-0.5">{selectedPartner.nameKana}</p>
+              {selectedPartner.nameKana && <p className="text-xs text-text-tertiary mt-0.5">{selectedPartner.nameKana}</p>}
             </div>
             <div>
               <p className="text-xs text-text-tertiary">住所</p>
-              <p className="text-sm text-text">{selectedPartner.address}</p>
+              <p className="text-sm text-text">{[selectedPartner.prefecture, selectedPartner.city, selectedPartner.address].filter(Boolean).join("") || "-"}</p>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-text-tertiary">電話番号</p>
-                <p className="text-sm text-text">{selectedPartner.tel}</p>
+                <p className="text-sm text-text">{selectedPartner.tel ?? "-"}</p>
               </div>
               <div>
                 <p className="text-xs text-text-tertiary">締日</p>
-                <p className="text-sm text-text">{selectedPartner.closingDay}</p>
+                <p className="text-sm text-text">{selectedPartner.closingDay ? closingDayLabels[selectedPartner.closingDay] ?? selectedPartner.closingDay : "-"}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-text-tertiary">ISCC認証</p>
-                <p className="text-sm text-text">{selectedPartner.isIscCertified ? "認証済み" : "なし"}</p>
+                <p className="text-sm text-text">{selectedPartner.isIsccCertified ? "認証済み" : "なし"}</p>
               </div>
               <div>
                 <p className="text-xs text-text-tertiary">ステータス</p>
                 <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                  selectedPartner.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                  selectedPartner.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
                 }`}>
-                  {selectedPartner.status === "active" ? "有効" : "無効"}
+                  {selectedPartner.isActive ? "有効" : "無効"}
                 </span>
               </div>
             </div>
