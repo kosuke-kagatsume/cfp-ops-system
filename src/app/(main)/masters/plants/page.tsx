@@ -3,9 +3,36 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { plants, warehouses, divisionLabels } from "@/lib/dummy-data";
-import { Plus, Factory, Warehouse, Droplets, Eye } from "lucide-react";
+import { Plus, Factory, Warehouse as WarehouseIcon, Droplets, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type Plant = {
+  id: string;
+  code: string;
+  name: string;
+  companyId: string;
+  address: string | null;
+  tel: string | null;
+  warehouses: { id: string }[];
+  tanks: { id: string }[];
+};
+
+type Warehouse = {
+  id: string;
+  code: string;
+  name: string;
+  type: string;
+  plant: { id: string; name: string } | null;
+};
+
+const companyLabels: Record<string, string> = {
+  CFP: "CFP",
+  RE: "RE",
+  CTS: "CTS",
+};
 
 export default function PlantsPage() {
   const [tab, setTab] = useState<"plants" | "warehouses">("plants");
@@ -14,7 +41,51 @@ export default function PlantsPage() {
   const [showPlantDetail, setShowPlantDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const selectedPlant = plants.find((p) => p.id === showPlantDetail);
+  const { data: plants, isLoading: plantsLoading, mutate: mutatePlants } = useSWR<Plant[]>("/api/masters/plants", fetcher);
+  const { data: warehouses, isLoading: warehousesLoading, mutate: mutateWarehouses } = useSWR<Warehouse[]>("/api/masters/warehouses", fetcher);
+
+  const selectedPlant = plants?.find((p) => p.id === showPlantDetail);
+
+  // 新規工場フォーム
+  const [plantForm, setPlantForm] = useState({ code: "", name: "", address: "", companyId: "CFP" });
+  const handleCreatePlant = async () => {
+    try {
+      const res = await fetch("/api/masters/plants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(plantForm),
+      });
+      if (!res.ok) throw new Error();
+      setShowNewPlant(false);
+      setPlantForm({ code: "", name: "", address: "", companyId: "CFP" });
+      mutatePlants();
+      showToast("工場を登録しました", "success");
+    } catch {
+      showToast("登録に失敗しました", "error");
+    }
+  };
+
+  // 新規倉庫フォーム
+  const [whForm, setWhForm] = useState({ code: "", name: "", plantId: "", type: "INTERNAL" });
+  const handleCreateWarehouse = async () => {
+    try {
+      const res = await fetch("/api/masters/warehouses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...whForm, plantId: whForm.plantId || undefined }),
+      });
+      if (!res.ok) throw new Error();
+      setShowNewWarehouse(false);
+      setWhForm({ code: "", name: "", plantId: "", type: "INTERNAL" });
+      mutateWarehouses();
+      mutatePlants();
+      showToast("倉庫を登録しました", "success");
+    } catch {
+      showToast("登録に失敗しました", "error");
+    }
+  };
+
+  const isLoading = tab === "plants" ? plantsLoading : warehousesLoading;
 
   return (
     <>
@@ -36,14 +107,19 @@ export default function PlantsPage() {
               tab === "warehouses" ? "bg-surface font-medium text-text shadow-sm" : "text-text-secondary hover:text-text"
             }`}
           >
-            <Warehouse className="w-4 h-4" />
+            <WarehouseIcon className="w-4 h-4" />
             倉庫
           </button>
         </div>
 
-        {tab === "plants" ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+            <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
+          </div>
+        ) : tab === "plants" ? (
           <div className="grid grid-cols-3 gap-4">
-            {plants.map((plant) => (
+            {plants?.map((plant) => (
               <button
                 key={plant.id}
                 onClick={() => setShowPlantDetail(plant.id)}
@@ -53,25 +129,21 @@ export default function PlantsPage() {
                   <div>
                     <span className="text-xs font-mono text-text-tertiary">{plant.code}</span>
                     <h3 className="text-base font-bold text-text mt-0.5">{plant.name}</h3>
-                    <p className="text-xs text-text-tertiary mt-0.5">{plant.address}</p>
+                    <p className="text-xs text-text-tertiary mt-0.5">{plant.address ?? "-"}</p>
                   </div>
-                  <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                    plant.division === "MR" ? "bg-blue-50 text-blue-700"
-                      : plant.division === "CR" ? "bg-amber-50 text-amber-700"
-                      : "bg-purple-50 text-purple-700"
-                  }`}>
-                    {divisionLabels[plant.division]}
+                  <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-blue-50 text-blue-700">
+                    {companyLabels[plant.companyId] ?? plant.companyId}
                   </span>
                 </div>
                 <div className="flex items-center gap-4 pt-3 border-t border-border">
                   <div className="flex items-center gap-1.5">
-                    <Warehouse className="w-4 h-4 text-text-tertiary" />
-                    <span className="text-sm text-text-secondary">{plant.warehouses}倉庫</span>
+                    <WarehouseIcon className="w-4 h-4 text-text-tertiary" />
+                    <span className="text-sm text-text-secondary">{plant.warehouses.length}倉庫</span>
                   </div>
-                  {plant.tanks > 0 && (
+                  {plant.tanks.length > 0 && (
                     <div className="flex items-center gap-1.5">
                       <Droplets className="w-4 h-4 text-text-tertiary" />
-                      <span className="text-sm text-text-secondary">{plant.tanks}タンク</span>
+                      <span className="text-sm text-text-secondary">{plant.tanks.length}タンク</span>
                     </div>
                   )}
                 </div>
@@ -88,7 +160,7 @@ export default function PlantsPage() {
         ) : (
           <>
             <div className="flex items-center justify-between">
-              <p className="text-sm text-text-secondary">{warehouses.length}件の倉庫</p>
+              <p className="text-sm text-text-secondary">{warehouses?.length ?? 0}件の倉庫</p>
               <button
                 onClick={() => setShowNewWarehouse(true)}
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors"
@@ -109,16 +181,16 @@ export default function PlantsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {warehouses.map((wh) => (
+                  {warehouses?.map((wh) => (
                     <tr key={wh.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono text-text-secondary">{wh.code}</td>
                       <td className="px-4 py-3 text-sm font-medium text-text">{wh.name}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary">{wh.plantName}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{wh.plant?.name ?? "（外部）"}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                          wh.type === "internal" ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"
+                          wh.type === "INTERNAL" ? "bg-emerald-50 text-emerald-700" : "bg-orange-50 text-orange-700"
                         }`}>
-                          {wh.type === "internal" ? "自社" : "外部"}
+                          {wh.type === "INTERNAL" ? "自社" : "外部"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
@@ -131,6 +203,11 @@ export default function PlantsPage() {
                       </td>
                     </tr>
                   ))}
+                  {warehouses?.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-12 text-center text-sm text-text-tertiary">倉庫が登録されていません</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -146,17 +223,23 @@ export default function PlantsPage() {
         footer={
           <>
             <button onClick={() => setShowNewPlant(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
-            <button onClick={() => { setShowNewPlant(false); showToast("工場を登録しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">登録する</button>
+            <button onClick={handleCreatePlant} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">登録する</button>
           </>
         }
       >
         <div className="space-y-4">
-          <FormField label="工場コード" required><FormInput placeholder="例: KYS" /></FormField>
-          <FormField label="工場名" required><FormInput placeholder="例: 九州工場" /></FormField>
-          <FormField label="所在地"><FormInput placeholder="例: 福岡県" /></FormField>
-          <FormField label="事業部" required>
-            <FormSelect placeholder="選択" options={[
-              { value: "MR", label: "MR事業部" }, { value: "CR", label: "CR事業部" }, { value: "both", label: "MR+CR" },
+          <FormField label="工場コード" required>
+            <FormInput placeholder="例: KYS" value={plantForm.code} onChange={(e) => setPlantForm({ ...plantForm, code: e.target.value })} />
+          </FormField>
+          <FormField label="工場名" required>
+            <FormInput placeholder="例: 九州工場" value={plantForm.name} onChange={(e) => setPlantForm({ ...plantForm, name: e.target.value })} />
+          </FormField>
+          <FormField label="所在地">
+            <FormInput placeholder="例: 福岡県" value={plantForm.address} onChange={(e) => setPlantForm({ ...plantForm, address: e.target.value })} />
+          </FormField>
+          <FormField label="会社" required>
+            <FormSelect value={plantForm.companyId} onChange={(e) => setPlantForm({ ...plantForm, companyId: e.target.value })} options={[
+              { value: "CFP", label: "CFP" }, { value: "RE", label: "RE" }, { value: "CTS", label: "CTS" },
             ]} />
           </FormField>
         </div>
@@ -170,19 +253,24 @@ export default function PlantsPage() {
         footer={
           <>
             <button onClick={() => setShowNewWarehouse(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
-            <button onClick={() => { setShowNewWarehouse(false); showToast("倉庫を登録しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">登録する</button>
+            <button onClick={handleCreateWarehouse} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">登録する</button>
           </>
         }
       >
         <div className="space-y-4">
-          <FormField label="倉庫コード" required><FormInput placeholder="例: KYS-W1" /></FormField>
-          <FormField label="倉庫名" required><FormInput placeholder="例: 九州第1倉庫" /></FormField>
-          <FormField label="所属工場" required>
-            <FormSelect placeholder="選択" options={plants.map((p) => ({ value: p.id, label: p.name }))} />
+          <FormField label="倉庫コード" required>
+            <FormInput placeholder="例: KYS-W1" value={whForm.code} onChange={(e) => setWhForm({ ...whForm, code: e.target.value })} />
+          </FormField>
+          <FormField label="倉庫名" required>
+            <FormInput placeholder="例: 九州第1倉庫" value={whForm.name} onChange={(e) => setWhForm({ ...whForm, name: e.target.value })} />
+          </FormField>
+          <FormField label="所属工場">
+            <FormSelect placeholder="選択（外部の場合は空）" value={whForm.plantId} onChange={(e) => setWhForm({ ...whForm, plantId: e.target.value })}
+              options={plants?.map((p) => ({ value: p.id, label: p.name })) ?? []} />
           </FormField>
           <FormField label="区分" required>
-            <FormSelect placeholder="選択" options={[
-              { value: "internal", label: "自社" }, { value: "external", label: "外部" },
+            <FormSelect value={whForm.type} onChange={(e) => setWhForm({ ...whForm, type: e.target.value })} options={[
+              { value: "INTERNAL", label: "自社" }, { value: "EXTERNAL", label: "外部" },
             ]} />
           </FormField>
         </div>
@@ -204,20 +292,14 @@ export default function PlantsPage() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">コード</p><p className="text-sm font-mono font-medium text-text">{selectedPlant.code}</p></div>
-              <div><p className="text-xs text-text-tertiary">事業部</p><p className="text-sm text-text">{divisionLabels[selectedPlant.division]}</p></div>
+              <div><p className="text-xs text-text-tertiary">会社</p><p className="text-sm text-text">{companyLabels[selectedPlant.companyId] ?? selectedPlant.companyId}</p></div>
             </div>
             <div><p className="text-xs text-text-tertiary">工場名</p><p className="text-sm font-medium text-text">{selectedPlant.name}</p></div>
-            <div><p className="text-xs text-text-tertiary">所在地</p><p className="text-sm text-text">{selectedPlant.address}</p></div>
+            <div><p className="text-xs text-text-tertiary">所在地</p><p className="text-sm text-text">{selectedPlant.address ?? "-"}</p></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">倉庫数</p><p className="text-sm text-text">{selectedPlant.warehouses}</p></div>
-              <div><p className="text-xs text-text-tertiary">タンク数</p><p className="text-sm text-text">{selectedPlant.tanks}</p></div>
+              <div><p className="text-xs text-text-tertiary">倉庫数</p><p className="text-sm text-text">{selectedPlant.warehouses.length}</p></div>
+              <div><p className="text-xs text-text-tertiary">タンク数</p><p className="text-sm text-text">{selectedPlant.tanks.length}</p></div>
             </div>
-            {selectedPlant.tanks > 0 && (
-              <div className="p-3 bg-surface-tertiary rounded-lg">
-                <p className="text-xs text-text-tertiary mb-2">タンク一覧</p>
-                <p className="text-xs text-text-secondary">タンク詳細管理は Phase 2（CR事業部）で実装予定</p>
-              </div>
-            )}
           </div>
         )}
       </Modal>

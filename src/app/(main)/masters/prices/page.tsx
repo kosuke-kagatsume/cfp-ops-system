@@ -3,9 +3,31 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { prices, partners, products } from "@/lib/dummy-data";
-import { Plus, Download, Search, MoreHorizontal, AlertTriangle, Eye, Edit, Trash2 } from "lucide-react";
+import { Plus, Download, Search, MoreHorizontal, AlertTriangle, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type PriceRecord = {
+  id: string;
+  unitPrice: number;
+  currency: string;
+  validFrom: string;
+  validTo: string | null;
+  partner: { id: string; code: string; name: string };
+  product: {
+    id: string;
+    code: string;
+    name: { name: string };
+    shape: { name: string };
+    color: { name: string };
+    grade: { name: string };
+  };
+};
+
+type Partner = { id: string; code: string; name: string; isCustomer: boolean };
+type Product = { id: string; code: string; name: { name: string } };
 
 export default function PricesPage() {
   const [search, setSearch] = useState("");
@@ -13,13 +35,45 @@ export default function PricesPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const filtered = prices.filter((p) => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return p.partnerName.toLowerCase().includes(q) || p.productCode.toLowerCase().includes(q) || p.productName.toLowerCase().includes(q);
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+
+  const { data: prices, isLoading, mutate } = useSWR<PriceRecord[]>(
+    `/api/masters/prices?${params.toString()}`,
+    fetcher
+  );
+  const { data: partners } = useSWR<Partner[]>("/api/masters/partners", fetcher);
+  const { data: products } = useSWR<Product[]>("/api/masters/products", fetcher);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  // 新規フォーム
+  const [newForm, setNewForm] = useState({
+    partnerId: "", productId: "", unitPrice: "",
+    currency: "JPY", validFrom: "2026-04-01", validTo: "2027-03-31",
   });
 
-  const today = "2026-03-11";
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/masters/prices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...newForm,
+          unitPrice: parseFloat(newForm.unitPrice),
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setShowNewModal(false);
+      setNewForm({ partnerId: "", productId: "", unitPrice: "", currency: "JPY", validFrom: "2026-04-01", validTo: "2027-03-31" });
+      mutate();
+      showToast("単価を登録しました", "success");
+    } catch {
+      showToast("登録に失敗しました", "error");
+    }
+  };
+
+  const customerPartners = partners?.filter((p) => p.isCustomer) ?? [];
 
   return (
     <>
@@ -55,65 +109,82 @@ export default function PricesPage() {
         </div>
 
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary">
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">取引先</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目コード</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目名</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">単価</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">通貨</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">有効期間</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">状態</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((price) => {
-                const isExpiring = price.validTo <= "2026-03-31" && price.validTo >= today;
-                const isExpired = price.validTo < today;
-                return (
-                  <tr key={price.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
-                    <td className="px-4 py-3 text-sm text-text">{price.partnerName}</td>
-                    <td className="px-4 py-3"><span className="text-sm font-mono bg-surface-tertiary px-2 py-0.5 rounded">{price.productCode}</span></td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{price.productName}</td>
-                    <td className="px-4 py-3 text-sm font-medium text-text text-right">
-                      {price.currency === "JPY" ? `¥${price.unitPrice.toLocaleString()}` : `$${price.unitPrice.toLocaleString()}`}
-                      <span className="text-xs text-text-tertiary">/kg</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{price.currency}</td>
-                    <td className="px-4 py-3 text-sm text-text-secondary">{price.validFrom} 〜 {price.validTo}</td>
-                    <td className="px-4 py-3 text-center">
-                      {isExpired ? (
-                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-700">期限切れ</span>
-                      ) : isExpiring ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-50 text-amber-700">
-                          <AlertTriangle className="w-3 h-3" />期限間近
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">有効</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 relative">
-                      <button onClick={() => setMenuOpen(menuOpen === price.id ? null : price.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                        <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
-                      </button>
-                      {menuOpen === price.id && (
-                        <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-36">
-                          <button onClick={() => { showToast("単価詳細画面（開発中）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Eye className="w-4 h-4" /> 詳細</button>
-                          <button onClick={() => { showToast("単価編集（承認ワークフロー経由）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Edit className="w-4 h-4" /> 編集</button>
-                          <button onClick={() => { showToast("削除機能は開発中です", "warning"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-surface-tertiary"><Trash2 className="w-4 h-4" /> 削除</button>
-                        </div>
-                      )}
-                    </td>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+              <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
+            </div>
+          ) : (
+            <>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-surface-secondary">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">取引先</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目コード</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目名</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">単価</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">通貨</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">有効期間</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">状態</th>
+                    <th className="w-10"></th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-            <p className="text-xs text-text-tertiary">{filtered.length}件 / {prices.length}件</p>
-          </div>
+                </thead>
+                <tbody>
+                  {prices?.map((price) => {
+                    const validTo = price.validTo?.slice(0, 10) ?? "";
+                    const validFrom = price.validFrom.slice(0, 10);
+                    const isExpired = validTo && validTo < today;
+                    const isExpiring = validTo && !isExpired && validTo <= new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+                    const productLabel = `${price.product.name.name} ${price.product.shape.name} ${price.product.color.name} ${price.product.grade.name}`;
+                    return (
+                      <tr key={price.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                        <td className="px-4 py-3 text-sm text-text">{price.partner.name}</td>
+                        <td className="px-4 py-3"><span className="text-sm font-mono bg-surface-tertiary px-2 py-0.5 rounded">{price.product.code}</span></td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">{productLabel}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-text text-right">
+                          {price.currency === "JPY" ? `¥${price.unitPrice.toLocaleString()}` : `$${price.unitPrice.toLocaleString()}`}
+                          <span className="text-xs text-text-tertiary">/kg</span>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">{price.currency}</td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">{validFrom} 〜 {validTo || "無期限"}</td>
+                        <td className="px-4 py-3 text-center">
+                          {isExpired ? (
+                            <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-700">期限切れ</span>
+                          ) : isExpiring ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-amber-50 text-amber-700">
+                              <AlertTriangle className="w-3 h-3" />期限間近
+                            </span>
+                          ) : (
+                            <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">有効</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 relative">
+                          <button onClick={() => setMenuOpen(menuOpen === price.id ? null : price.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                            <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          {menuOpen === price.id && (
+                            <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-36">
+                              <button onClick={() => { showToast("単価詳細画面（開発中）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Eye className="w-4 h-4" /> 詳細</button>
+                              <button onClick={() => { showToast("単価編集（承認ワークフロー経由）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Edit className="w-4 h-4" /> 編集</button>
+                              <button onClick={() => { showToast("削除機能は開発中です", "warning"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-surface-tertiary"><Trash2 className="w-4 h-4" /> 削除</button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {prices?.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">単価が登録されていません</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <div className="px-4 py-3 border-t border-border bg-surface-secondary">
+                <p className="text-xs text-text-tertiary">{prices?.length ?? 0}件</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -124,7 +195,7 @@ export default function PricesPage() {
         footer={
           <>
             <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
-            <button onClick={() => { setShowNewModal(false); showToast("単価を登録しました（承認待ち）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">登録申請</button>
+            <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">登録申請</button>
           </>
         }
       >
@@ -133,20 +204,29 @@ export default function PricesPage() {
             <p className="text-xs text-amber-700">単価の登録・変更は承認ワークフローを通ります（営業マネージャー → 社長）</p>
           </div>
           <FormField label="取引先" required>
-            <FormSelect placeholder="選択" options={partners.filter((p) => p.type === "customer").map((p) => ({ value: p.id, label: p.name }))} />
+            <FormSelect placeholder="選択" value={newForm.partnerId} onChange={(e) => setNewForm({ ...newForm, partnerId: e.target.value })}
+              options={customerPartners.map((p) => ({ value: p.id, label: p.name }))} />
           </FormField>
           <FormField label="品目" required>
-            <FormSelect placeholder="選択" options={products.map((p) => ({ value: p.id, label: `${p.code} - ${p.productName}` }))} />
+            <FormSelect placeholder="選択" value={newForm.productId} onChange={(e) => setNewForm({ ...newForm, productId: e.target.value })}
+              options={products?.map((p) => ({ value: p.id, label: `${p.code} - ${p.name.name}` })) ?? []} />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="単価" required><FormInput type="number" placeholder="例: 185" /></FormField>
+            <FormField label="単価" required>
+              <FormInput type="number" placeholder="例: 185" value={newForm.unitPrice} onChange={(e) => setNewForm({ ...newForm, unitPrice: e.target.value })} />
+            </FormField>
             <FormField label="通貨" required>
-              <FormSelect placeholder="選択" options={[{ value: "JPY", label: "JPY (円)" }, { value: "USD", label: "USD (ドル)" }, { value: "SGD", label: "SGD" }]} />
+              <FormSelect value={newForm.currency} onChange={(e) => setNewForm({ ...newForm, currency: e.target.value })}
+                options={[{ value: "JPY", label: "JPY (円)" }, { value: "USD", label: "USD (ドル)" }, { value: "SGD", label: "SGD" }]} />
             </FormField>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="有効開始日" required><FormInput type="date" defaultValue="2026-04-01" /></FormField>
-            <FormField label="有効終了日" required><FormInput type="date" defaultValue="2027-03-31" /></FormField>
+            <FormField label="有効開始日" required>
+              <FormInput type="date" value={newForm.validFrom} onChange={(e) => setNewForm({ ...newForm, validFrom: e.target.value })} />
+            </FormField>
+            <FormField label="有効終了日">
+              <FormInput type="date" value={newForm.validTo} onChange={(e) => setNewForm({ ...newForm, validTo: e.target.value })} />
+            </FormField>
           </div>
         </div>
       </Modal>
