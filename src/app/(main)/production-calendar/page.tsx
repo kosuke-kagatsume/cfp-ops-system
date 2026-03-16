@@ -3,11 +3,20 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { calendarEvents, calendarEventColors, type CalendarEventType } from "@/lib/dummy-data-phase1";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
 
-const plants = ["高松工場", "美の浜工場", "四日市工場"];
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type ProductionCalendarEntry = {
+  id: string;
+  date: string;
+  isWorkday: boolean;
+  isHoliday: boolean;
+  holidayName: string | null;
+  note: string | null;
+};
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -19,42 +28,75 @@ function getFirstDayOfWeek(year: number, month: number) {
 
 const weekDays = ["日", "月", "火", "水", "木", "金", "土"];
 
+const eventColors = {
+  workday: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  holiday: "bg-red-100 text-red-800 border-red-300",
+  note: "bg-blue-100 text-blue-800 border-blue-300",
+};
+
 export default function ProductionCalendarPage() {
-  const [selectedPlant, setSelectedPlant] = useState("高松工場");
-  const [currentYear] = useState(2026);
-  const [currentMonth] = useState(2); // March = 2 (0-indexed)
+  const [currentYear, setCurrentYear] = useState(2026);
+  const [currentMonth, setCurrentMonth] = useState(2); // March = 2 (0-indexed)
   const [showNewModal, setShowNewModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const { showToast } = useToast();
 
+  const apiMonth = currentMonth + 1; // API uses 1-indexed
+  const { data: entries, isLoading } = useSWR<ProductionCalendarEntry[]>(
+    `/api/production-calendar?year=${currentYear}&month=${apiMonth}`,
+    fetcher
+  );
+
+  const calendarEntries = entries ?? [];
+
   const daysInMonth = getDaysInMonth(currentYear, currentMonth);
   const firstDay = getFirstDayOfWeek(currentYear, currentMonth);
 
-  const plantEvents = calendarEvents.filter((e) => e.plant === selectedPlant);
-
-  const getEventsForDay = (day: number) => {
-    const dateStr = `2026-03-${String(day).padStart(2, "0")}`;
-    return plantEvents.filter((e) => e.date === dateStr);
+  const getEntryForDay = (day: number): ProductionCalendarEntry | undefined => {
+    const dateStr = `${currentYear}-${String(apiMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    return calendarEntries.find((e) => e.date.startsWith(dateStr));
   };
+
+  const goToPrevMonth = () => {
+    if (currentMonth === 0) {
+      setCurrentYear(currentYear - 1);
+      setCurrentMonth(11);
+    } else {
+      setCurrentMonth(currentMonth - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (currentMonth === 11) {
+      setCurrentYear(currentYear + 1);
+      setCurrentMonth(0);
+    } else {
+      setCurrentMonth(currentMonth + 1);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <>
+        <Header title="生産カレンダー" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
       <Header title="生産カレンダー" />
       <div className="p-6 space-y-4">
-        {/* 工場切替 + 月切替 */}
+        {/* 月切替 */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 bg-surface-tertiary rounded-lg p-1">
-            {plants.map((plant) => (
-              <button key={plant} onClick={() => setSelectedPlant(plant)}
-                className={`px-4 py-2 text-sm rounded-md transition-colors ${selectedPlant === plant ? "bg-surface font-medium text-text shadow-sm" : "text-text-secondary hover:text-text"}`}>
-                {plant}
-              </button>
-            ))}
-          </div>
+          <div />
           <div className="flex items-center gap-3">
-            <button onClick={() => showToast("前月表示（開発中）", "info")} className="p-2 hover:bg-surface-tertiary rounded-lg"><ChevronLeft className="w-5 h-5 text-text-secondary" /></button>
-            <h2 className="text-lg font-bold text-text">2026年 3月</h2>
-            <button onClick={() => showToast("翌月表示（開発中）", "info")} className="p-2 hover:bg-surface-tertiary rounded-lg"><ChevronRight className="w-5 h-5 text-text-secondary" /></button>
+            <button onClick={goToPrevMonth} className="p-2 hover:bg-surface-tertiary rounded-lg"><ChevronLeft className="w-5 h-5 text-text-secondary" /></button>
+            <h2 className="text-lg font-bold text-text">{currentYear}年 {apiMonth}月</h2>
+            <button onClick={goToNextMonth} className="p-2 hover:bg-surface-tertiary rounded-lg"><ChevronRight className="w-5 h-5 text-text-secondary" /></button>
             <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors ml-2">
               <Plus className="w-4 h-4" />予定追加
             </button>
@@ -63,12 +105,18 @@ export default function ProductionCalendarPage() {
 
         {/* 凡例 */}
         <div className="flex items-center gap-4">
-          {(Object.entries(calendarEventColors) as [CalendarEventType, string][]).map(([type, cls]) => (
-            <div key={type} className="flex items-center gap-1.5">
-              <span className={`w-3 h-3 rounded border ${cls}`} />
-              <span className="text-xs text-text-secondary">{type}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-1.5">
+            <span className={`w-3 h-3 rounded border ${eventColors.workday}`} />
+            <span className="text-xs text-text-secondary">稼働日</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-3 h-3 rounded border ${eventColors.holiday}`} />
+            <span className="text-xs text-text-secondary">休日</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className={`w-3 h-3 rounded border ${eventColors.note}`} />
+            <span className="text-xs text-text-secondary">備考あり</span>
+          </div>
         </div>
 
         {/* カレンダー */}
@@ -89,9 +137,10 @@ export default function ProductionCalendarPage() {
             {Array.from({ length: daysInMonth }).map((_, i) => {
               const day = i + 1;
               const dayOfWeek = (firstDay + i) % 7;
-              const events = getEventsForDay(day);
-              const isToday = day === 11;
-              const dateStr = `2026-03-${String(day).padStart(2, "0")}`;
+              const entry = getEntryForDay(day);
+              const today = new Date();
+              const isToday = today.getFullYear() === currentYear && today.getMonth() === currentMonth && today.getDate() === day;
+              const dateStr = `${currentYear}-${String(apiMonth).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 
               return (
                 <button key={day} onClick={() => setSelectedDate(dateStr)}
@@ -101,11 +150,16 @@ export default function ProductionCalendarPage() {
                     dayOfWeek === 0 ? "text-red-500" : dayOfWeek === 6 ? "text-blue-500" : "text-text-secondary"
                   }`}>{day}</span>
                   <div className="mt-1 space-y-1">
-                    {events.map((event) => (
-                      <div key={event.id} className={`text-[10px] px-1.5 py-0.5 rounded border truncate ${calendarEventColors[event.type]}`}>
-                        {event.details.length > 15 ? event.details.slice(0, 15) + "..." : event.details}
+                    {entry && entry.isHoliday && (
+                      <div className={`text-[10px] px-1.5 py-0.5 rounded border truncate ${eventColors.holiday}`}>
+                        {entry.holidayName ?? "休日"}
                       </div>
-                    ))}
+                    )}
+                    {entry && !entry.isHoliday && entry.isWorkday && entry.note && (
+                      <div className={`text-[10px] px-1.5 py-0.5 rounded border truncate ${eventColors.note}`}>
+                        {entry.note.length > 15 ? entry.note.slice(0, 15) + "..." : entry.note}
+                      </div>
+                    )}
                   </div>
                 </button>
               );
@@ -121,33 +175,33 @@ export default function ProductionCalendarPage() {
           <button onClick={() => { setShowNewModal(false); showToast("予定を追加しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">追加する</button>
         </>}>
         <div className="space-y-4">
-          <FormField label="工場" required><FormSelect placeholder="選択" options={plants.map((p) => ({ value: p, label: p }))} /></FormField>
           <FormField label="日付" required><FormInput type="date" defaultValue="2026-03-12" /></FormField>
           <FormField label="種別" required><FormSelect placeholder="選択" options={[
-            { value: "生産", label: "生産" }, { value: "工事", label: "工事" }, { value: "休み", label: "休み" }, { value: "その他", label: "その他" },
+            { value: "workday", label: "稼働日" }, { value: "holiday", label: "休日" },
           ]} /></FormField>
-          <FormField label="内容" required><FormInput placeholder="例: PP ルーダー稼働（PP-CRS-W-B1 → PP-PEL-W-A1）" /></FormField>
+          <FormField label="休日名"><FormInput placeholder="例: 定休日" /></FormField>
+          <FormField label="備考"><FormInput placeholder="例: PP ルーダー稼働" /></FormField>
         </div>
       </Modal>
 
       {/* 日付詳細モーダル */}
-      <Modal isOpen={!!selectedDate} onClose={() => setSelectedDate(null)} title={selectedDate ? `${selectedDate} - ${selectedPlant}` : ""}
+      <Modal isOpen={!!selectedDate} onClose={() => setSelectedDate(null)} title={selectedDate ?? ""}
         footer={<>
           <button onClick={() => { showToast("この日に予定を追加（開発中）", "info"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">予定追加</button>
           <button onClick={() => setSelectedDate(null)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">閉じる</button>
         </>}>
         {selectedDate && (() => {
-          const dayEvents = plantEvents.filter((e) => e.date === selectedDate);
-          return dayEvents.length > 0 ? (
+          const entry = calendarEntries.find((e) => e.date.startsWith(selectedDate));
+          return entry ? (
             <div className="space-y-3">
-              {dayEvents.map((event) => (
-                <div key={event.id} className={`p-3 rounded-lg border ${calendarEventColors[event.type]}`}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium">{event.type}</span>
-                  </div>
-                  <p className="text-sm">{event.details}</p>
+              <div className={`p-3 rounded-lg border ${entry.isHoliday ? eventColors.holiday : entry.isWorkday ? eventColors.workday : eventColors.note}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium">{entry.isHoliday ? "休日" : "稼働日"}</span>
                 </div>
-              ))}
+                {entry.holidayName && <p className="text-sm font-medium">{entry.holidayName}</p>}
+                {entry.note && <p className="text-sm">{entry.note}</p>}
+                {!entry.holidayName && !entry.note && <p className="text-sm text-text-tertiary">詳細なし</p>}
+              </div>
             </div>
           ) : (
             <p className="text-sm text-text-tertiary text-center py-8">この日の予定はありません</p>

@@ -2,21 +2,49 @@
 
 import { Header } from "@/components/header";
 import { useToast } from "@/components/toast";
-import { kpiData, approvalItems } from "@/lib/dummy-data-phase3";
 import {
   TrendingUp,
   TrendingDown,
-  Clock,
   AlertCircle,
-  CheckCircle,
   DollarSign,
   Package,
   Factory,
   Droplets,
   ArrowRight,
   BarChart3,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type DashboardData = {
+  currentMonth: string;
+  revenue: { total: number; prevMonth: number; target: number };
+  cost: { total: number; prevMonth: number };
+  grossProfit: { total: number; prevMonth: number; margin: number };
+  inventory: { totalKg: number; valuationJpy: number; turnover: number };
+  production: {
+    mr: Array<{ plant: string; produced: number; unit: string; yieldRate: number }>;
+    cr: Array<{
+      plant: string;
+      inputKg: number;
+      outputOilKg: number;
+      outputResidueKg: number;
+      yieldRate: number;
+    }>;
+  };
+  monthlyTrend: Array<{ month: string; revenue: number; cost: number; profit: number }>;
+  tankUtilization: Array<{ name: string; percentage: number; plant: string }>;
+  pendingApprovals: Array<{
+    id: string;
+    title: string;
+    applicant: string;
+    amount: number | null;
+    status: string;
+  }>;
+};
 
 function formatJpy(n: number) {
   if (n >= 10000000) return `¥${(n / 10000000).toFixed(1)}千万`;
@@ -25,14 +53,29 @@ function formatJpy(n: number) {
 }
 
 function changeRate(current: number, prev: number) {
+  if (prev === 0) return { rate: "0.0", isUp: true };
   const rate = ((current - prev) / prev) * 100;
   return { rate: rate.toFixed(1), isUp: rate >= 0 };
 }
 
 export default function DashboardPage() {
   const { showToast } = useToast();
-  const d = kpiData;
-  const pendingApprovals = approvalItems.filter((a) => a.status === "承認待ち");
+  const { data, isLoading } = useSWR<DashboardData>("/api/dashboard", fetcher);
+
+  if (isLoading || !data) {
+    return (
+      <>
+        <Header title="経営ダッシュボード" />
+        <div className="flex items-center justify-center py-32">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+          <span className="ml-3 text-text-secondary">ダッシュボードを読み込み中...</span>
+        </div>
+      </>
+    );
+  }
+
+  const d = data;
+  const pendingApprovals = d.pendingApprovals;
 
   const revenueChange = changeRate(d.revenue.total, d.revenue.prevMonth);
   const costChange = changeRate(d.cost.total, d.cost.prevMonth);
@@ -77,10 +120,10 @@ export default function DashboardPage() {
             </div>
             <div className="mt-3">
               <div className="flex items-center justify-between text-xs text-text-tertiary mb-1">
-                <span>目標達成率</span><span>{Math.round((d.revenue.total / d.revenue.target) * 100)}%</span>
+                <span>目標達成率</span><span>{d.revenue.target > 0 ? Math.round((d.revenue.total / d.revenue.target) * 100) : 0}%</span>
               </div>
               <div className="h-2 bg-surface-tertiary rounded-full">
-                <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${Math.min(100, (d.revenue.total / d.revenue.target) * 100)}%` }} />
+                <div className="h-2 bg-blue-500 rounded-full" style={{ width: `${d.revenue.target > 0 ? Math.min(100, (d.revenue.total / d.revenue.target) * 100) : 0}%` }} />
               </div>
             </div>
           </div>
@@ -133,29 +176,35 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-3 gap-6">
-          {/* 売上推移チャート（モック） */}
+          {/* 売上推移チャート */}
           <div className="col-span-2 bg-surface rounded-xl border border-border p-5">
             <h3 className="text-sm font-medium text-text mb-4">売上・仕入・粗利 推移</h3>
-            <div className="flex items-end gap-3 h-40">
-              {d.monthlyTrend.map((m) => {
-                const maxVal = Math.max(...d.monthlyTrend.map((t) => t.revenue));
-                const revenueH = (m.revenue / maxVal) * 100;
-                const costH = (m.cost / maxVal) * 100;
-                return (
-                  <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full flex items-end gap-0.5 h-32">
-                      <div className="flex-1 bg-blue-200 rounded-t" style={{ height: `${revenueH}%` }} title={`売上: ¥${m.revenue.toLocaleString()}`} />
-                      <div className="flex-1 bg-orange-200 rounded-t" style={{ height: `${costH}%` }} title={`仕入: ¥${m.cost.toLocaleString()}`} />
-                    </div>
-                    <span className="text-xs text-text-tertiary">{m.month.split("-")[1]}月</span>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex items-center gap-4 mt-3 text-xs">
-              <div className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-200 rounded" />売上</div>
-              <div className="flex items-center gap-1"><div className="w-3 h-3 bg-orange-200 rounded" />仕入</div>
-            </div>
+            {d.monthlyTrend.length > 0 ? (
+              <>
+                <div className="flex items-end gap-3 h-40">
+                  {d.monthlyTrend.map((m) => {
+                    const maxVal = Math.max(...d.monthlyTrend.map((t) => Math.max(t.revenue, 1)));
+                    const revenueH = (m.revenue / maxVal) * 100;
+                    const costH = (m.cost / maxVal) * 100;
+                    return (
+                      <div key={m.month} className="flex-1 flex flex-col items-center gap-1">
+                        <div className="w-full flex items-end gap-0.5 h-32">
+                          <div className="flex-1 bg-blue-200 rounded-t" style={{ height: `${revenueH}%` }} title={`売上: ¥${m.revenue.toLocaleString()}`} />
+                          <div className="flex-1 bg-orange-200 rounded-t" style={{ height: `${costH}%` }} title={`仕入: ¥${m.cost.toLocaleString()}`} />
+                        </div>
+                        <span className="text-xs text-text-tertiary">{m.month.split("-")[1]}月</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-4 mt-3 text-xs">
+                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-blue-200 rounded" />売上</div>
+                  <div className="flex items-center gap-1"><div className="w-3 h-3 bg-orange-200 rounded" />仕入</div>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-center h-40 text-sm text-text-tertiary">データなし</div>
+            )}
           </div>
 
           {/* 承認待ち */}
@@ -177,6 +226,9 @@ export default function DashboardPage() {
                   {item.amount && <span className="text-xs font-medium text-text">¥{(item.amount / 10000).toFixed(0)}万</span>}
                 </Link>
               ))}
+              {pendingApprovals.length === 0 && (
+                <p className="text-xs text-text-tertiary text-center py-4">承認待ちの案件はありません</p>
+              )}
             </div>
             <Link href="/approvals" className="flex items-center justify-center gap-1 mt-3 text-xs text-primary-600 hover:underline">
               すべて見る<ArrowRight className="w-3 h-3" />
@@ -191,22 +243,26 @@ export default function DashboardPage() {
               <Factory className="w-5 h-5 text-text-secondary" />
               <h3 className="text-sm font-medium text-text">MR事業部 生産実績</h3>
             </div>
-            <div className="space-y-3">
-              {d.production.mr.map((p) => (
-                <div key={p.plant} className="flex items-center gap-3">
-                  <div className="w-28 text-xs text-text-secondary">{p.plant}</div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between text-xs mb-1">
-                      <span className="font-medium text-text">{(p.produced / 1000).toFixed(0)}t</span>
-                      <span className="text-text-tertiary">歩留 {p.yieldRate}%</span>
-                    </div>
-                    <div className="h-2 bg-surface-tertiary rounded-full">
-                      <div className="h-2 bg-primary-500 rounded-full" style={{ width: `${(p.produced / 50000) * 100}%` }} />
+            {d.production.mr.length > 0 ? (
+              <div className="space-y-3">
+                {d.production.mr.map((p) => (
+                  <div key={p.plant} className="flex items-center gap-3">
+                    <div className="w-28 text-xs text-text-secondary">{p.plant}</div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="font-medium text-text">{(p.produced / 1000).toFixed(0)}t</span>
+                        <span className="text-text-tertiary">歩留 {p.yieldRate}%</span>
+                      </div>
+                      <div className="h-2 bg-surface-tertiary rounded-full">
+                        <div className="h-2 bg-primary-500 rounded-full" style={{ width: `${(p.produced / 50000) * 100}%` }} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-text-tertiary text-center py-4">生産実績データなし</p>
+            )}
           </div>
 
           {/* CR生産実績 */}
@@ -215,30 +271,34 @@ export default function DashboardPage() {
               <Droplets className="w-5 h-5 text-text-secondary" />
               <h3 className="text-sm font-medium text-text">CR事業部 油化実績</h3>
             </div>
-            <div className="space-y-3">
-              {d.production.cr.map((p) => (
-                <div key={p.plant}>
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-text-secondary">{p.plant}</span>
-                    <span className="text-xs font-medium text-text">収率 {p.yieldRate}%</span>
+            {d.production.cr.length > 0 ? (
+              <div className="space-y-3">
+                {d.production.cr.map((p) => (
+                  <div key={p.plant}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-text-secondary">{p.plant}</span>
+                      <span className="text-xs font-medium text-text">収率 {p.yieldRate}%</span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="p-2 bg-blue-50 rounded">
+                        <p className="text-blue-600">投入</p>
+                        <p className="font-medium text-blue-800">{(p.inputKg / 1000).toFixed(0)}t</p>
+                      </div>
+                      <div className="p-2 bg-amber-50 rounded">
+                        <p className="text-amber-600">生成油</p>
+                        <p className="font-medium text-amber-800">{(p.outputOilKg / 1000).toFixed(1)}t</p>
+                      </div>
+                      <div className="p-2 bg-gray-100 rounded">
+                        <p className="text-gray-600">残渣</p>
+                        <p className="font-medium text-gray-800">{(p.outputResidueKg / 1000).toFixed(1)}t</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="p-2 bg-blue-50 rounded">
-                      <p className="text-blue-600">投入</p>
-                      <p className="font-medium text-blue-800">{(p.inputKg / 1000).toFixed(0)}t</p>
-                    </div>
-                    <div className="p-2 bg-amber-50 rounded">
-                      <p className="text-amber-600">生成油</p>
-                      <p className="font-medium text-amber-800">{(p.outputOilKg / 1000).toFixed(1)}t</p>
-                    </div>
-                    <div className="p-2 bg-gray-100 rounded">
-                      <p className="text-gray-600">残渣</p>
-                      <p className="font-medium text-gray-800">{(p.outputResidueKg / 1000).toFixed(1)}t</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-text-tertiary text-center py-4">油化実績データなし</p>
+            )}
           </div>
         </div>
 
@@ -251,22 +311,26 @@ export default function DashboardPage() {
               詳細 →
             </Link>
           </div>
-          <div className="flex items-end gap-4">
-            {d.tankUtilization.map((tank) => (
-              <div key={tank.name} className="flex-1 text-center">
-                <div className="relative h-24 bg-surface-tertiary rounded-lg mx-auto w-full max-w-[60px] overflow-hidden">
-                  <div className={`absolute bottom-0 left-0 right-0 rounded-b-lg ${
-                    tank.percentage >= 80 ? "bg-red-200" : tank.percentage <= 20 ? "bg-amber-200" : "bg-blue-200"
-                  }`} style={{ height: `${tank.percentage}%` }} />
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold text-text">{tank.percentage}%</span>
+          {d.tankUtilization.length > 0 ? (
+            <div className="flex items-end gap-4">
+              {d.tankUtilization.map((tank) => (
+                <div key={tank.name} className="flex-1 text-center">
+                  <div className="relative h-24 bg-surface-tertiary rounded-lg mx-auto w-full max-w-[60px] overflow-hidden">
+                    <div className={`absolute bottom-0 left-0 right-0 rounded-b-lg ${
+                      tank.percentage >= 80 ? "bg-red-200" : tank.percentage <= 20 ? "bg-amber-200" : "bg-blue-200"
+                    }`} style={{ height: `${tank.percentage}%` }} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-xs font-bold text-text">{tank.percentage}%</span>
+                    </div>
                   </div>
+                  <p className="text-xs text-text-secondary mt-1">{tank.name}</p>
+                  <p className="text-xs text-text-tertiary">{tank.plant}</p>
                 </div>
-                <p className="text-xs text-text-secondary mt-1">{tank.name}</p>
-                <p className="text-xs text-text-tertiary">{tank.plant}</p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-text-tertiary text-center py-4">タンクデータなし</p>
+          )}
         </div>
       </div>
     </>

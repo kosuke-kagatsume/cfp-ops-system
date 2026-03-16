@@ -3,9 +3,56 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { users, roleLabels } from "@/lib/dummy-data";
-import { Plus, Search, MoreHorizontal, Shield, Eye, Edit, UserX, UserCheck } from "lucide-react";
+import { Plus, Search, MoreHorizontal, Shield, Eye, Edit, UserX, UserCheck, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type UserEntry = {
+  id: string;
+  email: string;
+  name: string;
+  nameKana: string | null;
+  department: string | null;
+  position: string | null;
+  isActive: boolean;
+  roleId: string | null;
+  role: { id: string; name: string; description: string | null } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+const roleLabels: Record<string, string> = {
+  admin: "管理者",
+  sales: "営業",
+  accounting: "経理",
+  factory: "工場",
+  manager: "管理",
+  readonly: "閲覧",
+};
+
+function getRoleLabel(user: UserEntry): string {
+  if (user.role?.name) {
+    return roleLabels[user.role.name] ?? user.role.name;
+  }
+  return "未設定";
+}
+
+function getRoleKey(user: UserEntry): string {
+  return user.role?.name ?? "readonly";
+}
+
+function getRoleColor(roleKey: string): string {
+  switch (roleKey) {
+    case "admin": return "bg-red-50 text-red-700";
+    case "sales": return "bg-blue-50 text-blue-700";
+    case "accounting": return "bg-emerald-50 text-emerald-700";
+    case "factory": return "bg-amber-50 text-amber-700";
+    case "manager": return "bg-purple-50 text-purple-700";
+    default: return "bg-gray-50 text-gray-700";
+  }
+}
 
 export default function UsersPage() {
   const [search, setSearch] = useState("");
@@ -15,16 +62,17 @@ export default function UsersPage() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const filtered = users.filter((u) => {
-    if (roleFilter !== "all" && u.role !== roleFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return u.name.includes(q) || u.email.toLowerCase().includes(q);
-    }
-    return true;
-  });
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (roleFilter !== "all") params.set("role", roleFilter);
 
-  const selectedUser = users.find((u) => u.id === showDetailModal);
+  const { data: users, isLoading } = useSWR<UserEntry[]>(
+    `/api/settings/users?${params.toString()}`,
+    fetcher
+  );
+
+  const allUsers = users ?? [];
+  const selectedUser = allUsers.find((u) => u.id === showDetailModal);
 
   return (
     <>
@@ -56,65 +104,71 @@ export default function UsersPage() {
           </button>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary">
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ユーザー</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">メール</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ロール</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">会社</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">最終ログイン</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((user) => (
-                <tr key={user.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
-                  <td className="px-4 py-3">
-                    <button onClick={() => setShowDetailModal(user.id)} className="flex items-center gap-3 hover:underline">
-                      <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
-                        <span className="text-xs font-medium text-primary-700">{user.name.split(" ").map((n) => n[0]).join("")}</span>
-                      </div>
-                      <span className="text-sm font-medium text-text">{user.name}</span>
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{user.email}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      user.role === "admin" ? "bg-red-50 text-red-700" : user.role === "sales" ? "bg-blue-50 text-blue-700"
-                        : user.role === "accounting" ? "bg-emerald-50 text-emerald-700" : user.role === "factory" ? "bg-amber-50 text-amber-700"
-                        : user.role === "manager" ? "bg-purple-50 text-purple-700" : "bg-gray-50 text-gray-700"
-                    }`}>{roleLabels[user.role]}</span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{user.company}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${user.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
-                      {user.status === "active" ? "有効" : "無効"}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-text-tertiary">{user.lastLogin}</td>
-                  <td className="px-4 py-3 relative">
-                    <button onClick={() => setMenuOpen(menuOpen === user.id ? null : user.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                      <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
-                    </button>
-                    {menuOpen === user.id && (
-                      <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-40">
-                        <button onClick={() => { setShowDetailModal(user.id); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Eye className="w-4 h-4" /> 詳細</button>
-                        <button onClick={() => { showToast("ロール変更（開発中）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Edit className="w-4 h-4" /> ロール変更</button>
-                        <button onClick={() => { showToast(user.status === "active" ? "ユーザーを無効化しました（モック）" : "ユーザーを有効化しました（モック）", user.status === "active" ? "warning" : "success"); setMenuOpen(null); }}
-                          className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary">
-                          {user.status === "active" ? <><UserX className="w-4 h-4" /> 無効化</> : <><UserCheck className="w-4 h-4" /> 有効化</>}
-                        </button>
-                      </div>
-                    )}
-                  </td>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-600" />
+            <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
+          </div>
+        ) : (
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-surface-secondary">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ユーザー</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">メール</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ロール</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">部署</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">更新日</th>
+                  <th className="w-10"></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {allUsers.map((user) => {
+                  const roleKey = getRoleKey(user);
+                  return (
+                    <tr key={user.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                      <td className="px-4 py-3">
+                        <button onClick={() => setShowDetailModal(user.id)} className="flex items-center gap-3 hover:underline">
+                          <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
+                            <span className="text-xs font-medium text-primary-700">{user.name.split(" ").map((n) => n[0]).join("")}</span>
+                          </div>
+                          <span className="text-sm font-medium text-text">{user.name}</span>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{user.email}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${getRoleColor(roleKey)}`}>{getRoleLabel(user)}</span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{user.department ?? "-"}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${user.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                          {user.isActive ? "有効" : "無効"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-text-tertiary">{new Date(user.updatedAt).toLocaleDateString("ja-JP")}</td>
+                      <td className="px-4 py-3 relative">
+                        <button onClick={() => setMenuOpen(menuOpen === user.id ? null : user.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
+                        </button>
+                        {menuOpen === user.id && (
+                          <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-40">
+                            <button onClick={() => { setShowDetailModal(user.id); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Eye className="w-4 h-4" /> 詳細</button>
+                            <button onClick={() => { showToast("ロール変更（開発中）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Edit className="w-4 h-4" /> ロール変更</button>
+                            <button onClick={() => { showToast(user.isActive ? "ユーザーを無効化しました（モック）" : "ユーザーを有効化しました（モック）", user.isActive ? "warning" : "success"); setMenuOpen(null); }}
+                              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary">
+                              {user.isActive ? <><UserX className="w-4 h-4" /> 無効化</> : <><UserCheck className="w-4 h-4" /> 有効化</>}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* 新規登録モーダル */}
@@ -131,9 +185,6 @@ export default function UsersPage() {
           <FormField label="メールアドレス" required><FormInput type="email" placeholder="例: tanaka@cfp-corp.co.jp" /></FormField>
           <FormField label="ロール" required>
             <FormSelect placeholder="選択" options={Object.entries(roleLabels).map(([v, l]) => ({ value: v, label: l }))} />
-          </FormField>
-          <FormField label="会社" required>
-            <FormSelect placeholder="選択" options={[{ value: "CFP", label: "CFP" }, { value: "RE", label: "RE" }, { value: "CTS", label: "CTS" }]} />
           </FormField>
         </div>
       </Modal>
@@ -155,14 +206,16 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">ロール</p><p className="text-sm text-text">{roleLabels[selectedUser.role]}</p></div>
-              <div><p className="text-xs text-text-tertiary">会社</p><p className="text-sm text-text">{selectedUser.company}</p></div>
+              <div><p className="text-xs text-text-tertiary">ロール</p><p className="text-sm text-text">{getRoleLabel(selectedUser)}</p></div>
+              <div><p className="text-xs text-text-tertiary">部署</p><p className="text-sm text-text">{selectedUser.department ?? "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">役職</p><p className="text-sm text-text">{selectedUser.position ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">ステータス</p>
-                <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${selectedUser.status === "active" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
-                  {selectedUser.status === "active" ? "有効" : "無効"}
+                <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${selectedUser.isActive ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
+                  {selectedUser.isActive ? "有効" : "無効"}
                 </span>
               </div>
-              <div><p className="text-xs text-text-tertiary">最終ログイン</p><p className="text-sm text-text">{selectedUser.lastLogin}</p></div>
+              <div><p className="text-xs text-text-tertiary">作成日</p><p className="text-sm text-text">{new Date(selectedUser.createdAt).toLocaleDateString("ja-JP")}</p></div>
+              <div><p className="text-xs text-text-tertiary">更新日</p><p className="text-sm text-text">{new Date(selectedUser.updatedAt).toLocaleDateString("ja-JP")}</p></div>
             </div>
           </div>
         )}

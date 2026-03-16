@@ -3,33 +3,118 @@
 import { Header } from "@/components/header";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { documents, documentTypeColors, type DocumentType } from "@/lib/dummy-data-phase1";
-import { Search, Download, Eye, Printer, Mail, FileText, Filter } from "lucide-react";
+import { Search, Download, Eye, Printer, Mail, FileText, Filter, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
 
-const documentTypes: DocumentType[] = [
-  "請求書", "納品書（本）", "納品書（仮）", "買受書", "Invoice/PackingList",
-  "引取連絡", "運送指示書", "送り状・受領書", "搬入連絡",
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type DocumentTypeEnum =
+  | "PURCHASE_RECEIPT"
+  | "DELIVERY_NOTE_TEMP"
+  | "DELIVERY_NOTE_FINAL"
+  | "WAYBILL"
+  | "PICKUP_NOTICE"
+  | "TRANSPORT_ORDER"
+  | "DELIVERY_NOTICE"
+  | "EXPORT_INVOICE"
+  | "PACKING_LIST"
+  | "BILLING_INVOICE"
+  | "ANALYSIS_CERTIFICATE"
+  | "SUSTAINABILITY_DECL"
+  | "CONTRACT_DOC";
+
+const documentTypeLabel: Record<DocumentTypeEnum, string> = {
+  PURCHASE_RECEIPT: "買受書",
+  DELIVERY_NOTE_TEMP: "納品書（仮）",
+  DELIVERY_NOTE_FINAL: "納品書（本）",
+  WAYBILL: "送り状・受領書",
+  PICKUP_NOTICE: "引取連絡",
+  TRANSPORT_ORDER: "運送指示書",
+  DELIVERY_NOTICE: "搬入連絡",
+  EXPORT_INVOICE: "Invoice/PackingList",
+  PACKING_LIST: "Packing List",
+  BILLING_INVOICE: "請求書",
+  ANALYSIS_CERTIFICATE: "検査成績書",
+  SUSTAINABILITY_DECL: "SD",
+  CONTRACT_DOC: "契約書",
+};
+
+const documentTypeColors: Record<DocumentTypeEnum, string> = {
+  PURCHASE_RECEIPT: "bg-purple-50 text-purple-700",
+  DELIVERY_NOTE_TEMP: "bg-blue-50 text-blue-700",
+  DELIVERY_NOTE_FINAL: "bg-blue-100 text-blue-800",
+  WAYBILL: "bg-amber-50 text-amber-700",
+  PICKUP_NOTICE: "bg-emerald-50 text-emerald-700",
+  TRANSPORT_ORDER: "bg-orange-50 text-orange-700",
+  DELIVERY_NOTICE: "bg-teal-50 text-teal-700",
+  EXPORT_INVOICE: "bg-indigo-50 text-indigo-700",
+  PACKING_LIST: "bg-indigo-50 text-indigo-700",
+  BILLING_INVOICE: "bg-red-50 text-red-700",
+  ANALYSIS_CERTIFICATE: "bg-cyan-50 text-cyan-700",
+  SUSTAINABILITY_DECL: "bg-lime-50 text-lime-700",
+  CONTRACT_DOC: "bg-gray-50 text-gray-700",
+};
+
+// The main document types to show as filter cards
+const mainDocumentTypes: DocumentTypeEnum[] = [
+  "BILLING_INVOICE",
+  "DELIVERY_NOTE_FINAL",
+  "PURCHASE_RECEIPT",
+  "EXPORT_INVOICE",
+  "PICKUP_NOTICE",
+  "TRANSPORT_ORDER",
+  "WAYBILL",
+  "DELIVERY_NOTICE",
+  "DELIVERY_NOTE_TEMP",
 ];
+
+type DocumentData = {
+  id: string;
+  documentType: DocumentTypeEnum;
+  title: string;
+  filePath: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  sourceType: string | null;
+  sourceId: string | null;
+  note: string | null;
+  createdAt: string;
+  createdBy: string | null;
+};
 
 export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [showPreview, setShowPreview] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const filtered = documents.filter((d) => {
-    if (typeFilter !== "all" && d.type !== typeFilter) return false;
-    if (statusFilter !== "all" && d.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return d.number.toLowerCase().includes(q) || d.partner.includes(q) || d.product.includes(q);
-    }
-    return true;
-  });
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (typeFilter !== "all") params.set("documentType", typeFilter);
 
-  const selected = documents.find((d) => d.id === showPreview);
+  const { data: documents, isLoading } = useSWR<DocumentData[]>(
+    `/api/documents?${params.toString()}`,
+    fetcher
+  );
+
+  // For counts in filter cards, need all documents
+  const { data: allDocuments } = useSWR<DocumentData[]>("/api/documents", fetcher);
+
+  const allDocs = documents ?? [];
+  const allDocsForCount = allDocuments ?? [];
+  const selected = allDocs.find((d) => d.id === showPreview);
+
+  if (isLoading) {
+    return (
+      <>
+        <Header title="帳票管理" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -37,8 +122,8 @@ export default function DocumentsPage() {
       <div className="p-6 space-y-4">
         {/* 帳票種別カード */}
         <div className="grid grid-cols-3 gap-3">
-          {(["請求書", "納品書（本）", "買受書", "Invoice/PackingList", "引取連絡", "運送指示書", "送り状・受領書", "搬入連絡", "納品書（仮）"] as DocumentType[]).map((type) => {
-            const count = documents.filter((d) => d.type === type).length;
+          {mainDocumentTypes.map((type) => {
+            const count = allDocsForCount.filter((d) => d.documentType === type).length;
             const isActive = typeFilter === type;
             return (
               <button key={type} onClick={() => setTypeFilter(isActive ? "all" : type)}
@@ -46,7 +131,7 @@ export default function DocumentsPage() {
                 <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-lg ${documentTypeColors[type]}`}>
                   {count}
                 </span>
-                <span className="text-sm text-text">{type}</span>
+                <span className="text-sm text-text">{documentTypeLabel[type]}</span>
               </button>
             );
           })}
@@ -57,16 +142,9 @@ export default function DocumentsPage() {
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-              <input type="text" placeholder="帳票番号、取引先で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
+              <input type="text" placeholder="帳票タイトルで検索..." value={search} onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 pr-4 py-2 w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <option value="all">全ステータス</option>
-              <option value="発行済">発行済</option>
-              <option value="作成中">作成中</option>
-              <option value="未発行">未発行</option>
-            </select>
             {typeFilter !== "all" && <button onClick={() => setTypeFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>}
           </div>
           <button onClick={() => showToast("一括PDF生成（開発中）", "info")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
@@ -80,39 +158,27 @@ export default function DocumentsPage() {
             <thead>
               <tr className="border-b border-border bg-surface-secondary">
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">種別</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">帳票番号</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">タイトル</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">日付</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">取引先</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">金額</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ファイル</th>
                 <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((doc) => (
+              {allDocs.map((doc) => (
                 <tr key={doc.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${documentTypeColors[doc.type]}`}>{doc.type}</span>
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${documentTypeColors[doc.documentType]}`}>{documentTypeLabel[doc.documentType]}</span>
                   </td>
-                  <td className="px-4 py-3 text-sm font-mono text-primary-600">{doc.number}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{doc.date}</td>
-                  <td className="px-4 py-3 text-sm text-text">{doc.partner}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{doc.product}</td>
-                  <td className="px-4 py-3 text-sm text-text text-right font-medium">{doc.amount}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${
-                      doc.status === "発行済" ? "bg-emerald-50 text-emerald-700" :
-                      doc.status === "作成中" ? "bg-blue-50 text-blue-700" :
-                      "bg-gray-50 text-gray-700"
-                    }`}>{doc.status}</span>
-                  </td>
+                  <td className="px-4 py-3 text-sm text-text">{doc.title}</td>
+                  <td className="px-4 py-3 text-sm text-text-secondary">{new Date(doc.createdAt).toLocaleDateString("ja-JP")}</td>
+                  <td className="px-4 py-3 text-sm text-text-secondary">{doc.mimeType ?? "-"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <button onClick={() => setShowPreview(doc.id)} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="プレビュー">
                         <Eye className="w-4 h-4 text-text-tertiary" />
                       </button>
-                      <button onClick={() => showToast(`${doc.type} PDF生成（開発中）`, "info")} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="PDF出力">
+                      <button onClick={() => showToast(`${documentTypeLabel[doc.documentType]} PDF生成（開発中）`, "info")} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="PDF出力">
                         <Printer className="w-4 h-4 text-text-tertiary" />
                       </button>
                       <button onClick={() => showToast("メール送信（開発中）", "info")} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="メール送信">
@@ -125,13 +191,13 @@ export default function DocumentsPage() {
             </tbody>
           </table>
           <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-            <p className="text-xs text-text-tertiary">{filtered.length}件 / {documents.length}件</p>
+            <p className="text-xs text-text-tertiary">{allDocs.length}件 / {allDocsForCount.length}件</p>
           </div>
         </div>
       </div>
 
       {/* プレビューモーダル */}
-      <Modal isOpen={!!showPreview} onClose={() => setShowPreview(null)} title={selected ? `${selected.type}: ${selected.number}` : ""}
+      <Modal isOpen={!!showPreview} onClose={() => setShowPreview(null)} title={selected ? `${documentTypeLabel[selected.documentType]}: ${selected.title}` : ""}
         footer={<>
           <button onClick={() => showToast("PDF生成（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Printer className="w-4 h-4" />PDF出力</button>
           <button onClick={() => showToast("メール送信（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Mail className="w-4 h-4" />メール</button>
@@ -142,26 +208,26 @@ export default function DocumentsPage() {
             {/* 帳票プレビュー（モック） */}
             <div className="border-2 border-dashed border-border rounded-xl p-6 bg-white min-h-[300px]">
               <div className="text-center mb-4">
-                <h3 className="text-lg font-bold">{selected.type}</h3>
-                <p className="text-xs text-text-tertiary">No. {selected.number}</p>
+                <h3 className="text-lg font-bold">{documentTypeLabel[selected.documentType]}</h3>
+                <p className="text-xs text-text-tertiary">{selected.title}</p>
               </div>
               <div className="border-t border-border pt-4 space-y-3">
                 <div className="flex justify-between">
                   <div>
-                    <p className="text-xs text-text-tertiary">宛先</p>
-                    <p className="text-sm font-medium">{selected.partner} 御中</p>
+                    <p className="text-xs text-text-tertiary">ファイルパス</p>
+                    <p className="text-sm font-medium">{selected.filePath}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-text-tertiary">発行日</p>
-                    <p className="text-sm">{selected.date}</p>
+                    <p className="text-xs text-text-tertiary">作成日</p>
+                    <p className="text-sm">{new Date(selected.createdAt).toLocaleDateString("ja-JP")}</p>
                   </div>
                 </div>
-                <div className="border border-border rounded p-3">
-                  <table className="w-full text-sm">
-                    <thead><tr className="border-b border-border"><th className="text-left py-1 text-xs">品名</th><th className="text-right py-1 text-xs">金額</th></tr></thead>
-                    <tbody><tr><td className="py-1">{selected.product}</td><td className="text-right py-1 font-medium">{selected.amount}</td></tr></tbody>
-                  </table>
-                </div>
+                {selected.note && (
+                  <div>
+                    <p className="text-xs text-text-tertiary">備考</p>
+                    <p className="text-sm">{selected.note}</p>
+                  </div>
+                )}
                 <div className="text-right">
                   <p className="text-xs text-text-tertiary">発行元</p>
                   <p className="text-sm font-medium">株式会社CFP MR事業部</p>

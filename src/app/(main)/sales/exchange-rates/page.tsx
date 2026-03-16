@@ -3,71 +3,124 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { exchangeRates } from "@/lib/dummy-data-phase2";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type ExchangeRate = {
+  id: string;
+  fromCurrency: string;
+  toCurrency: string;
+  rate: number;
+  effectiveDate: string;
+  createdAt: string;
+};
+
+function getPair(r: ExchangeRate) {
+  return `${r.fromCurrency}/${r.toCurrency}`;
+}
+
+function getYearMonth(d: string) {
+  const date = new Date(d);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function formatRateDecimals(pair: string, rate: number) {
+  if (pair.includes("SGD") && !pair.startsWith("SGD")) return rate.toFixed(3);
+  return rate.toFixed(2);
+}
 
 export default function ExchangeRatesPage() {
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const { showToast } = useToast();
 
-  const currentMonth = "2026-03";
-  const currentRates = exchangeRates.filter((r) => r.yearMonth === currentMonth);
-  const historicalRates = exchangeRates.filter((r) => r.yearMonth !== currentMonth);
+  const { data: rates, isLoading } = useSWR<ExchangeRate[]>(
+    "/api/sales/exchange-rates",
+    fetcher
+  );
+
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const currentRates = rates?.filter((r) => getYearMonth(r.effectiveDate) === currentMonth) ?? [];
+  const historicalRates = rates?.filter((r) => getYearMonth(r.effectiveDate) !== currentMonth) ?? [];
+
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("ja-JP");
 
   return (
     <>
       <Header title="為替管理" />
       <div className="p-6 space-y-4">
-        {/* 当月レート */}
-        <div className="p-5 rounded-xl border border-primary-300 bg-primary-50/30">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-bold text-text">{currentMonth} 適用レート</h2>
-              <p className="text-xs text-text-tertiary">最終更新: {currentRates[0]?.updatedAt} / {currentRates[0]?.updatedBy}</p>
-            </div>
-            <button onClick={() => setShowUpdateModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
-              <RefreshCw className="w-4 h-4" />レート更新
-            </button>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+            <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            {currentRates.map((r) => (
-              <div key={r.id} className="p-4 bg-surface rounded-lg border border-border text-center">
-                <p className="text-sm text-text-secondary mb-1">{r.pair}</p>
-                <p className="text-2xl font-bold text-text">{r.rate.toFixed(r.pair.includes("SGD") && !r.pair.startsWith("SGD") ? 3 : 2)}</p>
+        ) : (
+          <>
+            {/* 当月レート */}
+            <div className="p-5 rounded-xl border border-primary-300 bg-primary-50/30">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-lg font-bold text-text">{currentMonth} 適用レート</h2>
+                  <p className="text-xs text-text-tertiary">
+                    {currentRates.length > 0
+                      ? `最終更新: ${formatDate(currentRates[0].createdAt)}`
+                      : "データなし"}
+                  </p>
+                </div>
+                <button onClick={() => setShowUpdateModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
+                  <RefreshCw className="w-4 h-4" />レート更新
+                </button>
               </div>
-            ))}
-          </div>
-        </div>
+              <div className="grid grid-cols-3 gap-4">
+                {currentRates.map((r) => (
+                  <div key={r.id} className="p-4 bg-surface rounded-lg border border-border text-center">
+                    <p className="text-sm text-text-secondary mb-1">{getPair(r)}</p>
+                    <p className="text-2xl font-bold text-text">{formatRateDecimals(getPair(r), r.rate)}</p>
+                  </div>
+                ))}
+                {currentRates.length === 0 && (
+                  <div className="col-span-3 text-center py-4 text-sm text-text-tertiary">当月のレートデータがありません</div>
+                )}
+              </div>
+            </div>
 
-        {/* 過去レート */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <div className="px-4 py-3 border-b border-border bg-surface-secondary">
-            <h3 className="text-sm font-medium text-text">過去の為替レート</h3>
-          </div>
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary">
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">年月</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">通貨ペア</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">レート</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">更新者</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">更新日</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historicalRates.map((r) => (
-                <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-medium text-text">{r.yearMonth}</td>
-                  <td className="px-4 py-3 text-sm text-text">{r.pair}</td>
-                  <td className="px-4 py-3 text-sm text-text text-right font-mono">{r.rate.toFixed(r.pair.includes("SGD") && !r.pair.startsWith("SGD") ? 3 : 2)}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{r.updatedBy}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{r.updatedAt}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            {/* 過去レート */}
+            <div className="bg-surface rounded-xl border border-border overflow-hidden">
+              <div className="px-4 py-3 border-b border-border bg-surface-secondary">
+                <h3 className="text-sm font-medium text-text">過去の為替レート</h3>
+              </div>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-surface-secondary">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">年月</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">通貨ペア</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">レート</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">登録日</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historicalRates.map((r) => (
+                    <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-text">{getYearMonth(r.effectiveDate)}</td>
+                      <td className="px-4 py-3 text-sm text-text">{getPair(r)}</td>
+                      <td className="px-4 py-3 text-sm text-text text-right font-mono">{formatRateDecimals(getPair(r), r.rate)}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(r.createdAt)}</td>
+                    </tr>
+                  ))}
+                  {historicalRates.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-sm text-text-tertiary">過去のレートデータがありません</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       <Modal isOpen={showUpdateModal} onClose={() => setShowUpdateModal(false)} title="為替レート更新"

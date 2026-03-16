@@ -3,24 +3,52 @@
 import { Header } from "@/components/header";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { FileText, Eye } from "lucide-react";
+import { FileText, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type Document = {
+  id: string;
+  documentType: string;
+  title: string;
+  filePath: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  sourceType: string | null;
+  sourceId: string | null;
+  note: string | null;
+  createdAt: string;
+  createdBy: string | null;
+};
 
 const docTypes = [
-  { id: "1", name: "Invoice（客先用）", nameEn: "Commercial Invoice", description: "客先向け請求書（英文）", color: "bg-blue-50 border-blue-200 text-blue-800" },
-  { id: "2", name: "Invoice（通関用）", nameEn: "Customs Invoice", description: "税関提出用請求書", color: "bg-indigo-50 border-indigo-200 text-indigo-800" },
-  { id: "3", name: "Packing List（客先用）", nameEn: "Packing List", description: "客先向け梱包明細", color: "bg-emerald-50 border-emerald-200 text-emerald-800" },
-  { id: "4", name: "Packing List（通関用）", nameEn: "Customs Packing List", description: "税関提出用梱包明細", color: "bg-teal-50 border-teal-200 text-teal-800" },
-  { id: "5", name: "B/L (Bill of Lading)", nameEn: "Bill of Lading", description: "船荷証券", color: "bg-amber-50 border-amber-200 text-amber-800" },
-  { id: "6", name: "Certificate of Origin", nameEn: "Certificate of Origin", description: "原産地証明書", color: "bg-purple-50 border-purple-200 text-purple-800" },
-  { id: "7", name: "Shipping Instructions", nameEn: "Shipping Instructions", description: "船積指図書", color: "bg-orange-50 border-orange-200 text-orange-800" },
-  { id: "8", name: "ISCC Sustainability Declaration", nameEn: "ISCC SD", description: "ISCC持続可能性宣言書", color: "bg-green-50 border-green-200 text-green-800" },
+  { id: "1", name: "Invoice（客先用）", nameEn: "Commercial Invoice", description: "客先向け請求書（英文）", color: "bg-blue-50 border-blue-200 text-blue-800", dbType: "EXPORT_INVOICE" },
+  { id: "2", name: "Invoice（通関用）", nameEn: "Customs Invoice", description: "税関提出用請求書", color: "bg-indigo-50 border-indigo-200 text-indigo-800", dbType: "EXPORT_INVOICE" },
+  { id: "3", name: "Packing List（客先用）", nameEn: "Packing List", description: "客先向け梱包明細", color: "bg-emerald-50 border-emerald-200 text-emerald-800", dbType: "PACKING_LIST" },
+  { id: "4", name: "Packing List（通関用）", nameEn: "Customs Packing List", description: "税関提出用梱包明細", color: "bg-teal-50 border-teal-200 text-teal-800", dbType: "PACKING_LIST" },
+  { id: "5", name: "B/L (Bill of Lading)", nameEn: "Bill of Lading", description: "船荷証券", color: "bg-amber-50 border-amber-200 text-amber-800", dbType: null },
+  { id: "6", name: "Certificate of Origin", nameEn: "Certificate of Origin", description: "原産地証明書", color: "bg-purple-50 border-purple-200 text-purple-800", dbType: null },
+  { id: "7", name: "Shipping Instructions", nameEn: "Shipping Instructions", description: "船積指図書", color: "bg-orange-50 border-orange-200 text-orange-800", dbType: null },
+  { id: "8", name: "ISCC Sustainability Declaration", nameEn: "ISCC SD", description: "ISCC持続可能性宣言書", color: "bg-green-50 border-green-200 text-green-800", dbType: null },
 ];
 
 export default function ExportDocsPage() {
   const [showPreview, setShowPreview] = useState<string | null>(null);
   const { showToast } = useToast();
   const selectedDoc = docTypes.find((d) => d.id === showPreview);
+
+  // Fetch actual export documents from DB
+  const { data: documents, isLoading } = useSWR<Document[]>(
+    "/api/sales/export-docs",
+    fetcher
+  );
+
+  const docCount = (dbType: string | null) => {
+    if (!dbType || !documents) return 0;
+    return documents.filter((d) => d.documentType === dbType).length;
+  };
 
   return (
     <>
@@ -30,21 +58,31 @@ export default function ExportDocsPage() {
           <p className="text-sm text-text-secondary">海外取引で必要な帳票テンプレートの管理・発行を行います。各帳票をクリックしてプレビューを確認できます。</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {docTypes.map((doc) => (
-            <button key={doc.id} onClick={() => setShowPreview(doc.id)}
-              className={`p-5 rounded-xl border text-left transition-all hover:shadow-md ${doc.color}`}>
-              <div className="flex items-start gap-3">
-                <FileText className="w-6 h-6 mt-0.5 opacity-60" />
-                <div>
-                  <h3 className="text-sm font-bold">{doc.name}</h3>
-                  <p className="text-xs opacity-70 mt-0.5">{doc.nameEn}</p>
-                  <p className="text-xs opacity-60 mt-1">{doc.description}</p>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+            <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4">
+            {docTypes.map((doc) => (
+              <button key={doc.id} onClick={() => setShowPreview(doc.id)}
+                className={`p-5 rounded-xl border text-left transition-all hover:shadow-md ${doc.color}`}>
+                <div className="flex items-start gap-3">
+                  <FileText className="w-6 h-6 mt-0.5 opacity-60" />
+                  <div>
+                    <h3 className="text-sm font-bold">{doc.name}</h3>
+                    <p className="text-xs opacity-70 mt-0.5">{doc.nameEn}</p>
+                    <p className="text-xs opacity-60 mt-1">{doc.description}</p>
+                    {doc.dbType && (
+                      <p className="text-xs opacity-50 mt-1">{docCount(doc.dbType)}件のドキュメント</p>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </button>
-          ))}
-        </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <Modal isOpen={!!showPreview} onClose={() => setShowPreview(null)} title={selectedDoc ? `プレビュー: ${selectedDoc.name}` : ""}

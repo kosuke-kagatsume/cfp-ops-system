@@ -3,23 +3,55 @@
 import { Header } from "@/components/header";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Download, Eye, FileText, ArrowRight } from "lucide-react";
+import { Download, Eye, FileText, ArrowRight, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
 
-type DeliveryNoteStatus = "仮納品書" | "本納品書" | "発行済";
-const statusColors: Record<DeliveryNoteStatus, string> = { "仮納品書": "bg-amber-50 text-amber-700", "本納品書": "bg-blue-50 text-blue-700", "発行済": "bg-emerald-50 text-emerald-700" };
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-const deliveryNotes = [
-  { id: "1", number: "DN-2026-0078", customer: "東洋プラスチック株式会社", product: "PP ペレット ナチュラル A級", quantity: 5000, shipDate: "2026-03-10", status: "本納品書" as DeliveryNoteStatus, orderNumber: "ORD-2026-0112" },
-  { id: "2", number: "DN-2026-0077", customer: "関西化学工業株式会社", product: "PS ペレット 白 A級", quantity: 4100, shipDate: "2026-03-08", status: "発行済" as DeliveryNoteStatus, orderNumber: "ORD-2026-0111" },
-  { id: "3", number: "DN-2026-0079", customer: "株式会社丸紅プラスチック", product: "ABS ペレット 黒 A級", quantity: 2280, shipDate: "2026-03-12", status: "仮納品書" as DeliveryNoteStatus, orderNumber: "ORD-2026-0113" },
-  { id: "4", number: "DN-2026-0076", customer: "関西化学工業株式会社", product: "Circular Pyrolysis Oil（軽質）", quantity: 19000, shipDate: "2026-03-05", status: "発行済" as DeliveryNoteStatus, orderNumber: "ORD-2026-0110" },
-];
+type Document = {
+  id: string;
+  documentType: string;
+  title: string;
+  filePath: string;
+  fileSize: number | null;
+  mimeType: string | null;
+  sourceType: string | null;
+  sourceId: string | null;
+  note: string | null;
+  createdAt: string;
+  createdBy: string | null;
+};
+
+const typeLabel: Record<string, string> = {
+  DELIVERY_NOTE_TEMP: "仮納品書",
+  DELIVERY_NOTE_FINAL: "本納品書",
+};
+
+const typeColor: Record<string, string> = {
+  DELIVERY_NOTE_TEMP: "bg-amber-50 text-amber-700",
+  DELIVERY_NOTE_FINAL: "bg-blue-50 text-blue-700",
+};
 
 export default function DeliveryNotesPage() {
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
-  const selected = deliveryNotes.find((d) => d.id === showDetail);
+
+  const { data: documents, isLoading } = useSWR<Document[]>(
+    "/api/sales/delivery-notes",
+    fetcher
+  );
+
+  const selected = documents?.find((d) => d.id === showDetail);
+
+  const formatDate = (d: string) => new Date(d).toLocaleDateString("ja-JP");
+
+  const formatFileSize = (size: number | null) => {
+    if (!size) return "-";
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  };
 
   return (
     <>
@@ -53,65 +85,80 @@ export default function DeliveryNotesPage() {
         </div>
 
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary">
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">納品書番号</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">受注番号</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">顧客</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量(kg)</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷日</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {deliveryNotes.map((d) => (
-                <tr key={d.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-mono text-primary-600">{d.number}</td>
-                  <td className="px-4 py-3 text-sm font-mono text-text-secondary">{d.orderNumber}</td>
-                  <td className="px-4 py-3 text-sm text-text">{d.customer}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{d.product}</td>
-                  <td className="px-4 py-3 text-sm text-text text-right font-medium">{d.quantity.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{d.shipDate}</td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[d.status]}`}>{d.status}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => setShowDetail(d.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                      <Eye className="w-4 h-4 text-text-tertiary" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-            <p className="text-xs text-text-tertiary">{deliveryNotes.length}件</p>
-          </div>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+              <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
+            </div>
+          ) : (
+            <>
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border bg-surface-secondary">
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">タイトル</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ファイルパス</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">サイズ</th>
+                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">作成日</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">種別</th>
+                    <th className="w-10"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {documents?.map((d) => (
+                    <tr key={d.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-medium text-text">{d.title}</td>
+                      <td className="px-4 py-3 text-sm font-mono text-text-secondary truncate max-w-[200px]">{d.filePath}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary text-right">{formatFileSize(d.fileSize)}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(d.createdAt)}</td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${typeColor[d.documentType] ?? "bg-gray-100 text-gray-700"}`}>
+                          {typeLabel[d.documentType] ?? d.documentType}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button onClick={() => setShowDetail(d.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <Eye className="w-4 h-4 text-text-tertiary" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {(!documents || documents.length === 0) && (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-text-tertiary">納品書データがありません</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+              <div className="px-4 py-3 border-t border-border bg-surface-secondary">
+                <p className="text-xs text-text-tertiary">{documents?.length ?? 0}件</p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `納品書詳細: ${selected.number}` : ""}
+      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `納品書詳細: ${selected.title}` : ""}
         footer={<>
-          {selected?.status === "仮納品書" && <button onClick={() => { setShowDetail(null); showToast("本納品書に昇格しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">本納品書に昇格</button>}
-          {selected?.status === "本納品書" && <button onClick={() => { setShowDetail(null); showToast("納品書を発行しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">発行する</button>}
+          {selected?.documentType === "DELIVERY_NOTE_TEMP" && <button onClick={() => { setShowDetail(null); showToast("本納品書に昇格しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">本納品書に昇格</button>}
+          {selected?.documentType === "DELIVERY_NOTE_FINAL" && <button onClick={() => { setShowDetail(null); showToast("納品書を発行しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">発行する</button>}
           <button onClick={() => { showToast("PDFプレビューを表示します（開発中）", "info"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">PDFプレビュー</button>
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-mono font-medium text-text">{selected.number}</span>
-              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status]}`}>{selected.status}</span>
+              <span className="text-sm font-medium text-text">{selected.title}</span>
+              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${typeColor[selected.documentType] ?? "bg-gray-100 text-gray-700"}`}>
+                {typeLabel[selected.documentType] ?? selected.documentType}
+              </span>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.customer}</p></div>
-              <div><p className="text-xs text-text-tertiary">受注番号</p><p className="text-sm font-mono text-text">{selected.orderNumber}</p></div>
-              <div><p className="text-xs text-text-tertiary">品目</p><p className="text-sm text-text">{selected.product}</p></div>
-              <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selected.quantity.toLocaleString()} kg</p></div>
-              <div><p className="text-xs text-text-tertiary">出荷日</p><p className="text-sm text-text">{selected.shipDate}</p></div>
+              <div><p className="text-xs text-text-tertiary">ファイルパス</p><p className="text-sm font-mono text-text">{selected.filePath}</p></div>
+              <div><p className="text-xs text-text-tertiary">サイズ</p><p className="text-sm text-text">{formatFileSize(selected.fileSize)}</p></div>
+              <div><p className="text-xs text-text-tertiary">MIME</p><p className="text-sm text-text">{selected.mimeType ?? "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">作成日</p><p className="text-sm text-text">{formatDate(selected.createdAt)}</p></div>
+              <div><p className="text-xs text-text-tertiary">元データ種別</p><p className="text-sm text-text">{selected.sourceType ?? "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">備考</p><p className="text-sm text-text">{selected.note ?? "-"}</p></div>
             </div>
           </div>
         )}

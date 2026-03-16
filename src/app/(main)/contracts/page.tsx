@@ -3,9 +3,42 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { contracts, contractStatusColors, type ContractStatus } from "@/lib/dummy-data-phase3";
-import { Plus, Search, Eye, AlertTriangle, FileText, Calendar, RefreshCw } from "lucide-react";
+import { Plus, Search, Eye, AlertTriangle, FileText, Calendar, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type ContractStatusEnum = "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "DRAFT";
+
+const statusLabel: Record<ContractStatusEnum, string> = {
+  ACTIVE: "有効",
+  EXPIRING_SOON: "期限間近",
+  EXPIRED: "期限切れ",
+  DRAFT: "下書き",
+};
+
+const statusColors: Record<ContractStatusEnum, string> = {
+  ACTIVE: "bg-emerald-50 text-emerald-700",
+  EXPIRING_SOON: "bg-amber-50 text-amber-700",
+  EXPIRED: "bg-red-50 text-red-700",
+  DRAFT: "bg-gray-50 text-gray-700",
+};
+
+type ContractData = {
+  id: string;
+  contractNumber: string;
+  title: string;
+  contractType: string | null;
+  startDate: string;
+  endDate: string | null;
+  autoRenewal: boolean;
+  status: ContractStatusEnum;
+  filePath: string | null;
+  note: string | null;
+  createdBy: string | null;
+  partner: { id: string; code: string; name: string };
+};
 
 export default function ContractsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
@@ -14,18 +47,36 @@ export default function ContractsPage() {
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const filtered = contracts.filter((c) => {
-    if (statusFilter !== "all" && c.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return c.number.toLowerCase().includes(q) || c.title.includes(q) || c.partner.includes(q);
-    }
-    return true;
-  });
+  const params = new URLSearchParams();
+  if (search) params.set("search", search);
+  if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const selected = contracts.find((c) => c.id === showDetail);
-  const expiringSoon = contracts.filter((c) => c.status === "期限間近").length;
-  const expired = contracts.filter((c) => c.status === "期限切れ").length;
+  const { data: contracts, isLoading } = useSWR<ContractData[]>(
+    `/api/contracts?${params.toString()}`,
+    fetcher
+  );
+
+  const allContracts = contracts ?? [];
+  const selected = allContracts.find((c) => c.id === showDetail);
+
+  // For summary counts, we need all contracts (not filtered)
+  const { data: allContractsData } = useSWR<ContractData[]>("/api/contracts", fetcher);
+  const all = allContractsData ?? [];
+  const expiringSoon = all.filter((c) => c.status === "EXPIRING_SOON").length;
+  const expired = all.filter((c) => c.status === "EXPIRED").length;
+
+  if (isLoading) {
+    return (
+      <>
+        <Header title="契約書管理" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
+        </div>
+      </>
+    );
+  }
+
+  const statusKeys: ContractStatusEnum[] = ["ACTIVE", "EXPIRING_SOON", "EXPIRED", "DRAFT"];
 
   return (
     <>
@@ -44,14 +95,14 @@ export default function ContractsPage() {
 
         {/* サマリ */}
         <div className="grid grid-cols-4 gap-3">
-          {(["有効", "期限間近", "期限切れ", "下書き"] as ContractStatus[]).map((status) => {
-            const count = contracts.filter((c) => c.status === status).length;
+          {statusKeys.map((status) => {
+            const count = all.filter((c) => c.status === status).length;
             const isActive = statusFilter === status;
             return (
               <button key={status} onClick={() => setStatusFilter(isActive ? "all" : status)}
                 className={`p-3 rounded-xl border text-center transition-colors ${isActive ? "border-primary-400 bg-primary-50" : "border-border bg-surface hover:border-primary-200"}`}>
                 <p className="text-lg font-bold text-text">{count}</p>
-                <p className="text-xs text-text-secondary">{status}</p>
+                <p className="text-xs text-text-secondary">{statusLabel[status]}</p>
               </button>
             );
           })}
@@ -85,18 +136,18 @@ export default function ContractsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((c) => (
+              {allContracts.map((c) => (
                 <tr key={c.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
-                  <td className="px-4 py-3 text-sm font-mono text-primary-600">{c.number}</td>
+                  <td className="px-4 py-3 text-sm font-mono text-primary-600">{c.contractNumber}</td>
                   <td className="px-4 py-3 text-sm text-text">{c.title}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{c.partner}</td>
-                  <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-surface-tertiary text-text-secondary">{c.type}</span></td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{c.startDate} 〜 {c.endDate}</td>
+                  <td className="px-4 py-3 text-sm text-text-secondary">{c.partner.name}</td>
+                  <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-surface-tertiary text-text-secondary">{c.contractType ?? "-"}</span></td>
+                  <td className="px-4 py-3 text-sm text-text-secondary">{new Date(c.startDate).toLocaleDateString("ja-JP")} 〜 {c.endDate ? new Date(c.endDate).toLocaleDateString("ja-JP") : "-"}</td>
                   <td className="px-4 py-3 text-center">
-                    {c.autoRenew ? <RefreshCw className="w-4 h-4 text-emerald-500 inline" /> : <span className="text-xs text-text-tertiary">-</span>}
+                    {c.autoRenewal ? <RefreshCw className="w-4 h-4 text-emerald-500 inline" /> : <span className="text-xs text-text-tertiary">-</span>}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${contractStatusColors[c.status]}`}>{c.status}</span>
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[c.status]}`}>{statusLabel[c.status]}</span>
                   </td>
                   <td className="px-4 py-3">
                     <button onClick={() => setShowDetail(c.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
@@ -138,7 +189,7 @@ export default function ContractsPage() {
       </Modal>
 
       {/* 詳細モーダル */}
-      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `契約: ${selected.number}` : ""}
+      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `契約: ${selected.contractNumber}` : ""}
         footer={<>
           <button onClick={() => showToast("契約書PDF表示（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><FileText className="w-4 h-4" />PDF表示</button>
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">閉じる</button>
@@ -146,17 +197,15 @@ export default function ContractsPage() {
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-mono font-medium">{selected.number}</span>
-              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${contractStatusColors[selected.status]}`}>{selected.status}</span>
+              <span className="text-sm font-mono font-medium">{selected.contractNumber}</span>
+              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status]}`}>{statusLabel[selected.status]}</span>
             </div>
             <div><p className="text-base font-medium text-text">{selected.title}</p></div>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">取引先</p><p className="text-sm text-text">{selected.partner}</p></div>
-              <div><p className="text-xs text-text-tertiary">種別</p><p className="text-sm text-text">{selected.type}</p></div>
-              <div><p className="text-xs text-text-tertiary">有効期間</p><p className="text-sm text-text">{selected.startDate} 〜 {selected.endDate}</p></div>
-              <div><p className="text-xs text-text-tertiary">自動更新</p><p className="text-sm text-text">{selected.autoRenew ? "あり" : "なし"}</p></div>
-              <div><p className="text-xs text-text-tertiary">署名者</p><p className="text-sm text-text">{selected.signedBy}</p></div>
-              {selected.amount && <div><p className="text-xs text-text-tertiary">契約金額</p><p className="text-sm font-medium text-text">${selected.amount.toLocaleString()}</p></div>}
+              <div><p className="text-xs text-text-tertiary">取引先</p><p className="text-sm text-text">{selected.partner.name}</p></div>
+              <div><p className="text-xs text-text-tertiary">種別</p><p className="text-sm text-text">{selected.contractType ?? "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">有効期間</p><p className="text-sm text-text">{new Date(selected.startDate).toLocaleDateString("ja-JP")} 〜 {selected.endDate ? new Date(selected.endDate).toLocaleDateString("ja-JP") : "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">自動更新</p><p className="text-sm text-text">{selected.autoRenewal ? "あり" : "なし"}</p></div>
             </div>
             {selected.note && (
               <div className="p-3 bg-surface-tertiary rounded-lg">
