@@ -1,0 +1,1554 @@
+// =============================================================================
+// CFP Ops System - Prisma Schema
+// 9ドメイン / 約65テーブル / 20 Enum
+// =============================================================================
+
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+// =============================================================================
+// Enums (20種)
+// =============================================================================
+
+enum Company {
+  CFP
+  RE
+  CTS
+}
+
+enum Division {
+  MR
+  CR
+}
+
+enum ClosingDay {
+  DAY_5
+  DAY_10
+  DAY_15
+  DAY_20
+  DAY_25
+  END_OF_MONTH
+}
+
+enum Currency {
+  JPY
+  USD
+  SGD
+}
+
+enum PackagingType {
+  FLECON
+  PALLET
+  STEEL_BOX
+  PAPER_BAG
+  POST_PALLET
+}
+
+enum WarehouseType {
+  INTERNAL
+  EXTERNAL
+}
+
+enum TankType {
+  LIGHT_OIL
+  HEAVY_OIL
+  MIXED_OIL
+  RESIDUE
+}
+
+enum ProcessType {
+  EXTRUDER
+  CRUSHING
+  TRANSFER
+  REPACK
+  OTHER
+}
+
+enum PurchaseStatus {
+  PLANNED
+  RECEIVED
+  INSPECTED
+  CONFIRMED
+  RETURNED
+}
+
+enum ShipmentStatus {
+  SHIPPING_LIST
+  CARGO_SELECTED
+  WEIGHING
+  LOADING
+  COMPLETED
+}
+
+enum SalesCategory {
+  SALES
+  RETURN
+  DISCOUNT
+  OTHER
+  TAX
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  SENT
+  PAID
+}
+
+enum PaymentMethod {
+  CASH
+  CHECK
+  TRANSFER
+  BILL
+  OFFSET
+  DISCOUNT_PM
+  ELECTRONIC
+  OTHER_PM
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum ApprovalCategory {
+  ORDER
+  INVOICE
+  PAYMENT
+  EXPENSE
+  PRICE_CHANGE
+  OTHER_AC
+}
+
+enum ProductionOrderStatus {
+  INSTRUCTED
+  FEEDING
+  PRODUCING
+  COMPLETED
+}
+
+enum CrMaterialStatus {
+  PENDING
+  INSPECTING
+  PASSED
+  FAILED
+}
+
+enum SampleStatus {
+  RECEIVED
+  ANALYZING
+  JUDGED
+  REPORTED
+}
+
+enum DocumentType {
+  PURCHASE_RECEIPT       // 買受書
+  DELIVERY_NOTE_TEMP     // 納品書(仮)
+  DELIVERY_NOTE_FINAL    // 納品書(本)
+  WAYBILL                // 送り状
+  PICKUP_NOTICE          // 引取連絡
+  TRANSPORT_ORDER        // 運送指示書
+  DELIVERY_NOTICE        // 搬入連絡
+  EXPORT_INVOICE         // Invoice
+  PACKING_LIST           // Packing List
+  BILLING_INVOICE        // 請求書
+  ANALYSIS_CERTIFICATE   // 検査成績書
+  SUSTAINABILITY_DECL    // SD
+  CONTRACT_DOC           // 契約書
+}
+
+enum ContractStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+  DRAFT
+}
+
+// =============================================================================
+// A. システム・認証 (4テーブル)
+// =============================================================================
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String
+  nameKana      String?
+  department    String?
+  position      String?
+  isActive      Boolean   @default(true)
+  roleId        String?
+  role          Role?     @relation(fields: [roleId], references: [id])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Reverse relations
+  createdPurchases          Purchase[]          @relation("PurchaseCreatedBy")
+  updatedPurchases          Purchase[]          @relation("PurchaseUpdatedBy")
+  createdInventoryMovements InventoryMovement[] @relation("InvMovementCreatedBy")
+  createdProcessingOrders   ProcessingOrder[]   @relation("ProcOrderCreatedBy")
+  updatedProcessingOrders   ProcessingOrder[]   @relation("ProcOrderUpdatedBy")
+  createdShipments          Shipment[]          @relation("ShipmentCreatedBy")
+  updatedShipments          Shipment[]          @relation("ShipmentUpdatedBy")
+  createdDispatches         Dispatch[]          @relation("DispatchCreatedBy")
+  updatedDispatches         Dispatch[]          @relation("DispatchUpdatedBy")
+  createdCrMaterials        CrMaterial[]        @relation("CrMaterialCreatedBy")
+  updatedCrMaterials        CrMaterial[]        @relation("CrMaterialUpdatedBy")
+  createdCrProductionOrders CrProductionOrder[] @relation("CrProdOrderCreatedBy")
+  updatedCrProductionOrders CrProductionOrder[] @relation("CrProdOrderUpdatedBy")
+  createdOilShipments       OilShipment[]       @relation("OilShipmentCreatedBy")
+  updatedOilShipments       OilShipment[]       @relation("OilShipmentUpdatedBy")
+  createdLabSamples         LabSample[]         @relation("LabSampleCreatedBy")
+  updatedLabSamples         LabSample[]         @relation("LabSampleUpdatedBy")
+  createdSalesOrders        SalesOrder[]        @relation("SalesOrderCreatedBy")
+  updatedSalesOrders        SalesOrder[]        @relation("SalesOrderUpdatedBy")
+  createdRevenues           Revenue[]           @relation("RevenueCreatedBy")
+  updatedRevenues           Revenue[]           @relation("RevenueUpdatedBy")
+  createdInvoices           Invoice[]           @relation("InvoiceCreatedBy")
+  updatedInvoices           Invoice[]           @relation("InvoiceUpdatedBy")
+  createdPaymentsReceived   PaymentReceived[]   @relation("PaymentReceivedCreatedBy")
+  updatedPaymentsReceived   PaymentReceived[]   @relation("PaymentReceivedUpdatedBy")
+  createdPaymentsPayable    PaymentPayable[]    @relation("PaymentPayableCreatedBy")
+  updatedPaymentsPayable    PaymentPayable[]    @relation("PaymentPayableUpdatedBy")
+  createdQuotations         Quotation[]         @relation("QuotationCreatedBy")
+  updatedQuotations         Quotation[]         @relation("QuotationUpdatedBy")
+  createdApprovalRequests   ApprovalRequest[]   @relation("ApprovalRequestCreatedBy")
+  approvalSteps             ApprovalStep[]      @relation("ApprovalStepApprover")
+  createdContracts          Contract[]          @relation("ContractCreatedBy")
+  updatedContracts          Contract[]          @relation("ContractUpdatedBy")
+  createdExpenses           Expense[]           @relation("ExpenseCreatedBy")
+  updatedExpenses           Expense[]           @relation("ExpenseUpdatedBy")
+  createdDocuments          Document[]          @relation("DocumentCreatedBy")
+  auditLogs                 AuditLog[]
+  notifications             Notification[]
+  createdStocktakes         Stocktake[]         @relation("StocktakeCreatedBy")
+  updatedStocktakes         Stocktake[]         @relation("StocktakeUpdatedBy")
+  createdIsccCerts          IsccCertificate[]   @relation("IsccCertCreatedBy")
+  updatedIsccCerts          IsccCertificate[]   @relation("IsccCertUpdatedBy")
+  createdMassBalances       MassBalance[]       @relation("MassBalanceCreatedBy")
+  createdTraceRecords       TraceRecord[]       @relation("TraceRecordCreatedBy")
+  journalEntries            JournalEntry[]      @relation("JournalEntryCreatedBy")
+  createdMonthlyClosings    MonthlyClosing[]    @relation("MonthlyClosingCreatedBy")
+  createdTaxReports         TaxReport[]         @relation("TaxReportCreatedBy")
+  createdBusinessPartners   BusinessPartner[]   @relation("BPCreatedBy")
+  updatedBusinessPartners   BusinessPartner[]   @relation("BPUpdatedBy")
+  createdProducts           Product[]           @relation("ProductCreatedBy")
+  updatedProducts           Product[]           @relation("ProductUpdatedBy")
+  createdCustomerPrices     CustomerPrice[]     @relation("CustomerPriceCreatedBy")
+  updatedCustomerPrices     CustomerPrice[]     @relation("CustomerPriceUpdatedBy")
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  permissions Json     // 権限設定をJSONで保持
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  category  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+}
+
+// =============================================================================
+// B. マスタデータ (12テーブル)
+// =============================================================================
+
+// 品名4軸 ---
+
+model ProductName {
+  id               String    @id @default(uuid())
+  code             Int       @unique    // 数値コード
+  name             String
+  isccManageName   String?              // ISCC管理品名
+  mixedProductCode String?              // 混合品コード
+  mixedRatio       Float?               // 混合比率
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  deletedAt        DateTime?
+  products         Product[]
+}
+
+model ProductShape {
+  id        String    @id @default(uuid())
+  code      Int       @unique
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  products  Product[]
+}
+
+model ProductColor {
+  id        String    @id @default(uuid())
+  code      Int       @unique
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  products  Product[]
+}
+
+model ProductGrade {
+  id        String    @id @default(uuid())
+  code      Int       @unique
+  name      String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  products  Product[]
+}
+
+model Product {
+  id              String       @id @default(uuid())
+  code            String       @unique    // 自動生成 "9-4-11-1"
+  nameId          String
+  name            ProductName  @relation(fields: [nameId], references: [id])
+  shapeId         String
+  shape           ProductShape @relation(fields: [shapeId], references: [id])
+  colorId         String
+  color           ProductColor @relation(fields: [colorId], references: [id])
+  gradeId         String
+  grade           ProductGrade @relation(fields: [gradeId], references: [id])
+  displayName     String?                // 表示用品名(オーバーライド)
+  isIsccEligible  Boolean      @default(false)
+  isOilProduct    Boolean      @default(false)  // 900番台判定
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?        @relation("ProductCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?        @relation("ProductUpdatedBy", fields: [updatedBy], references: [id])
+
+  // Reverse relations
+  purchases           Purchase[]
+  inventories         Inventory[]
+  shipments           Shipment[]
+  salesOrderItems     SalesOrderItem[]
+  revenues            Revenue[]
+  customerPrices      CustomerPrice[]
+  processingInputs    ProcessingOrder[]  @relation("ProcessingInput")
+  processingOutputs   ProcessingOrder[]  @relation("ProcessingOutput")
+  labSamples          LabSample[]
+  massBalances        MassBalance[]
+
+  @@unique([nameId, shapeId, colorId, gradeId])
+}
+
+// 取引先マスタ ---
+
+model BusinessPartner {
+  id                String    @id @default(uuid())
+  code              String    @unique
+  name              String
+  nameKana          String?
+  shortName         String?
+  companyId         Company?
+
+  // ロールフラグ（1社が複数ロール可能）
+  isCustomer        Boolean   @default(false)
+  isSupplier        Boolean   @default(false)
+  isPickup          Boolean   @default(false)   // 引取先
+  isDelivery        Boolean   @default(false)   // 納入先
+  isCarrier         Boolean   @default(false)   // 運送会社
+
+  // 基本情報
+  postalCode        String?
+  prefecture        String?
+  city              String?
+  address           String?
+  building          String?
+  tel               String?
+  fax               String?
+  email             String?
+  website           String?
+
+  // 請求条件
+  closingDay        ClosingDay?
+  paymentSiteMonths Int?                         // 支払サイト(月数)
+  paymentSiteDay    Int?                         // 支払日
+  currency          Currency   @default(JPY)
+
+  // 税務
+  invoiceNumber     String?                      // 適格請求書登録番号
+  taxRoundingMethod String?                      // 端数処理: round/ceil/floor
+
+  // ISCC
+  isIsccCertified   Boolean    @default(false)
+  isccCertNumber    String?
+  isccExpiry        DateTime?
+
+  // 海外取引先
+  isOverseas        Boolean    @default(false)
+  countryCode       String?
+
+  // 旧データ参照
+  legacyKintoneId   String?
+  legacyMysqlId     String?
+
+  isActive          Boolean    @default(true)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  deletedAt         DateTime?
+  createdBy         String?
+  createdByUser     User?      @relation("BPCreatedBy", fields: [createdBy], references: [id])
+  updatedBy         String?
+  updatedByUser     User?      @relation("BPUpdatedBy", fields: [updatedBy], references: [id])
+
+  // Relations
+  contacts          PartnerContact[]
+  documentSettings  PartnerDocumentSetting[]
+  purchasesAsSupplier    Purchase[]       @relation("PurchaseSupplier")
+  purchasesAsPickup      Purchase[]       @relation("PurchasePickup")
+  inventoriesAsPickup    Inventory[]      @relation("InventoryPickup")
+  shipmentsAsCustomer    Shipment[]       @relation("ShipmentCustomer")
+  shipmentsAsDelivery    Shipment[]       @relation("ShipmentDelivery")
+  dispatchesAsCarrier    Dispatch[]       @relation("DispatchCarrier")
+  salesOrders            SalesOrder[]
+  invoices               Invoice[]
+  paymentsReceived       PaymentReceived[]
+  paymentsPayable        PaymentPayable[]
+  accountsReceivable     AccountsReceivable[]
+  customerPrices         CustomerPrice[]
+  contracts              Contract[]
+  quotations             Quotation[]
+  isccCertificates       IsccCertificate[]
+  oilShipmentsAsCustomer OilShipment[]    @relation("OilShipmentCustomer")
+  crMaterialsAsSupplier  CrMaterial[]     @relation("CrMaterialSupplier")
+}
+
+model PartnerContact {
+  id          String          @id @default(uuid())
+  partnerId   String
+  partner     BusinessPartner @relation(fields: [partnerId], references: [id])
+  name        String
+  nameKana    String?
+  department  String?
+  position    String?
+  tel         String?
+  mobile      String?
+  email       String?
+  isPrimary   Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+}
+
+model PartnerDocumentSetting {
+  id            String          @id @default(uuid())
+  partnerId     String
+  partner       BusinessPartner @relation(fields: [partnerId], references: [id])
+  documentType  DocumentType
+  sendByEmail   Boolean         @default(false)
+  sendByFax     Boolean         @default(false)
+  emailAddress  String?
+  faxNumber     String?
+  note          String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@unique([partnerId, documentType])
+}
+
+// その他マスタ ---
+
+model Plant {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  companyId   Company
+  address     String?
+  tel         String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  warehouses         Warehouse[]
+  processingOrders   ProcessingOrder[]
+  crProductionOrders CrProductionOrder[]
+  tanks              Tank[]
+}
+
+model Warehouse {
+  id            String        @id @default(uuid())
+  code          String        @unique
+  name          String
+  type          WarehouseType
+  plantId       String?
+  plant         Plant?        @relation(fields: [plantId], references: [id])
+  address       String?
+  capacity      Float?        // トン
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  purchases     Purchase[]
+  inventories   Inventory[]
+  shipments     Shipment[]
+}
+
+model BankAccount {
+  id            String   @id @default(uuid())
+  bankName      String
+  branchName    String
+  accountType   String   // 普通/当座
+  accountNumber String
+  accountHolder String
+  companyId     Company
+  isDefault     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ExchangeRate {
+  id           String   @id @default(uuid())
+  fromCurrency Currency
+  toCurrency   Currency
+  rate         Float
+  effectiveDate DateTime
+  createdAt    DateTime @default(now())
+
+  @@unique([fromCurrency, toCurrency, effectiveDate])
+}
+
+model CustomerPrice {
+  id          String          @id @default(uuid())
+  partnerId   String
+  partner     BusinessPartner @relation(fields: [partnerId], references: [id])
+  productId   String
+  product     Product         @relation(fields: [productId], references: [id])
+  unitPrice   Float
+  currency    Currency        @default(JPY)
+  validFrom   DateTime
+  validTo     DateTime?
+  note        String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  deletedAt   DateTime?
+  createdBy   String?
+  createdByUser User?         @relation("CustomerPriceCreatedBy", fields: [createdBy], references: [id])
+  updatedBy   String?
+  updatedByUser User?         @relation("CustomerPriceUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@unique([partnerId, productId, validFrom])
+}
+
+// =============================================================================
+// C. MR事業（樹脂） (8テーブル)
+// =============================================================================
+
+model Purchase {
+  id              String          @id @default(uuid())
+  purchaseNumber  String          @unique
+  companyId       Company         @default(CFP)
+  division        Division        @default(MR)
+
+  supplierId      String
+  supplier        BusinessPartner @relation("PurchaseSupplier", fields: [supplierId], references: [id])
+  pickupPartnerId String?
+  pickupPartner   BusinessPartner? @relation("PurchasePickup", fields: [pickupPartnerId], references: [id])
+
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  packagingType   PackagingType?
+  warehouseId     String?
+  warehouse       Warehouse?      @relation(fields: [warehouseId], references: [id])
+
+  // 数量・金額
+  quantity        Float                      // kg
+  unitPrice       Float
+  amount          Float                      // quantity * unitPrice
+  freightCost     Float?                     // 運賃
+
+  // 日付
+  purchaseDate    DateTime
+  arrivalDate     DateTime?
+  inspectionDate  DateTime?
+
+  // ステータス
+  status          PurchaseStatus  @default(PLANNED)
+
+  // ISCC
+  isIsccEligible  Boolean         @default(false)
+  allocationNumber String?                   // 引当番号
+
+  // 旧データ参照
+  legacyKintoneId String?
+
+  note            String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("PurchaseCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("PurchaseUpdatedBy", fields: [updatedBy], references: [id])
+
+  inventoryMovements InventoryMovement[]
+}
+
+model Inventory {
+  id              String          @id @default(uuid())
+  companyId       Company         @default(CFP)
+
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  warehouseId     String
+  warehouse       Warehouse       @relation(fields: [warehouseId], references: [id])
+  pickupPartnerId String?
+  pickupPartner   BusinessPartner? @relation("InventoryPickup", fields: [pickupPartnerId], references: [id])
+  packagingType   PackagingType?
+
+  // 数量・単価
+  quantity        Float            @default(0)   // kg
+  movingAvgCost   Float            @default(0)   // 移動平均単価
+
+  // ISCC
+  isIsccEligible  Boolean          @default(false)
+
+  updatedAt       DateTime         @updatedAt
+
+  movements       InventoryMovement[]
+  stocktakeItems  StocktakeItem[]
+
+  @@unique([productId, warehouseId, pickupPartnerId, packagingType])
+}
+
+model InventoryMovement {
+  id              String    @id @default(uuid())
+  inventoryId     String
+  inventory       Inventory @relation(fields: [inventoryId], references: [id])
+
+  movementType    String    // IN, OUT, ADJ, TRANSFER
+  quantity        Float     // +(入庫) or -(出庫)
+  unitPrice       Float?
+  movementDate    DateTime
+
+  // 参照先
+  purchaseId      String?
+  purchase        Purchase?  @relation(fields: [purchaseId], references: [id])
+  shipmentId      String?
+  shipment        Shipment?  @relation(fields: [shipmentId], references: [id])
+  processingOrderId String?
+  processingOrder ProcessingOrder? @relation(fields: [processingOrderId], references: [id])
+
+  note            String?
+  createdAt       DateTime  @default(now())
+  createdBy       String?
+  createdByUser   User?     @relation("InvMovementCreatedBy", fields: [createdBy], references: [id])
+}
+
+model Stocktake {
+  id            String          @id @default(uuid())
+  stocktakeDate DateTime
+  warehouseId   String?
+  status        String          @default("DRAFT") // DRAFT, IN_PROGRESS, CONFIRMED
+  note          String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  createdBy     String?
+  createdByUser User?           @relation("StocktakeCreatedBy", fields: [createdBy], references: [id])
+  updatedBy     String?
+  updatedByUser User?           @relation("StocktakeUpdatedBy", fields: [updatedBy], references: [id])
+  items         StocktakeItem[]
+}
+
+model StocktakeItem {
+  id              String    @id @default(uuid())
+  stocktakeId     String
+  stocktake       Stocktake @relation(fields: [stocktakeId], references: [id])
+  inventoryId     String
+  inventory       Inventory @relation(fields: [inventoryId], references: [id])
+  systemQuantity  Float              // システム数量
+  actualQuantity  Float              // 実棚数量
+  difference      Float              // 差異
+  note            String?
+}
+
+model ProcessingOrder {
+  id              String               @id @default(uuid())
+  orderNumber     String               @unique
+  companyId       Company              @default(CFP)
+  plantId         String
+  plant           Plant                @relation(fields: [plantId], references: [id])
+
+  processType     ProcessType
+
+  // 投入品目
+  inputProductId  String
+  inputProduct    Product              @relation("ProcessingInput", fields: [inputProductId], references: [id])
+  inputQuantity   Float                // kg
+
+  // 完成品目
+  outputProductId String
+  outputProduct   Product              @relation("ProcessingOutput", fields: [outputProductId], references: [id])
+  outputQuantity  Float?               // kg (完了時)
+  yieldRate       Float?               // 歩留まり(%)
+
+  // 加工情報
+  equipmentName   String?              // 機器名
+  reProcessingFee Float?               // RE加工賃
+
+  orderDate       DateTime
+  completedDate   DateTime?
+  status          String               @default("PLANNED") // PLANNED, IN_PROGRESS, COMPLETED
+
+  note            String?
+  legacyKintoneId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?                @relation("ProcOrderCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?                @relation("ProcOrderUpdatedBy", fields: [updatedBy], references: [id])
+
+  inventoryMovements InventoryMovement[]
+}
+
+model Shipment {
+  id              String          @id @default(uuid())
+  shipmentNumber  String          @unique
+  companyId       Company         @default(CFP)
+  division        Division        @default(MR)
+
+  customerId      String
+  customer        BusinessPartner @relation("ShipmentCustomer", fields: [customerId], references: [id])
+  deliveryPartnerId String?
+  deliveryPartner BusinessPartner? @relation("ShipmentDelivery", fields: [deliveryPartnerId], references: [id])
+
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+  packagingType   PackagingType?
+  warehouseId     String?
+  warehouse       Warehouse?      @relation(fields: [warehouseId], references: [id])
+
+  quantity        Float            // kg
+  unitPrice       Float?
+  amount          Float?
+
+  // 日付(3軸)
+  deliveryDate    DateTime?        // 納入日(国内計上)
+  vanningDate     DateTime?        // バンニング日(海外計上)
+  shipmentDate    DateTime?        // 出荷日
+
+  status          ShipmentStatus   @default(SHIPPING_LIST)
+
+  // ISCC
+  isIsccEligible  Boolean          @default(false)
+
+  note            String?
+  legacyKintoneId String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?            @relation("ShipmentCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?            @relation("ShipmentUpdatedBy", fields: [updatedBy], references: [id])
+
+  inventoryMovements InventoryMovement[]
+  dispatch           Dispatch?
+  revenues           Revenue[]
+}
+
+model Dispatch {
+  id              String          @id @default(uuid())
+  shipmentId      String          @unique
+  shipment        Shipment        @relation(fields: [shipmentId], references: [id])
+
+  carrierId       String
+  carrier         BusinessPartner @relation("DispatchCarrier", fields: [carrierId], references: [id])
+
+  vehicleNumber   String?
+  driverName      String?
+  freightCost     Float?
+  dispatchDate    DateTime
+  note            String?
+
+  legacyKintoneId String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("DispatchCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("DispatchUpdatedBy", fields: [updatedBy], references: [id])
+}
+
+// =============================================================================
+// D. CR事業（油化） (7テーブル)
+// =============================================================================
+
+model CrMaterial {
+  id              String            @id @default(uuid())
+  materialNumber  String            @unique
+  companyId       Company           @default(CFP)
+
+  supplierId      String
+  supplier        BusinessPartner   @relation("CrMaterialSupplier", fields: [supplierId], references: [id])
+
+  materialName    String
+  quantity        Float              // kg
+  arrivalDate     DateTime
+  inspectionDate  DateTime?
+  status          CrMaterialStatus   @default(PENDING)
+
+  // 検査結果
+  chlorineContent Float?             // 塩素含有量(%)
+  moistureContent Float?             // 水分含有量(%)
+  foreignMatter   String?            // 異物情報
+
+  note            String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?              @relation("CrMaterialCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?              @relation("CrMaterialUpdatedBy", fields: [updatedBy], references: [id])
+
+  productionMaterials CrProductionMaterial[]
+}
+
+model CrProductionOrder {
+  id              String                 @id @default(uuid())
+  orderNumber     String                 @unique
+  companyId       Company                @default(CFP)
+  plantId         String
+  plant           Plant                  @relation(fields: [plantId], references: [id])
+
+  orderDate       DateTime
+  startDate       DateTime?
+  endDate         DateTime?
+  status          ProductionOrderStatus  @default(INSTRUCTED)
+
+  // 生産結果
+  lightOilOutput  Float?                 // 軽質油(L)
+  heavyOilOutput  Float?                 // 重質油(L)
+  mixedOilOutput  Float?                 // 混合油(L)
+  residueOutput   Float?                 // 残渣(kg)
+
+  note            String?
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?                  @relation("CrProdOrderCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?                  @relation("CrProdOrderUpdatedBy", fields: [updatedBy], references: [id])
+
+  materials       CrProductionMaterial[]
+  tankMovements   TankMovement[]
+}
+
+model CrProductionMaterial {
+  id                String            @id @default(uuid())
+  productionOrderId String
+  productionOrder   CrProductionOrder @relation(fields: [productionOrderId], references: [id])
+  crMaterialId      String
+  crMaterial        CrMaterial        @relation(fields: [crMaterialId], references: [id])
+  quantity          Float              // 投入量(kg)
+}
+
+model Tank {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  name        String
+  tankType    TankType
+  plantId     String
+  plant       Plant     @relation(fields: [plantId], references: [id])
+  capacity    Float              // 最大容量(L)
+  currentLevel Float    @default(0)  // 現在量(L)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  movements   TankMovement[]
+}
+
+model TankMovement {
+  id                String             @id @default(uuid())
+  tankId            String
+  tank              Tank               @relation(fields: [tankId], references: [id])
+  movementType      String             // IN, OUT, TRANSFER
+  quantity          Float              // L
+  movementDate      DateTime
+  productionOrderId String?
+  productionOrder   CrProductionOrder? @relation(fields: [productionOrderId], references: [id])
+  oilShipmentId     String?
+  oilShipment       OilShipment?       @relation(fields: [oilShipmentId], references: [id])
+  note              String?
+  createdAt         DateTime           @default(now())
+}
+
+model OilShipment {
+  id              String          @id @default(uuid())
+  shipmentNumber  String          @unique
+  companyId       Company         @default(CFP)
+
+  customerId      String
+  customer        BusinessPartner @relation("OilShipmentCustomer", fields: [customerId], references: [id])
+
+  oilType         TankType
+  quantity        Float            // L
+  unitPrice       Float?
+  amount          Float?
+  shipmentDate    DateTime
+
+  note            String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("OilShipmentCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("OilShipmentUpdatedBy", fields: [updatedBy], references: [id])
+
+  tankMovements   TankMovement[]
+}
+
+model Residue {
+  id            String   @id @default(uuid())
+  disposalDate  DateTime
+  quantity      Float    // kg
+  disposalMethod String?
+  disposalCost  Float?
+  contractor    String?
+  note          String?
+  createdAt     DateTime @default(now())
+}
+
+// =============================================================================
+// E. 研究室 (5テーブル)
+// =============================================================================
+
+model LabSample {
+  id            String          @id @default(uuid())
+  sampleNumber  String          @unique
+  sampleName    String
+  productId     String?
+  product       Product?        @relation(fields: [productId], references: [id])
+  source        String?                  // サンプル元(仕入先名/ロット等)
+  receivedDate  DateTime
+  status        SampleStatus    @default(RECEIVED)
+  note          String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+  createdBy     String?
+  createdByUser User?           @relation("LabSampleCreatedBy", fields: [createdBy], references: [id])
+  updatedBy     String?
+  updatedByUser User?           @relation("LabSampleUpdatedBy", fields: [updatedBy], references: [id])
+
+  analysisResults       AnalysisResult[]
+  analysisCertificates  AnalysisCertificate[]
+  externalAnalyses      ExternalAnalysis[]
+}
+
+model AnalysisResult {
+  id            String    @id @default(uuid())
+  sampleId      String
+  sample        LabSample @relation(fields: [sampleId], references: [id])
+  testItem      String              // 試験項目
+  testMethod    String?             // 試験方法
+  result        String              // 結果値
+  unit          String?             // 単位
+  standard      String?             // 基準値
+  isPassed      Boolean?
+  analysisDate  DateTime
+  analyst       String?             // 分析者名
+  createdAt     DateTime  @default(now())
+}
+
+model AnalysisCertificate {
+  id            String    @id @default(uuid())
+  certificateNumber String @unique
+  sampleId      String
+  sample        LabSample @relation(fields: [sampleId], references: [id])
+  issueDate     DateTime
+  pdfPath       String?
+  note          String?
+  createdAt     DateTime  @default(now())
+}
+
+model ExternalAnalysis {
+  id              String    @id @default(uuid())
+  sampleId        String
+  sample          LabSample @relation(fields: [sampleId], references: [id])
+  laboratoryName  String            // 外部分析機関名
+  requestDate     DateTime
+  resultDate      DateTime?
+  reportPath      String?
+  cost            Float?
+  note            String?
+  createdAt       DateTime  @default(now())
+}
+
+model LabEquipmentInspection {
+  id              String   @id @default(uuid())
+  equipmentName   String
+  inspectionType  String            // 日常点検/定期点検/校正
+  inspectionDate  DateTime
+  nextDueDate     DateTime?
+  result          String?
+  inspector       String?
+  note            String?
+  createdAt       DateTime @default(now())
+}
+
+// =============================================================================
+// F. 販売・財務 (12テーブル)
+// =============================================================================
+
+model SalesOrder {
+  id              String          @id @default(uuid())
+  orderNumber     String          @unique
+  companyId       Company         @default(CFP)
+  division        Division        @default(MR)
+
+  customerId      String
+  customer        BusinessPartner @relation(fields: [customerId], references: [id])
+
+  orderDate       DateTime
+  deliveryDate    DateTime?
+  status          String          @default("DRAFT") // DRAFT, CONFIRMED, SHIPPED, COMPLETED, CANCELLED
+
+  subtotal        Float           @default(0)
+  taxAmount       Float           @default(0)
+  total           Float           @default(0)
+  currency        Currency        @default(JPY)
+
+  note            String?
+  legacyKintoneId String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("SalesOrderCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("SalesOrderUpdatedBy", fields: [updatedBy], references: [id])
+
+  items           SalesOrderItem[]
+}
+
+model SalesOrderItem {
+  id              String     @id @default(uuid())
+  salesOrderId    String
+  salesOrder      SalesOrder @relation(fields: [salesOrderId], references: [id])
+  productId       String
+  product         Product    @relation(fields: [productId], references: [id])
+  quantity        Float
+  unitPrice       Float
+  amount          Float
+  taxRate         Float      @default(0.10)
+  note            String?
+}
+
+model Revenue {
+  id              String          @id @default(uuid())
+  revenueNumber   String          @unique
+  companyId       Company         @default(CFP)
+  division        Division        @default(MR)
+
+  customerId      String?
+  productId       String?
+  product         Product?        @relation(fields: [productId], references: [id])
+  shipmentId      String?
+  shipment        Shipment?       @relation(fields: [shipmentId], references: [id])
+
+  // 売上区分
+  salesCategory   SalesCategory   @default(SALES)
+
+  // 3日付軸
+  revenueDate     DateTime                 // 売上日
+  billingDate     DateTime?                // 請求日
+  shipmentDate    DateTime?                // 出荷日
+
+  quantity        Float?
+  unitPrice       Float?
+  amount          Float
+  taxRate         Float           @default(0.10)
+  taxAmount       Float           @default(0)
+
+  // 輸出免税
+  isExportExempt  Boolean         @default(false)
+
+  note            String?
+  legacyMysqlId   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("RevenueCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("RevenueUpdatedBy", fields: [updatedBy], references: [id])
+
+  invoiceId       String?
+  invoice         Invoice?        @relation(fields: [invoiceId], references: [id])
+}
+
+model Invoice {
+  id              String          @id @default(uuid())
+  invoiceNumber   String          @unique
+  companyId       Company         @default(CFP)
+
+  customerId      String
+  customer        BusinessPartner @relation(fields: [customerId], references: [id])
+
+  // 繰越残高方式
+  prevBalance     Float           @default(0)    // 前回残高
+  paymentReceived Float           @default(0)    // 入金額
+  carryover       Float           @default(0)    // 繰越 = prevBalance - paymentReceived
+  subtotal        Float           @default(0)    // 当月売上小計
+  taxAmount       Float           @default(0)    // 消費税
+  total           Float           @default(0)    // 請求額 = carryover + subtotal + taxAmount
+
+  billingDate     DateTime                       // 請求日
+  dueDate         DateTime?                      // 支払期限
+  closingDay      ClosingDay?
+
+  status          InvoiceStatus   @default(DRAFT)
+  currency        Currency        @default(JPY)
+
+  note            String?
+  legacyMysqlId   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("InvoiceCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("InvoiceUpdatedBy", fields: [updatedBy], references: [id])
+
+  revenues        Revenue[]
+}
+
+model PaymentReceived {
+  id              String          @id @default(uuid())
+  paymentNumber   String          @unique
+  companyId       Company         @default(CFP)
+
+  customerId      String
+  customer        BusinessPartner @relation(fields: [customerId], references: [id])
+
+  paymentDate     DateTime
+  amount          Float
+  paymentMethod   PaymentMethod
+
+  isReconciled    Boolean         @default(false) // 消込済
+
+  note            String?
+  legacyMysqlId   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("PaymentReceivedCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("PaymentReceivedUpdatedBy", fields: [updatedBy], references: [id])
+}
+
+model PaymentPayable {
+  id              String          @id @default(uuid())
+  paymentNumber   String          @unique
+  companyId       Company         @default(CFP)
+
+  supplierId      String
+  supplier        BusinessPartner @relation(fields: [supplierId], references: [id])
+
+  paymentDate     DateTime
+  amount          Float
+  paymentMethod   PaymentMethod
+
+  isReconciled    Boolean         @default(false)
+
+  note            String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("PaymentPayableCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("PaymentPayableUpdatedBy", fields: [updatedBy], references: [id])
+}
+
+model AccountsReceivable {
+  id              String          @id @default(uuid())
+  companyId       Company         @default(CFP)
+
+  customerId      String
+  customer        BusinessPartner @relation(fields: [customerId], references: [id])
+
+  year            Int
+  month           Int
+  openingBalance  Float           @default(0)
+  salesAmount     Float           @default(0)
+  receivedAmount  Float           @default(0)
+  closingBalance  Float           @default(0)
+
+  legacyMysqlId   String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@unique([customerId, year, month])
+}
+
+model MonthlyClosing {
+  id            String   @id @default(uuid())
+  companyId     Company  @default(CFP)
+  year          Int
+  month         Int
+  isClosed      Boolean  @default(false)
+  closedAt      DateTime?
+  closedBy      String?
+  closedByUser  User?    @relation("MonthlyClosingCreatedBy", fields: [closedBy], references: [id])
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([companyId, year, month])
+}
+
+model JournalEntry {
+  id              String   @id @default(uuid())
+  companyId       Company  @default(CFP)
+  entryDate       DateTime
+  debitAccount    String           // 借方科目コード
+  debitAmount     Float
+  creditAccount   String           // 貸方科目コード
+  creditAmount    Float
+  description     String?
+  sourceType      String?          // REVENUE, PURCHASE, PAYMENT etc.
+  sourceId        String?          // 元データのID
+  isExported      Boolean  @default(false)
+  exportedAt      DateTime?
+  createdAt       DateTime @default(now())
+  createdBy       String?
+  createdByUser   User?    @relation("JournalEntryCreatedBy", fields: [createdBy], references: [id])
+}
+
+model Quotation {
+  id              String          @id @default(uuid())
+  quotationNumber String          @unique
+  companyId       Company         @default(CFP)
+
+  customerId      String
+  customer        BusinessPartner @relation(fields: [customerId], references: [id])
+
+  quotationDate   DateTime
+  validUntil      DateTime?
+  subject         String?
+  items           Json                     // 見積明細(JSON)
+  subtotal        Float           @default(0)
+  taxAmount       Float           @default(0)
+  total           Float           @default(0)
+  currency        Currency        @default(JPY)
+  status          String          @default("DRAFT") // DRAFT, SENT, ACCEPTED, REJECTED, EXPIRED
+
+  note            String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("QuotationCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("QuotationUpdatedBy", fields: [updatedBy], references: [id])
+}
+
+// =============================================================================
+// G. ISCC・トレーサビリティ (5テーブル)
+// =============================================================================
+
+model IsccCertificate {
+  id              String          @id @default(uuid())
+  certNumber      String          @unique
+  partnerId       String?
+  partner         BusinessPartner? @relation(fields: [partnerId], references: [id])
+
+  holderName      String
+  scope           String?                  // 認証範囲
+  issueDate       DateTime
+  expiryDate      DateTime
+  status          String          @default("ACTIVE") // ACTIVE, EXPIRING, EXPIRED, SUSPENDED
+  pdfPath         String?
+
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("IsccCertCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("IsccCertUpdatedBy", fields: [updatedBy], references: [id])
+
+  massBalances    MassBalance[]
+}
+
+model MassBalance {
+  id              String          @id @default(uuid())
+  period          String                   // "2026-01" (年月)
+  certificateId   String
+  certificate     IsccCertificate @relation(fields: [certificateId], references: [id])
+  productId       String
+  product         Product         @relation(fields: [productId], references: [id])
+
+  inputQuantity   Float                    // 投入量(kg)
+  outputQuantity  Float                    // 産出量(kg)
+  balanceQuantity Float                    // 残高(kg)
+  ghgEmission     Float?                   // GHG排出量
+
+  note            String?
+  createdAt       DateTime        @default(now())
+  createdBy       String?
+  createdByUser   User?           @relation("MassBalanceCreatedBy", fields: [createdBy], references: [id])
+
+  @@unique([certificateId, productId, period])
+}
+
+model SustainabilityDeclaration {
+  id              String   @id @default(uuid())
+  sdNumber        String   @unique
+  issueDate       DateTime
+  rawMaterial     String?
+  countryOfOrigin String?
+  ghgValue        Float?
+  pdfPath         String?
+  note            String?
+  createdAt       DateTime @default(now())
+}
+
+model TraceRecord {
+  id              String       @id @default(uuid())
+  traceNumber     String       @unique
+  sourceType      String                  // PURCHASE, PROCESSING, SHIPMENT
+  sourceId        String
+  createdAt       DateTime     @default(now())
+  createdBy       String?
+  createdByUser   User?        @relation("TraceRecordCreatedBy", fields: [createdBy], references: [id])
+
+  stages          TraceStage[]
+}
+
+model TraceStage {
+  id              String      @id @default(uuid())
+  traceRecordId   String
+  traceRecord     TraceRecord @relation(fields: [traceRecordId], references: [id])
+  stageOrder      Int
+  stageName       String               // 原料受入, 加工, 出荷 etc.
+  stageDate       DateTime
+  location        String?
+  quantity        Float?
+  note            String?
+  createdAt       DateTime    @default(now())
+}
+
+// =============================================================================
+// H. 承認・監査 (4テーブル)
+// =============================================================================
+
+model ApprovalRequest {
+  id              String           @id @default(uuid())
+  requestNumber   String           @unique
+  category        ApprovalCategory
+  targetType      String                    // テーブル名
+  targetId        String                    // 対象レコードID
+  title           String
+  description     String?
+  status          ApprovalStatus   @default(PENDING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  createdBy       String?
+  createdByUser   User?            @relation("ApprovalRequestCreatedBy", fields: [createdBy], references: [id])
+
+  steps           ApprovalStep[]
+}
+
+model ApprovalStep {
+  id              String          @id @default(uuid())
+  requestId       String
+  request         ApprovalRequest @relation(fields: [requestId], references: [id])
+  stepOrder       Int
+  approverId      String
+  approver        User            @relation("ApprovalStepApprover", fields: [approverId], references: [id])
+  status          ApprovalStatus  @default(PENDING)
+  comment         String?
+  actionAt        DateTime?
+  createdAt       DateTime        @default(now())
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  action      String            // CREATE, UPDATE, DELETE
+  tableName   String
+  recordId    String
+  oldData     Json?
+  newData     Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+}
+
+model NumberSequence {
+  id          String   @id @default(uuid())
+  prefix      String
+  year        Int
+  currentNumber Int    @default(0)
+  format      String   @default("YYYY-NNNN") // PREFIX-YYYY-NNNN
+
+  @@unique([prefix, year])
+}
+
+// =============================================================================
+// I. 経費・管理 (7テーブル)
+// =============================================================================
+
+model Contract {
+  id              String          @id @default(uuid())
+  contractNumber  String          @unique
+  companyId       Company         @default(CFP)
+
+  partnerId       String
+  partner         BusinessPartner @relation(fields: [partnerId], references: [id])
+
+  title           String
+  contractType    String?                  // 売買契約/加工委託/運送契約 etc.
+  startDate       DateTime
+  endDate         DateTime?
+  autoRenewal     Boolean         @default(false)
+  renewalNoticeDays Int?                   // 解約通知期限(日)
+  status          ContractStatus  @default(ACTIVE)
+  filePath        String?
+
+  note            String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?           @relation("ContractCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?           @relation("ContractUpdatedBy", fields: [updatedBy], references: [id])
+}
+
+model Expense {
+  id              String        @id @default(uuid())
+  expenseNumber   String        @unique
+  companyId       Company       @default(CFP)
+  applicant       String                   // 申請者名
+  department      String?
+  expenseDate     DateTime
+  totalAmount     Float         @default(0)
+  status          String        @default("DRAFT") // DRAFT, SUBMITTED, APPROVED, REJECTED, PAID
+
+  note            String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
+  createdBy       String?
+  createdByUser   User?         @relation("ExpenseCreatedBy", fields: [createdBy], references: [id])
+  updatedBy       String?
+  updatedByUser   User?         @relation("ExpenseUpdatedBy", fields: [updatedBy], references: [id])
+
+  items           ExpenseItem[]
+}
+
+model ExpenseItem {
+  id            String   @id @default(uuid())
+  expenseId     String
+  expense       Expense  @relation(fields: [expenseId], references: [id])
+  description   String
+  category      String?           // 交通費/宿泊費/消耗品 etc.
+  amount        Float
+  receiptPath   String?
+  note          String?
+}
+
+model TaxReport {
+  id            String   @id @default(uuid())
+  companyId     Company  @default(CFP)
+  reportType    String            // 消費税/法人税 etc.
+  period        String            // "2026-Q1" or "2026"
+  totalSales    Float    @default(0)
+  totalTax      Float    @default(0)
+  filingDate    DateTime?
+  status        String   @default("DRAFT") // DRAFT, FILED, ACCEPTED
+  note          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+  createdByUser User?    @relation("TaxReportCreatedBy", fields: [createdBy], references: [id])
+}
+
+model ProductionCalendar {
+  id            String   @id @default(uuid())
+  date          DateTime @unique
+  isWorkday     Boolean  @default(true)
+  isHoliday     Boolean  @default(false)
+  holidayName   String?
+  note          String?
+}
+
+model Document {
+  id            String       @id @default(uuid())
+  documentType  DocumentType
+  title         String
+  filePath      String
+  fileSize      Int?
+  mimeType      String?
+  sourceType    String?               // 参照元テーブル名
+  sourceId      String?               // 参照元レコードID
+  note          String?
+  createdAt     DateTime     @default(now())
+  createdBy     String?
+  createdByUser User?        @relation("DocumentCreatedBy", fields: [createdBy], references: [id])
+}
+
+model CtsTransaction {
+  id              String   @id @default(uuid())
+  companyId       Company  @default(CTS)
+  transactionType String            // PURCHASE, SALE, TRANSFER
+  fromCountry     String?
+  toCountry       String?
+  currency        Currency @default(USD)
+  amount          Float
+  exchangeRate    Float?
+  jpyAmount       Float?
+  transactionDate DateTime
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SensorData {
+  id          String   @id @default(uuid())
+  sensorName  String
+  location    String?
+  data        Json              // センサーデータ(JSON)
+  recordedAt  DateTime
+  createdAt   DateTime @default(now())
+}
