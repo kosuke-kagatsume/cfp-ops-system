@@ -3,11 +3,42 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { crMaterials, crMaterialStatusColors, type CrMaterialStatus } from "@/lib/dummy-data-phase2";
-import { Plus, Search, Eye, Shield, AlertTriangle } from "lucide-react";
+import { Plus, Search, Eye, Shield, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
 
-const statusList: CrMaterialStatus[] = ["受入待ち", "検査中", "合格", "不合格"];
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type CrMaterialRow = {
+  id: string;
+  materialNumber: string;
+  materialName: string;
+  quantity: number;
+  arrivalDate: string;
+  inspectionDate: string | null;
+  status: string;
+  chlorineContent: number | null;
+  moistureContent: number | null;
+  foreignMatter: string | null;
+  note: string | null;
+  supplier: { id: string; name: string };
+};
+
+const statusLabels: Record<string, string> = {
+  PENDING: "受入待ち",
+  INSPECTING: "検査中",
+  PASSED: "合格",
+  FAILED: "不合格",
+};
+
+const statusColors: Record<string, string> = {
+  PENDING: "bg-gray-100 text-gray-700",
+  INSPECTING: "bg-amber-50 text-amber-700",
+  PASSED: "bg-emerald-50 text-emerald-700",
+  FAILED: "bg-red-50 text-red-700",
+};
+
+const statusList = ["PENDING", "INSPECTING", "PASSED", "FAILED"] as const;
 
 export default function CrMaterialsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
@@ -16,16 +47,27 @@ export default function CrMaterialsPage() {
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const filtered = crMaterials.filter((m) => {
+  const { data: allMaterials, isLoading: allLoading } = useSWR<CrMaterialRow[]>(
+    "/api/cr/materials",
+    fetcher
+  );
+
+  const materials = allMaterials ?? [];
+
+  const filtered = materials.filter((m) => {
     if (statusFilter !== "all" && m.status !== statusFilter) return false;
     if (search) {
       const q = search.toLowerCase();
-      return m.lotNumber.toLowerCase().includes(q) || m.supplier.includes(q) || m.product.includes(q);
+      return (
+        m.materialNumber.toLowerCase().includes(q) ||
+        m.supplier.name.toLowerCase().includes(q) ||
+        m.materialName.toLowerCase().includes(q)
+      );
     }
     return true;
   });
 
-  const selected = crMaterials.find((m) => m.id === showDetail);
+  const selected = materials.find((m) => m.id === showDetail);
 
   return (
     <>
@@ -43,13 +85,13 @@ export default function CrMaterialsPage() {
         {/* ステータスカード */}
         <div className="grid grid-cols-4 gap-3">
           {statusList.map((status) => {
-            const count = crMaterials.filter((m) => m.status === status).length;
+            const count = materials.filter((m) => m.status === status).length;
             const isActive = statusFilter === status;
             return (
               <button key={status} onClick={() => setStatusFilter(isActive ? "all" : status)}
                 className={`p-3 rounded-xl border text-center transition-colors ${isActive ? "border-primary-400 bg-primary-50" : "border-border bg-surface hover:border-primary-200"}`}>
                 <p className="text-lg font-bold text-text">{count}</p>
-                <p className="text-xs text-text-secondary">{status}</p>
+                <p className="text-xs text-text-secondary">{statusLabels[status]}</p>
               </button>
             );
           })}
@@ -71,53 +113,54 @@ export default function CrMaterialsPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary">
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ロット番号</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">受入日</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">仕入先</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">原料</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ISCC</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((m) => (
-                <tr key={m.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-mono text-primary-600">{m.lotNumber}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{m.receiveDate}</td>
-                  <td className="px-4 py-3 text-sm text-text">{m.supplier}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{m.product}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-text text-right">{m.quantity.toLocaleString()} {m.unit}</td>
-                  <td className="px-4 py-3 text-center">
-                    {m.isIscCertified ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">
-                        <Shield className="w-3 h-3" />認証
-                      </span>
-                    ) : (
-                      <span className="text-xs text-text-tertiary">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${crMaterialStatusColors[m.status]}`}>{m.status}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => setShowDetail(m.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                      <Eye className="w-4 h-4 text-text-tertiary" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-            <p className="text-xs text-text-tertiary">{filtered.length}件 / {crMaterials.length}件</p>
+        {allLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+            <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
-        </div>
+        ) : (
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-surface-secondary">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ロット番号</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">受入日</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">仕入先</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">原料</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ISCC</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
+                  <th className="w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((m) => (
+                  <tr key={m.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                    <td className="px-4 py-3 text-sm font-mono text-primary-600">{m.materialNumber}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{new Date(m.arrivalDate).toLocaleDateString("ja-JP")}</td>
+                    <td className="px-4 py-3 text-sm text-text">{m.supplier.name}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{m.materialName}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-text text-right">{m.quantity.toLocaleString()} kg</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-xs text-text-tertiary">-</span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[m.status] ?? ""}`}>{statusLabels[m.status] ?? m.status}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => setShowDetail(m.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                        <Eye className="w-4 h-4 text-text-tertiary" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-4 py-3 border-t border-border bg-surface-secondary">
+              <p className="text-xs text-text-tertiary">{filtered.length}件 / {materials.length}件</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 登録モーダル */}
@@ -148,36 +191,24 @@ export default function CrMaterialsPage() {
       </Modal>
 
       {/* 詳細モーダル */}
-      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `原料詳細: ${selected.lotNumber}` : ""}
+      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `原料詳細: ${selected.materialNumber}` : ""}
         footer={<>
-          {selected?.status === "受入待ち" && <button onClick={() => { setShowDetail(null); showToast("検査を開始しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">検査開始</button>}
-          {selected?.status === "検査中" && <button onClick={() => { setShowDetail(null); showToast("合格判定しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">合格判定</button>}
+          {selected?.status === "PENDING" && <button onClick={() => { setShowDetail(null); showToast("検査を開始しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">検査開始</button>}
+          {selected?.status === "INSPECTING" && <button onClick={() => { setShowDetail(null); showToast("合格判定しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">合格判定</button>}
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-mono font-medium">{selected.lotNumber}</span>
-              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${crMaterialStatusColors[selected.status]}`}>{selected.status}</span>
+              <span className="text-sm font-mono font-medium">{selected.materialNumber}</span>
+              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status] ?? ""}`}>{statusLabels[selected.status] ?? selected.status}</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">仕入先</p><p className="text-sm text-text">{selected.supplier}</p></div>
-              <div><p className="text-xs text-text-tertiary">受入日</p><p className="text-sm text-text">{selected.receiveDate}</p></div>
-              <div><p className="text-xs text-text-tertiary">原料</p><p className="text-sm text-text">{selected.product}</p></div>
-              <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selected.quantity.toLocaleString()} {selected.unit}</p></div>
+              <div><p className="text-xs text-text-tertiary">仕入先</p><p className="text-sm text-text">{selected.supplier.name}</p></div>
+              <div><p className="text-xs text-text-tertiary">受入日</p><p className="text-sm text-text">{new Date(selected.arrivalDate).toLocaleDateString("ja-JP")}</p></div>
+              <div><p className="text-xs text-text-tertiary">原料</p><p className="text-sm text-text">{selected.materialName}</p></div>
+              <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selected.quantity.toLocaleString()} kg</p></div>
             </div>
-            {selected.isIscCertified && (
-              <div className="p-3 bg-emerald-50 rounded-lg space-y-2">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-4 h-4 text-emerald-600" />
-                  <p className="text-sm font-medium text-emerald-800">ISCC PLUS認証原料</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div><p className="text-xs text-emerald-600">ISCC番号</p><p className="font-mono text-emerald-800">{selected.isccNumber}</p></div>
-                  <div><p className="text-xs text-emerald-600">SD番号</p><p className="font-mono text-emerald-800">{selected.sdNumber}</p></div>
-                </div>
-              </div>
-            )}
           </div>
         )}
       </Modal>

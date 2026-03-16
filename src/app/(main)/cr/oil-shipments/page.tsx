@@ -3,50 +3,71 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { oilShipments } from "@/lib/dummy-data-phase2";
-import { Plus, Search, Eye, Shield, Truck, FileText } from "lucide-react";
+import { Plus, Search, Eye, Shield, Truck, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
 
-const statusColors: Record<string, string> = {
-  "出荷準備": "bg-amber-50 text-amber-700",
-  "出荷完了": "bg-emerald-50 text-emerald-700",
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type OilShipmentRow = {
+  id: string;
+  shipmentNumber: string;
+  oilType: string;
+  quantity: number;
+  unitPrice: number | null;
+  amount: number | null;
+  shipmentDate: string;
+  note: string | null;
+  customer: { id: string; name: string };
 };
 
+const oilTypeLabels: Record<string, string> = {
+  LIGHT_OIL: "Circular Pyrolysis Oil（軽質）",
+  HEAVY_OIL: "Circular Pyrolysis Oil（重質）",
+  MIXED_OIL: "Circular Pyrolysis Oil（混合）",
+  RESIDUE: "残渣",
+};
+
+// Oil shipments don't have a status field in the schema - we treat all as "出荷完了"
+// In the future, a status field could be added
+
 export default function OilShipmentsPage() {
-  const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const filtered = oilShipments.filter((s) => {
-    if (statusFilter !== "all" && s.status !== statusFilter) return false;
+  const { data: allShipments, isLoading } = useSWR<OilShipmentRow[]>(
+    "/api/cr/oil-shipments",
+    fetcher
+  );
+
+  const shipments = allShipments ?? [];
+
+  const filtered = shipments.filter((s) => {
     if (search) {
       const q = search.toLowerCase();
-      return s.number.toLowerCase().includes(q) || s.customer.includes(q);
+      return s.shipmentNumber.toLowerCase().includes(q) || s.customer.name.toLowerCase().includes(q);
     }
     return true;
   });
 
-  const selected = oilShipments.find((s) => s.id === showDetail);
+  const selected = shipments.find((s) => s.id === showDetail);
 
   return (
     <>
       <Header title="出荷管理（油化）" />
       <div className="p-6 space-y-4">
-        {/* ステータスカード */}
+        {/* サマリカード */}
         <div className="grid grid-cols-2 gap-3">
-          {["出荷準備", "出荷完了"].map((status) => {
-            const count = oilShipments.filter((s) => s.status === status).length;
-            const isActive = statusFilter === status;
-            return (
-              <button key={status} onClick={() => setStatusFilter(isActive ? "all" : status)}
-                className={`p-4 rounded-xl border text-center transition-colors ${isActive ? "border-primary-400 bg-primary-50" : "border-border bg-surface hover:border-primary-200"}`}>
-                <p className="text-2xl font-bold text-text">{count}</p>
-                <p className="text-sm text-text-secondary">{status}</p>
-              </button>
-            );
-          })}
+          <div className="p-4 rounded-xl border border-border bg-surface text-center">
+            <p className="text-2xl font-bold text-text">{shipments.length}</p>
+            <p className="text-sm text-text-secondary">出荷件数</p>
+          </div>
+          <div className="p-4 rounded-xl border border-border bg-surface text-center">
+            <p className="text-2xl font-bold text-text">{shipments.reduce((sum, s) => sum + s.quantity, 0).toLocaleString()} L</p>
+            <p className="text-sm text-text-secondary">総出荷量</p>
+          </div>
         </div>
 
         {/* ツールバー */}
@@ -57,7 +78,6 @@ export default function OilShipmentsPage() {
               <input type="text" placeholder="出荷番号、顧客名で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
                 className="pl-10 pr-4 py-2 w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
-            {statusFilter !== "all" && <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>}
           </div>
           <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
             <Plus className="w-4 h-4" />出荷登録
@@ -65,55 +85,52 @@ export default function OilShipmentsPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-surface-secondary">
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷番号</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷日</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">顧客</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">製品</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">車両</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ISCC</th>
-                <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                <th className="w-10"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((s) => (
-                <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
-                  <td className="px-4 py-3 text-sm font-mono text-primary-600">{s.number}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{s.date}</td>
-                  <td className="px-4 py-3 text-sm text-text">{s.customer}</td>
-                  <td className="px-4 py-3 text-sm text-text-secondary">{s.product}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-text text-right">{s.quantity.toLocaleString()} {s.unit}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 text-sm text-text-secondary">
-                      <Truck className="w-3.5 h-3.5" />{s.vehicleType}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">
-                      <Shield className="w-3 h-3" />{s.sdNumber}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[s.status]}`}>{s.status}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button onClick={() => setShowDetail(s.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                      <Eye className="w-4 h-4 text-text-tertiary" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-            <p className="text-xs text-text-tertiary">{filtered.length}件 / {oilShipments.length}件</p>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+            <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
-        </div>
+        ) : (
+          <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-border bg-surface-secondary">
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷番号</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷日</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">顧客</th>
+                  <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">製品</th>
+                  <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量</th>
+                  <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ISCC</th>
+                  <th className="w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((s) => (
+                  <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                    <td className="px-4 py-3 text-sm font-mono text-primary-600">{s.shipmentNumber}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{new Date(s.shipmentDate).toLocaleDateString("ja-JP")}</td>
+                    <td className="px-4 py-3 text-sm text-text">{s.customer.name}</td>
+                    <td className="px-4 py-3 text-sm text-text-secondary">{oilTypeLabels[s.oilType] ?? s.oilType}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-text text-right">{s.quantity.toLocaleString()} L</td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">
+                        <Shield className="w-3 h-3" />認証
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => setShowDetail(s.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                        <Eye className="w-4 h-4 text-text-tertiary" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div className="px-4 py-3 border-t border-border bg-surface-secondary">
+              <p className="text-xs text-text-tertiary">{filtered.length}件 / {shipments.length}件</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 登録モーダル */}
@@ -130,7 +147,7 @@ export default function OilShipmentsPage() {
             { value: "1", label: "Circular Pyrolysis Oil（軽質）" }, { value: "2", label: "Circular Pyrolysis Oil（重質）" }, { value: "3", label: "Circular Pyrolysis Oil（混合）" },
           ]} /></FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="数量(kg)" required><FormInput type="number" placeholder="例: 19000" /></FormField>
+            <FormField label="数量(L)" required><FormInput type="number" placeholder="例: 19000" /></FormField>
             <FormField label="出荷タンク" required><FormSelect placeholder="選択" options={[
               { value: "1", label: "TK-01 軽質油タンクA (32.5kL)" }, { value: "2", label: "TK-02 軽質油タンクB (12.0kL)" },
               { value: "3", label: "TK-04 混合油タンク (8.2kL)" },
@@ -146,33 +163,33 @@ export default function OilShipmentsPage() {
       </Modal>
 
       {/* 詳細モーダル */}
-      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `出荷詳細: ${selected.number}` : ""}
+      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `出荷詳細: ${selected.shipmentNumber}` : ""}
         footer={<>
           <button onClick={() => { showToast("成績書PDF生成（開発中）", "info"); }} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><FileText className="w-4 h-4" />成績書</button>
-          {selected?.status === "出荷準備" && <button onClick={() => { setShowDetail(null); showToast("出荷完了にしました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">出荷完了</button>}
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-mono font-medium">{selected.number}</span>
-              <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status]}`}>{selected.status}</span>
+              <span className="text-sm font-mono font-medium">{selected.shipmentNumber}</span>
+              <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">出荷完了</span>
             </div>
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.customer}</p></div>
-              <div><p className="text-xs text-text-tertiary">出荷日</p><p className="text-sm text-text">{selected.date}</p></div>
-              <div><p className="text-xs text-text-tertiary">製品</p><p className="text-sm text-text">{selected.product}</p></div>
-              <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selected.quantity.toLocaleString()} {selected.unit}</p></div>
+              <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.customer.name}</p></div>
+              <div><p className="text-xs text-text-tertiary">出荷日</p><p className="text-sm text-text">{new Date(selected.shipmentDate).toLocaleDateString("ja-JP")}</p></div>
+              <div><p className="text-xs text-text-tertiary">製品</p><p className="text-sm text-text">{oilTypeLabels[selected.oilType] ?? selected.oilType}</p></div>
+              <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selected.quantity.toLocaleString()} L</p></div>
             </div>
             <div className="p-3 bg-surface-tertiary rounded-lg space-y-2">
               <p className="text-xs font-medium text-text">出荷情報</p>
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div><p className="text-xs text-text-tertiary">車両タイプ</p><p className="text-text">{selected.vehicleType}</p></div>
-                <div><p className="text-xs text-text-tertiary">出荷タンク</p><p className="font-mono text-text">{selected.tank}</p></div>
-                <div><p className="text-xs text-text-tertiary">分析ロット</p><p className="font-mono text-text">{selected.analysisLot}</p></div>
-                <div><p className="text-xs text-text-tertiary">SD番号</p><p className="font-mono text-text">{selected.sdNumber}</p></div>
+                {selected.unitPrice != null && <div><p className="text-xs text-text-tertiary">単価</p><p className="text-text">{selected.unitPrice.toLocaleString()} 円/L</p></div>}
+                {selected.amount != null && <div><p className="text-xs text-text-tertiary">金額</p><p className="text-text">{selected.amount.toLocaleString()} 円</p></div>}
               </div>
             </div>
+            {selected.note && (
+              <div><p className="text-xs text-text-tertiary">備考</p><p className="text-sm text-text">{selected.note}</p></div>
+            )}
           </div>
         )}
       </Modal>

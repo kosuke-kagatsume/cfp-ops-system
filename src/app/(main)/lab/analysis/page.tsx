@@ -1,11 +1,52 @@
 "use client";
 
 import { Header } from "@/components/header";
-import { Modal, FormField, FormInput } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { analysisResults, labSamples, sampleStatusColors } from "@/lib/dummy-data-phase2";
-import { Beaker, CheckCircle, XCircle, Save } from "lucide-react";
+import { Beaker, CheckCircle, XCircle, Save, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+type SampleStatus = "RECEIVED" | "ANALYZING" | "JUDGED" | "REPORTED";
+
+const statusMap: Record<SampleStatus, string> = {
+  RECEIVED: "受付済",
+  ANALYZING: "分析中",
+  JUDGED: "判定済",
+  REPORTED: "報告済",
+};
+
+const statusColors: Record<SampleStatus, string> = {
+  RECEIVED: "bg-gray-50 text-gray-700",
+  ANALYZING: "bg-blue-50 text-blue-700",
+  JUDGED: "bg-amber-50 text-amber-700",
+  REPORTED: "bg-emerald-50 text-emerald-700",
+};
+
+type AnalysisResultItem = {
+  id: string;
+  sampleId: string;
+  testItem: string;
+  testMethod: string | null;
+  result: string;
+  unit: string | null;
+  standard: string | null;
+  isPassed: boolean | null;
+  analysisDate: string;
+  analyst: string | null;
+  sample: {
+    id: string;
+    sampleNumber: string;
+    sampleName: string;
+    status: SampleStatus;
+    source: string | null;
+    product: {
+      displayName: string | null;
+      name: { name: string };
+    } | null;
+  };
+};
 
 // 分析項目テンプレート
 const analysisTemplate = [
@@ -19,14 +60,38 @@ const analysisTemplate = [
 
 export default function LabAnalysisPage() {
   const [selectedSample, setSelectedSample] = useState<string | null>(null);
-  const [showResultModal, setShowResultModal] = useState(false);
   const { showToast } = useToast();
 
-  // 分析対象のサンプル（受付済 or 分析中）
-  const pendingSamples = labSamples.filter((s) => s.status === "受付済" || s.status === "分析中");
-  const completedSamples = labSamples.filter((s) => s.status === "判定済" || s.status === "報告済");
+  const { data: results, isLoading } = useSWR<AnalysisResultItem[]>("/api/lab/analysis", fetcher);
+  const { data: allSamples } = useSWR<Array<{
+    id: string;
+    sampleNumber: string;
+    sampleName: string;
+    status: SampleStatus;
+    source: string | null;
+    product: { displayName: string | null; name: { name: string } } | null;
+  }>>("/api/lab/samples", fetcher);
 
-  const existingResult = analysisResults.find((r) => r.sampleId === selectedSample);
+  if (isLoading) {
+    return (
+      <>
+        <Header title="分析入力" />
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+        </div>
+      </>
+    );
+  }
+
+  const allResults = results ?? [];
+  const samples = allSamples ?? [];
+
+  // 分析対象のサンプル（受付済 or 分析中）
+  const pendingSamples = samples.filter((s) => s.status === "RECEIVED" || s.status === "ANALYZING");
+  const completedSamples = samples.filter((s) => s.status === "JUDGED" || s.status === "REPORTED");
+
+  const productName = (s: { product: { displayName: string | null; name: { name: string } } | null }) =>
+    s.product?.displayName ?? s.product?.name?.name ?? "-";
 
   return (
     <>
@@ -43,14 +108,14 @@ export default function LabAnalysisPage() {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               {pendingSamples.map((s) => (
-                <button key={s.id} onClick={() => setSelectedSample(s.sampleId)}
-                  className={`p-4 rounded-xl border text-left transition-colors ${selectedSample === s.sampleId ? "border-primary-400 bg-primary-50" : "border-border bg-surface hover:border-primary-200"}`}>
+                <button key={s.id} onClick={() => setSelectedSample(s.sampleNumber)}
+                  className={`p-4 rounded-xl border text-left transition-colors ${selectedSample === s.sampleNumber ? "border-primary-400 bg-primary-50" : "border-border bg-surface hover:border-primary-200"}`}>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-mono text-primary-600">{s.sampleId}</span>
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${sampleStatusColors[s.status]}`}>{s.status}</span>
+                    <span className="text-sm font-mono text-primary-600">{s.sampleNumber}</span>
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[s.status]}`}>{statusMap[s.status]}</span>
                   </div>
-                  <p className="text-sm text-text">{s.product}</p>
-                  <p className="text-xs text-text-tertiary">ロット: {s.lot} | {s.process}</p>
+                  <p className="text-sm text-text">{productName(s)}</p>
+                  <p className="text-xs text-text-tertiary">{s.sampleName} | {s.source ?? "-"}</p>
                 </button>
               ))}
             </div>
@@ -111,25 +176,29 @@ export default function LabAnalysisPage() {
           <h2 className="text-sm font-medium text-text mb-3">分析済み結果</h2>
           <div className="space-y-3">
             {completedSamples.map((s) => {
-              const result = analysisResults.find((r) => r.sampleId === s.sampleId);
+              const sampleResults = allResults.filter((r) => r.sample.sampleNumber === s.sampleNumber);
+              const allPassed = sampleResults.length > 0 && sampleResults.every((r) => r.isPassed === true);
+              const anyFailed = sampleResults.some((r) => r.isPassed === false);
+              const judgment = sampleResults.length === 0 ? null : anyFailed ? "不合格" : allPassed ? "合格" : null;
+
               return (
                 <div key={s.id} className="bg-surface rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-mono text-primary-600">{s.sampleId}</span>
-                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${sampleStatusColors[s.status]}`}>{s.status}</span>
+                      <span className="text-sm font-mono text-primary-600">{s.sampleNumber}</span>
+                      <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[s.status]}`}>{statusMap[s.status]}</span>
                     </div>
-                    {result && (
+                    {judgment && (
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${
-                        result.judgment === "合格" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
+                        judgment === "合格" ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"
                       }`}>
-                        {result.judgment === "合格" ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
-                        {result.judgment}
+                        {judgment === "合格" ? <CheckCircle className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                        {judgment}
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-text-secondary mb-2">{s.product} | ロット: {s.lot}</p>
-                  {result && (
+                  <p className="text-sm text-text-secondary mb-2">{productName(s)} | {s.sampleName}</p>
+                  {sampleResults.length > 0 ? (
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
@@ -141,21 +210,22 @@ export default function LabAnalysisPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {result.items.map((item) => (
-                            <tr key={item.name} className="border-b border-border last:border-0">
-                              <td className="px-2 py-1 text-text">{item.name}</td>
-                              <td className="px-2 py-1 font-mono text-text-secondary">{item.spec}</td>
-                              <td className="px-2 py-1 font-mono font-medium text-text">{item.value}{item.unit ? ` ${item.unit}` : ""}</td>
+                          {sampleResults.map((r) => (
+                            <tr key={r.id} className="border-b border-border last:border-0">
+                              <td className="px-2 py-1 text-text">{r.testItem}</td>
+                              <td className="px-2 py-1 font-mono text-text-secondary">{r.standard ?? "-"}</td>
+                              <td className="px-2 py-1 font-mono font-medium text-text">{r.result}{r.unit ? ` ${r.unit}` : ""}</td>
                               <td className="px-2 py-1 text-center">
-                                {item.pass ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 inline" /> : <XCircle className="w-3.5 h-3.5 text-red-500 inline" />}
+                                {r.isPassed === true ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500 inline" /> : r.isPassed === false ? <XCircle className="w-3.5 h-3.5 text-red-500 inline" /> : <span className="text-text-tertiary">-</span>}
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
+                  ) : (
+                    <p className="text-xs text-text-tertiary">分析データなし</p>
                   )}
-                  {!result && <p className="text-xs text-text-tertiary">分析データなし</p>}
                 </div>
               );
             })}

@@ -3,18 +3,75 @@
 import { Header } from "@/components/header";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { isccCertificates, massBalanceEntries, sdDocuments } from "@/lib/dummy-data-phase3";
-import { Shield, FileText, Eye, Download, AlertTriangle, CheckCircle } from "lucide-react";
+import { Shield, Eye, Download, Loader2 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
+
+const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Tab = "certificates" | "massBalance" | "sdDocuments";
+
+type IsccCertificateItem = {
+  id: string;
+  certNumber: string;
+  holderName: string;
+  scope: string | null;
+  issueDate: string;
+  expiryDate: string;
+  status: string;
+  partner: { id: string; name: string } | null;
+  _count: { massBalances: number };
+};
+
+type MassBalanceItem = {
+  id: string;
+  period: string;
+  inputQuantity: number;
+  outputQuantity: number;
+  balanceQuantity: number;
+  ghgEmission: number | null;
+  note: string | null;
+  certificate: { id: string; certNumber: string; holderName: string };
+  product: { id: string; code: string; name: { name: string } | null };
+};
+
+type SdDocumentItem = {
+  id: string;
+  sdNumber: string;
+  issueDate: string;
+  rawMaterial: string | null;
+  countryOfOrigin: string | null;
+  ghgValue: number | null;
+  pdfPath: string | null;
+  note: string | null;
+};
+
+const statusLabel: Record<string, string> = {
+  ACTIVE: "有効",
+  EXPIRING: "期限間近",
+  EXPIRED: "期限切れ",
+  SUSPENDED: "停止",
+};
 
 export default function IsccPage() {
   const [activeTab, setActiveTab] = useState<Tab>("certificates");
   const [showSdDetail, setShowSdDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const selectedSd = sdDocuments.find((d) => d.id === showSdDetail);
+  const { data: certificates, isLoading: loadingCerts } = useSWR<IsccCertificateItem[]>(
+    "/api/iscc/certificates",
+    fetcher
+  );
+  const { data: massBalances, isLoading: loadingMb } = useSWR<MassBalanceItem[]>(
+    "/api/iscc/mass-balance",
+    fetcher
+  );
+  const { data: sdDocuments, isLoading: loadingSd } = useSWR<SdDocumentItem[]>(
+    "/api/iscc/sd",
+    fetcher
+  );
+
+  const selectedSd = sdDocuments?.find((d) => d.id === showSdDetail);
 
   return (
     <>
@@ -29,7 +86,7 @@ export default function IsccPage() {
           </div>
           <div className="text-right">
             <p className="text-xs text-emerald-600">認証サイト</p>
-            <p className="text-sm font-medium text-emerald-800">{isccCertificates.length}拠点</p>
+            <p className="text-sm font-medium text-emerald-800">{certificates?.length ?? 0}拠点</p>
           </div>
         </div>
 
@@ -50,28 +107,38 @@ export default function IsccPage() {
         {/* 認証情報タブ */}
         {activeTab === "certificates" && (
           <div className="space-y-4">
-            {isccCertificates.map((cert) => (
-              <div key={cert.id} className="bg-surface rounded-xl border border-border p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <Shield className="w-5 h-5 text-emerald-600" />
-                    <div>
-                      <p className="text-sm font-mono font-medium text-text">{cert.number}</p>
-                      <p className="text-xs text-text-tertiary">{cert.site}</p>
-                    </div>
-                  </div>
-                  <span className="inline-flex px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">{cert.status}</span>
-                </div>
-                <div className="grid grid-cols-4 gap-4">
-                  <div><p className="text-xs text-text-tertiary">有効期間</p><p className="text-sm text-text">{cert.validFrom} 〜 {cert.validUntil}</p></div>
-                  <div><p className="text-xs text-text-tertiary">スコープ</p><p className="text-sm text-text">{cert.scope}</p></div>
-                  <div><p className="text-xs text-text-tertiary">最終監査日</p><p className="text-sm text-text">{cert.lastAudit}</p></div>
-                  <div><p className="text-xs text-text-tertiary">残日数</p><p className="text-sm font-medium text-text">
-                    {Math.ceil((new Date(cert.validUntil).getTime() - new Date("2026-03-11").getTime()) / (1000 * 60 * 60 * 24))}日
-                  </p></div>
-                </div>
+            {loadingCerts ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
               </div>
-            ))}
+            ) : certificates && certificates.length > 0 ? (
+              certificates.map((cert) => (
+                <div key={cert.id} className="bg-surface rounded-xl border border-border p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-5 h-5 text-emerald-600" />
+                      <div>
+                        <p className="text-sm font-mono font-medium text-text">{cert.certNumber}</p>
+                        <p className="text-xs text-text-tertiary">{cert.holderName}</p>
+                      </div>
+                    </div>
+                    <span className="inline-flex px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">{statusLabel[cert.status] ?? cert.status}</span>
+                  </div>
+                  <div className="grid grid-cols-4 gap-4">
+                    <div><p className="text-xs text-text-tertiary">有効期間</p><p className="text-sm text-text">{new Date(cert.issueDate).toLocaleDateString("ja-JP")} 〜 {new Date(cert.expiryDate).toLocaleDateString("ja-JP")}</p></div>
+                    <div><p className="text-xs text-text-tertiary">スコープ</p><p className="text-sm text-text">{cert.scope ?? "-"}</p></div>
+                    <div><p className="text-xs text-text-tertiary">マスバランス件数</p><p className="text-sm text-text">{cert._count.massBalances}件</p></div>
+                    <div><p className="text-xs text-text-tertiary">残日数</p><p className="text-sm font-medium text-text">
+                      {Math.ceil((new Date(cert.expiryDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}日
+                    </p></div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-text-tertiary">認証情報がありません</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -79,36 +146,42 @@ export default function IsccPage() {
         {activeTab === "massBalance" && (
           <div className="space-y-4">
             <p className="text-xs text-text-tertiary">認証原料の投入量と出荷量のバランスを管理。投入量を超える出荷はできません。</p>
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-surface-secondary">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">期間</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">サイト</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">認証投入(kg)</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">総投入(kg)</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">認証出荷(kg)</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">総出荷(kg)</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">認証残高(kg)</th>
-                    <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">SD数</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {massBalanceEntries.map((entry) => (
-                    <tr key={entry.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
-                      <td className="px-4 py-3 text-sm font-medium text-text">{entry.period}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary">{entry.site}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium text-emerald-600">{entry.inputCertified.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right text-text-secondary">{entry.inputTotal.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right font-medium text-blue-600">{entry.outputCertified.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right text-text-secondary">{entry.outputTotal.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-right font-bold text-text">{entry.balance.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-center">{entry.sdDocuments}</td>
+            {loadingMb ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+              </div>
+            ) : massBalances && massBalances.length > 0 ? (
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-surface-secondary">
+                      <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">期間</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">認証番号</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">製品</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">投入量(kg)</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">産出量(kg)</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">残高(kg)</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {massBalances.map((entry) => (
+                      <tr key={entry.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
+                        <td className="px-4 py-3 text-sm font-medium text-text">{entry.period}</td>
+                        <td className="px-4 py-3 text-sm text-text-secondary font-mono">{entry.certificate.certNumber}</td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">{entry.product.name?.name ?? entry.product.code}</td>
+                        <td className="px-4 py-3 text-sm text-right font-medium text-emerald-600">{entry.inputQuantity.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm text-right font-medium text-blue-600">{entry.outputQuantity.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-sm text-right font-bold text-text">{entry.balanceQuantity.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-text-tertiary">マスバランスデータがありません</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -119,42 +192,50 @@ export default function IsccPage() {
               <p className="text-xs text-text-tertiary">Sustainability Declaration（持続可能性宣言）文書の管理</p>
               <button onClick={() => showToast("SD文書を新規作成（開発中）", "info")} className="px-3 py-1.5 text-xs bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">新規作成</button>
             </div>
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-surface-secondary">
-                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">SD番号</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">種別</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">日付</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">取引先</th>
-                    <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">製品</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量(kg)</th>
-                    <th className="w-10"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sdDocuments.map((doc) => (
-                    <tr key={doc.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
-                      <td className="px-4 py-3 text-sm font-mono text-primary-600">{doc.number}</td>
-                      <td className="px-4 py-3"><span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${doc.type === "出荷" ? "bg-emerald-50 text-emerald-700" : "bg-blue-50 text-blue-700"}`}>{doc.type}</span></td>
-                      <td className="px-4 py-3 text-sm text-text-secondary">{doc.date}</td>
-                      <td className="px-4 py-3 text-sm text-text">{doc.customer}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary">{doc.product}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-text text-right">{doc.quantity.toLocaleString()}</td>
-                      <td className="px-4 py-3">
-                        <button onClick={() => setShowSdDetail(doc.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
-                      </td>
+            {loadingSd ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
+              </div>
+            ) : sdDocuments && sdDocuments.length > 0 ? (
+              <div className="bg-surface rounded-xl border border-border overflow-hidden">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-border bg-surface-secondary">
+                      <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">SD番号</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">発行日</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">原材料</th>
+                      <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">原産国</th>
+                      <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">GHG値</th>
+                      <th className="w-10"></th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {sdDocuments.map((doc) => (
+                      <tr key={doc.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
+                        <td className="px-4 py-3 text-sm font-mono text-primary-600">{doc.sdNumber}</td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">{new Date(doc.issueDate).toLocaleDateString("ja-JP")}</td>
+                        <td className="px-4 py-3 text-sm text-text">{doc.rawMaterial ?? "-"}</td>
+                        <td className="px-4 py-3 text-sm text-text-secondary">{doc.countryOfOrigin ?? "-"}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-text text-right">{doc.ghgValue != null ? doc.ghgValue.toFixed(2) : "-"}</td>
+                        <td className="px-4 py-3">
+                          <button onClick={() => setShowSdDetail(doc.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <p className="text-sm text-text-tertiary">SD文書がありません</p>
+              </div>
+            )}
           </div>
         )}
       </div>
 
       {/* SD詳細モーダル */}
-      <Modal isOpen={!!showSdDetail} onClose={() => setShowSdDetail(null)} title={selectedSd ? `SD文書: ${selectedSd.number}` : ""}
+      <Modal isOpen={!!showSdDetail} onClose={() => setShowSdDetail(null)} title={selectedSd ? `SD文書: ${selectedSd.sdNumber}` : ""}
         footer={<>
           <button onClick={() => showToast("SD文書PDF生成（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Download className="w-4 h-4" />PDF</button>
           <button onClick={() => setShowSdDetail(null)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">閉じる</button>
@@ -162,13 +243,12 @@ export default function IsccPage() {
         {selectedSd && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div><p className="text-xs text-text-tertiary">SD番号</p><p className="text-sm font-mono text-text">{selectedSd.number}</p></div>
-              <div><p className="text-xs text-text-tertiary">ISCC番号</p><p className="text-sm font-mono text-text">{selectedSd.isccNumber}</p></div>
-              <div><p className="text-xs text-text-tertiary">種別</p><p className="text-sm text-text">{selectedSd.type}</p></div>
-              <div><p className="text-xs text-text-tertiary">日付</p><p className="text-sm text-text">{selectedSd.date}</p></div>
-              <div><p className="text-xs text-text-tertiary">取引先</p><p className="text-sm text-text">{selectedSd.customer}</p></div>
-              <div><p className="text-xs text-text-tertiary">製品</p><p className="text-sm text-text">{selectedSd.product}</p></div>
-              <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selectedSd.quantity.toLocaleString()} kg</p></div>
+              <div><p className="text-xs text-text-tertiary">SD番号</p><p className="text-sm font-mono text-text">{selectedSd.sdNumber}</p></div>
+              <div><p className="text-xs text-text-tertiary">発行日</p><p className="text-sm text-text">{new Date(selectedSd.issueDate).toLocaleDateString("ja-JP")}</p></div>
+              <div><p className="text-xs text-text-tertiary">原材料</p><p className="text-sm text-text">{selectedSd.rawMaterial ?? "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">原産国</p><p className="text-sm text-text">{selectedSd.countryOfOrigin ?? "-"}</p></div>
+              <div><p className="text-xs text-text-tertiary">GHG値</p><p className="text-sm font-medium text-text">{selectedSd.ghgValue != null ? selectedSd.ghgValue.toFixed(2) : "-"}</p></div>
+              {selectedSd.note && <div><p className="text-xs text-text-tertiary">備考</p><p className="text-sm text-text">{selectedSd.note}</p></div>}
             </div>
           </div>
         )}
