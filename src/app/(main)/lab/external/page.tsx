@@ -154,9 +154,9 @@ export default function ExternalAnalysisPage() {
   return (
     <>
       <Header title="外部受託分析" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* サマリ */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary">依頼件数</p>
             <p className="text-2xl font-bold text-text">{allExternals.length}件</p>
@@ -191,7 +191,7 @@ export default function ExternalAnalysisPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-text-secondary">{filtered.length}件</p>
           <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
             <Plus className="w-4 h-4" />依頼登録
@@ -199,8 +199,8 @@ export default function ExternalAnalysisPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-border bg-surface-secondary">
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">サンプルID</th>
@@ -227,9 +227,9 @@ export default function ExternalAnalysisPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setShowDetail(a.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
-                      <button onClick={() => openEdit(a)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
-                      <button onClick={() => handleDelete(a.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                      <button onClick={() => setShowDetail(a.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => openEdit(a)} className="p-2 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => handleDelete(a.id)} className="p-2 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
                     </div>
                   </td>
                 </tr>
@@ -252,7 +252,7 @@ export default function ExternalAnalysisPage() {
         <div className="space-y-4">
           <FormField label="外部分析機関名" required><FormInput placeholder="例: SGS Japan" value={newForm.laboratoryName} onChange={(e) => setNewForm({ ...newForm, laboratoryName: e.target.value })} /></FormField>
           <FormField label="サンプル" required><FormSelect placeholder="サンプルを選択" value={newForm.sampleId} onChange={(e) => setNewForm({ ...newForm, sampleId: e.target.value })} options={(samples ?? []).map((s) => ({ value: s.id, label: `${s.sampleNumber} ${s.sampleName}` }))} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="依頼日" required><FormInput type="date" value={newForm.requestDate} onChange={(e) => setNewForm({ ...newForm, requestDate: e.target.value })} /></FormField>
             <FormField label="費用(円)"><FormInput type="number" placeholder="例: 35000" value={newForm.cost} onChange={(e) => setNewForm({ ...newForm, cost: e.target.value })} /></FormField>
           </div>
@@ -269,7 +269,7 @@ export default function ExternalAnalysisPage() {
         <div className="space-y-4">
           <FormField label="外部分析機関名" required><FormInput value={editForm.laboratoryName} onChange={(e) => setEditForm({ ...editForm, laboratoryName: e.target.value })} /></FormField>
           <FormField label="サンプル" required><FormSelect value={editForm.sampleId} onChange={(e) => setEditForm({ ...editForm, sampleId: e.target.value })} options={(samples ?? []).map((s) => ({ value: s.id, label: `${s.sampleNumber} ${s.sampleName}` }))} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="依頼日" required><FormInput type="date" value={editForm.requestDate} onChange={(e) => setEditForm({ ...editForm, requestDate: e.target.value })} /></FormField>
             <FormField label="結果日"><FormInput type="date" value={editForm.resultDate} onChange={(e) => setEditForm({ ...editForm, resultDate: e.target.value })} /></FormField>
           </div>
@@ -288,11 +288,11 @@ export default function ExternalAnalysisPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium">{selected.sample.sampleNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${displayStatusColors[selected.displayStatus]}`}>{selected.displayStatus}</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">外部機関名</p><p className="text-sm text-text">{selected.laboratoryName}</p></div>
               <div><p className="text-xs text-text-tertiary">依頼日</p><p className="text-sm text-text">{new Date(selected.requestDate).toLocaleDateString("ja-JP")}</p></div>
               <div><p className="text-xs text-text-tertiary">サンプル名</p><p className="text-sm text-text">{selected.sample.sampleName}</p></div>

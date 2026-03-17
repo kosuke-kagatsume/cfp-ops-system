@@ -56,7 +56,7 @@ export default function DeliveryNotesPage() {
   return (
     <>
       <Header title="納品書管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* フロー説明 */}
         <div className="p-4 bg-surface rounded-xl border border-border">
           <p className="text-xs font-medium text-text-secondary mb-2">納品書発行フロー</p>
@@ -84,7 +84,7 @@ export default function DeliveryNotesPage() {
           </button>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -92,7 +92,7 @@ export default function DeliveryNotesPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">タイトル</th>
@@ -117,13 +117,13 @@ export default function DeliveryNotesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => window.open(`/api/documents/delivery-note/${d.id}`, "_blank")} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="納品書印刷">
+                          <button onClick={() => window.open(`/api/documents/delivery-note/${d.id}`, "_blank")} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="納品書印刷">
                             <Printer className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <a href={`/api/pdf/delivery-note?id=${d.id}`} download className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="PDFダウンロード">
+                          <a href={`/api/pdf/delivery-note?id=${d.id}`} download className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="PDFダウンロード">
                             <Download className="w-4 h-4 text-text-tertiary" />
                           </a>
-                          <button onClick={() => setShowDetail(d.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => setShowDetail(d.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
                         </div>
@@ -155,13 +155,13 @@ export default function DeliveryNotesPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-medium text-text">{selected.title}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${typeColor[selected.documentType] ?? "bg-gray-100 text-gray-700"}`}>
                 {typeLabel[selected.documentType] ?? selected.documentType}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">ファイルパス</p><p className="text-sm font-mono text-text">{selected.filePath}</p></div>
               <div><p className="text-xs text-text-tertiary">サイズ</p><p className="text-sm text-text">{formatFileSize(selected.fileSize)}</p></div>
               <div><p className="text-xs text-text-tertiary">MIME</p><p className="text-sm text-text">{selected.mimeType ?? "-"}</p></div>

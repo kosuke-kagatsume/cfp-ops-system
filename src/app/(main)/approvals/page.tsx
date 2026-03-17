@@ -129,7 +129,7 @@ export default function ApprovalsPage() {
   return (
     <>
       <Header title="承認管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 承認待ちサマリ */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -174,7 +174,7 @@ export default function ApprovalsPage() {
                   </div>
                 </div>
                 {item.description && <p className="text-sm text-text-secondary mb-3">{item.description}</p>}
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center gap-4 text-xs text-text-tertiary">
                     <span>申請番号: {item.requestNumber}</span>
                     <span>申請日: {new Date(item.createdAt).toLocaleDateString("ja-JP")}</span>
@@ -227,7 +227,7 @@ export default function ApprovalsPage() {
               <h3 className="text-base font-medium text-text">{selected.title}</h3>
               {selected.description && <p className="text-sm text-text-secondary mt-1">{selected.description}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">申請番号</p><p className="text-sm text-text">{selected.requestNumber}</p></div>
               <div><p className="text-xs text-text-tertiary">申請日</p><p className="text-sm text-text">{new Date(selected.createdAt).toLocaleDateString("ja-JP")}</p></div>
             </div>
@@ -246,7 +246,7 @@ export default function ApprovalsPage() {
                       {step.status === "APPROVED" ? <CheckCircle className="w-4 h-4" /> : step.status === "REJECTED" ? <XCircle className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
                     </div>
                     <div className="flex-1">
-                      <div className="flex items-center justify-between">
+                      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         <p className="text-sm text-text">Step {step.stepOrder}: {step.approver.name}</p>
                         <span className={`text-xs font-medium ${
                           step.status === "APPROVED" ? "text-emerald-600" : step.status === "REJECTED" ? "text-red-600" : "text-amber-600"

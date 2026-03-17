@@ -163,8 +163,8 @@ export default function DispatchPage() {
   return (
     <>
       <Header title="配車管理" />
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 space-y-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-text-secondary">{total}件の配車</p>
           <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
             <Plus className="w-4 h-4" />配車登録
@@ -190,10 +190,10 @@ export default function DispatchPage() {
                     <span className="text-sm font-mono text-primary-600">{d.shipment.shipmentNumber}</span>
                   </button>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => openEdit(d)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="編集">
+                    <button onClick={() => openEdit(d)} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="編集">
                       <Pencil className="w-4 h-4 text-text-tertiary" />
                     </button>
-                    <button onClick={() => handleDelete(d.id)} className="p-1 hover:bg-red-50 rounded transition-colors" title="削除">
+                    <button onClick={() => handleDelete(d.id)} className="p-2 hover:bg-red-50 rounded transition-colors" title="削除">
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </button>
                     <span className="text-sm text-text-secondary ml-2">{new Date(d.dispatchDate).toLocaleDateString("ja-JP")}</span>
@@ -208,7 +208,7 @@ export default function DispatchPage() {
                         <TruckIcon className="w-4 h-4 text-text-tertiary" />
                         <span className="text-sm font-medium text-text">{d.carrier.name}</span>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
                         {d.vehicleNumber && <div><span className="text-text-tertiary">車番: </span><span className="font-mono text-text-secondary">{d.vehicleNumber}</span></div>}
                         {d.driverName && <div><span className="text-text-tertiary">運転手: </span><span className="text-text-secondary">{d.driverName}</span></div>}
                       </div>
@@ -260,7 +260,7 @@ export default function DispatchPage() {
           <FormField label="運送会社" required>
             <FormSelect placeholder="選択" value={newForm.carrierId} onChange={(e) => setNewForm({ ...newForm, carrierId: e.target.value })} options={(carriers ?? []).map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="車両番号">
               <FormInput placeholder="例: 福山 100 あ 1234" value={newForm.vehicleNumber} onChange={(e) => setNewForm({ ...newForm, vehicleNumber: e.target.value })} />
             </FormField>
@@ -287,7 +287,7 @@ export default function DispatchPage() {
           <FormField label="運送会社" required>
             <FormSelect placeholder="選択" value={editForm.carrierId} onChange={(e) => setEditForm({ ...editForm, carrierId: e.target.value })} options={(carriers ?? []).map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="車両番号">
               <FormInput placeholder="例: 福山 100 あ 1234" value={editForm.vehicleNumber} onChange={(e) => setEditForm({ ...editForm, vehicleNumber: e.target.value })} />
             </FormField>
@@ -316,16 +316,16 @@ export default function DispatchPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium">{selected.shipment.shipmentNumber}</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">配車日</p><p className="text-sm text-text">{new Date(selected.dispatchDate).toLocaleDateString("ja-JP")}</p></div>
               <div><p className="text-xs text-text-tertiary">運賃</p><p className="text-sm font-medium text-text">{selected.freightCost != null && selected.freightCost > 0 ? `¥${selected.freightCost.toLocaleString()}` : "-"}</p></div>
             </div>
             <div className="p-3 bg-surface-tertiary rounded-lg space-y-2">
               <p className="text-xs font-medium text-text">運送情報</p>
-              <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                 <div><p className="text-xs text-text-tertiary">運送会社</p><p className="text-text">{selected.carrier.name}</p></div>
                 <div><p className="text-xs text-text-tertiary">車番</p><p className="font-mono text-text">{selected.vehicleNumber ?? "-"}</p></div>
                 <div><p className="text-xs text-text-tertiary">運転手</p><p className="text-text">{selected.driverName ?? "-"}</p></div>

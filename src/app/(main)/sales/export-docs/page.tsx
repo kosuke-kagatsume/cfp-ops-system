@@ -53,7 +53,7 @@ export default function ExportDocsPage() {
   return (
     <>
       <Header title="海外帳票" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         <div className="p-3 bg-surface-tertiary rounded-xl border border-border">
           <p className="text-sm text-text-secondary">海外取引で必要な帳票テンプレートの管理・発行を行います。各帳票をクリックしてプレビューを確認できます。</p>
         </div>
@@ -64,7 +64,7 @@ export default function ExportDocsPage() {
             <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {docTypes.map((doc) => (
               <button key={doc.id} onClick={() => setShowPreview(doc.id)}
                 className={`p-5 rounded-xl border text-left transition-all hover:shadow-md ${doc.color}`}>
@@ -103,8 +103,8 @@ export default function ExportDocsPage() {
                 <div className="flex justify-between"><span className="text-gray-500">To:</span><span>HINDUSTAN POLYMERS PVT. LTD.</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Country:</span><span>India</span></div>
               </div>
-              <div className="border-t border-gray-200 mt-3 pt-3">
-                <table className="w-full text-xs">
+              <div className="border-t border-gray-200 mt-3 pt-3 overflow-x-auto">
+                <table className="w-full min-w-[400px] text-xs">
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="text-left py-1">Description</th>

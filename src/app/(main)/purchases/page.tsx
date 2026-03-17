@@ -230,9 +230,9 @@ export default function PurchasesPage() {
   return (
     <>
       <Header title="仕入・受入管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 統計 */}
-        <div className="grid grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
           {statusEnum.map(({ value, label }) => {
             const count = allPurchases?.filter((p) => p.status === value).length ?? 0;
             return (
@@ -245,12 +245,12 @@ export default function PurchasesPage() {
           })}
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="仕入番号、仕入先、品目で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             {statusFilter !== "all" && (
               <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>
@@ -274,7 +274,7 @@ export default function PurchasesPage() {
           </div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -282,7 +282,7 @@ export default function PurchasesPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">仕入番号</th>
@@ -317,13 +317,13 @@ export default function PurchasesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setShowDetail(p.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="詳細">
+                          <button onClick={() => setShowDetail(p.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="詳細">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => openEditWithId(p)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="編集">
+                          <button onClick={() => openEditWithId(p)} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="編集">
                             <Pencil className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleDelete(p.id)} className="p-1 hover:bg-red-50 rounded transition-colors" title="削除">
+                          <button onClick={() => handleDelete(p.id)} className="p-2 hover:bg-red-50 rounded transition-colors" title="削除">
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -362,7 +362,7 @@ export default function PurchasesPage() {
               options={(suppliers ?? []).map((s) => ({ value: s.id, label: `${s.code} ${s.name}` }))}
             />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="倉庫">
               <FormSelect
                 placeholder="選択"
@@ -394,7 +394,7 @@ export default function PurchasesPage() {
               options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))}
             />
           </FormField>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <FormField label="数量(kg)" required>
               <FormInput type="number" placeholder="例: 3200" value={newForm.quantity} onChange={(e) => setNewForm({ ...newForm, quantity: e.target.value })} />
             </FormField>
@@ -426,7 +426,7 @@ export default function PurchasesPage() {
               options={(suppliers ?? []).map((s) => ({ value: s.id, label: `${s.code} ${s.name}` }))}
             />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="倉庫">
               <FormSelect
                 placeholder="選択"
@@ -458,7 +458,7 @@ export default function PurchasesPage() {
               options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))}
             />
           </FormField>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <FormField label="数量(kg)" required>
               <FormInput type="number" placeholder="例: 3200" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })} />
             </FormField>
@@ -494,30 +494,30 @@ export default function PurchasesPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium text-text">{selected.purchaseNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status] ?? "bg-gray-100 text-gray-700"}`}>
                 {statusLabels[selected.status] ?? selected.status}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">仕入先</p><p className="text-sm text-text">{selected.supplier.name}</p></div>
               <div><p className="text-xs text-text-tertiary">引取先</p><p className="text-sm text-text">{selected.pickupPartner?.name ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">日付</p><p className="text-sm text-text">{new Date(selected.purchaseDate).toLocaleDateString("ja-JP")}</p></div>
               <div><p className="text-xs text-text-tertiary">倉庫</p><p className="text-sm text-text">{selected.warehouse?.name ?? "-"}</p></div>
             </div>
             <div className="p-3 bg-surface-tertiary rounded-lg">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div><p className="text-xs text-text-tertiary">品目</p><p className="text-sm font-mono text-text">{selected.product.code}</p><p className="text-xs text-text-secondary">{selected.product.name?.name ?? "-"}</p></div>
                 <div><p className="text-xs text-text-tertiary">荷姿</p><p className="text-sm text-text">{selected.packagingType ? packagingLabels[selected.packagingType] ?? selected.packagingType : "-"}</p></div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selected.quantity.toLocaleString()} kg</p></div>
               <div><p className="text-xs text-text-tertiary">単価</p><p className="text-sm text-text">¥{selected.unitPrice}/kg</p></div>
               <div><p className="text-xs text-text-tertiary">小計</p><p className="text-sm font-medium text-text">¥{selected.amount.toLocaleString()}</p></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">運賃</p><p className="text-sm text-text">{selected.freightCost != null ? `¥${selected.freightCost.toLocaleString()}` : "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">合計（在庫原価算入）</p><p className="text-sm font-bold text-primary-700">¥{(selected.amount + (selected.freightCost ?? 0)).toLocaleString()}</p></div>
             </div>

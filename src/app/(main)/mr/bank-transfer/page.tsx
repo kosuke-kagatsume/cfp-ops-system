@@ -107,7 +107,7 @@ export default function BankTransferPage() {
   return (
     <>
       <Header title="振込データ作成" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 説明バナー */}
         <div className="bg-surface-secondary rounded-xl p-4 flex items-start gap-3">
           <Building2 className="w-5 h-5 text-text-secondary mt-0.5 shrink-0" />
@@ -120,7 +120,7 @@ export default function BankTransferPage() {
         </div>
 
         {/* コントロールバー */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <label className="text-sm text-text-secondary">振込指定日（MMDD）:</label>
             <input
@@ -150,14 +150,14 @@ export default function BankTransferPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
               <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-surface-secondary">
                   <th className="px-4 py-3 w-10">

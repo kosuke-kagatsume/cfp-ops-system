@@ -145,7 +145,7 @@ export default function ExchangeRatesPage() {
   return (
     <>
       <Header title="為替管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -168,16 +168,16 @@ export default function ExchangeRatesPage() {
                   <RefreshCw className="w-4 h-4" />レート更新
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 {currentRates.map((r) => (
                   <div key={r.id} className="p-4 bg-surface rounded-lg border border-border text-center relative group">
                     <p className="text-sm text-text-secondary mb-1">{getPair(r)}</p>
                     <p className="text-2xl font-bold text-text">{formatRateDecimals(getPair(r), r.rate)}</p>
                     <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-1">
-                      <button onClick={() => handleEdit(r)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                      <button onClick={() => handleEdit(r)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                         <Pencil className="w-3 h-3 text-text-tertiary" />
                       </button>
-                      <button onClick={() => handleDelete(r)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                      <button onClick={() => handleDelete(r)} className="p-2 hover:bg-red-50 rounded transition-colors">
                         <Trash2 className="w-3 h-3 text-red-400" />
                       </button>
                     </div>
@@ -190,11 +190,11 @@ export default function ExchangeRatesPage() {
             </div>
 
             {/* 過去レート */}
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
+            <div className="bg-surface rounded-xl border border-border overflow-x-auto">
               <div className="px-4 py-3 border-b border-border bg-surface-secondary">
                 <h3 className="text-sm font-medium text-text">過去の為替レート</h3>
               </div>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">年月</th>
@@ -213,10 +213,10 @@ export default function ExchangeRatesPage() {
                       <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(r.createdAt)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => handleEdit(r)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => handleEdit(r)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Pencil className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleDelete(r)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                          <button onClick={() => handleDelete(r)} className="p-2 hover:bg-red-50 rounded transition-colors">
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>

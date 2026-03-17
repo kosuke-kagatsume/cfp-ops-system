@@ -84,9 +84,9 @@ export default function DashboardPage() {
   return (
     <>
       <Header title="経営ダッシュボード" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* 期間表示 */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="text-lg font-bold text-text">{d.currentMonth}</h2>
             <p className="text-xs text-text-tertiary">経営KPI概要</p>
@@ -102,7 +102,7 @@ export default function DashboardPage() {
         </div>
 
         {/* 主要KPI 4カード */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="bg-surface rounded-xl border border-border p-5">
             <div className="flex items-start justify-between">
               <div>
@@ -175,9 +175,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* 売上推移チャート */}
-          <div className="col-span-2 bg-surface rounded-xl border border-border p-5">
+          <div className="lg:col-span-2 bg-surface rounded-xl border border-border p-5">
             <h3 className="text-sm font-medium text-text mb-4">売上・仕入・粗利 推移</h3>
             {d.monthlyTrend.length > 0 ? (
               <>

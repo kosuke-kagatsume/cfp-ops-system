@@ -54,6 +54,7 @@ import {
   HardDrive,
 } from "lucide-react";
 import { useState } from "react";
+import { useSidebar } from "./sidebar-context";
 
 const navigation = [
   { name: "ダッシュボード", href: "/dashboard", icon: LayoutDashboard },
@@ -149,6 +150,7 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { isOpen, close } = useSidebar();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "MR事業部": true,
     "販売管理": false,
@@ -163,8 +165,8 @@ export function Sidebar() {
     setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
   };
 
-  return (
-    <aside className="w-64 bg-surface border-r border-border h-screen flex flex-col fixed left-0 top-0">
+  const sidebarContent = (
+    <>
       <div className="h-16 flex items-center px-6 border-b border-border">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-primary-600 flex items-center justify-center">
@@ -180,7 +182,7 @@ export function Sidebar() {
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         {navigation.map((item) => {
           if (item.children) {
-            const isOpen = openGroups[item.name] ?? false;
+            const isGroupOpen = openGroups[item.name] ?? false;
             const isChildActive = item.children.some((child) =>
               pathname.startsWith(child.href)
             );
@@ -189,7 +191,7 @@ export function Sidebar() {
               <div key={item.name}>
                 <button
                   onClick={() => toggleGroup(item.name)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2 min-h-[44px] text-sm rounded-lg transition-colors ${
                     isChildActive
                       ? "text-primary-700 font-medium"
                       : "text-text-secondary hover:bg-surface-tertiary"
@@ -197,13 +199,13 @@ export function Sidebar() {
                 >
                   <item.icon className="w-5 h-5 shrink-0" />
                   <span className="flex-1 text-left">{item.name}</span>
-                  {isOpen ? (
+                  {isGroupOpen ? (
                     <ChevronDown className="w-4 h-4" />
                   ) : (
                     <ChevronRight className="w-4 h-4" />
                   )}
                 </button>
-                {isOpen && (
+                {isGroupOpen && (
                   <div className="ml-4 mt-1 space-y-1">
                     {item.children.map((child) => {
                       const isActive = pathname.startsWith(child.href);
@@ -211,7 +213,7 @@ export function Sidebar() {
                         <Link
                           key={child.href}
                           href={child.href}
-                          className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
+                          className={`flex items-center gap-3 px-3 py-2 min-h-[44px] text-sm rounded-lg transition-colors ${
                             isActive
                               ? "bg-primary-50 text-primary-700 font-medium"
                               : "text-text-secondary hover:bg-surface-tertiary"
@@ -233,7 +235,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex items-center gap-3 px-3 py-2 text-sm rounded-lg transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2 min-h-[44px] text-sm rounded-lg transition-colors ${
                 isActive
                   ? "bg-primary-50 text-primary-700 font-medium"
                   : "text-text-secondary hover:bg-surface-tertiary"
@@ -257,6 +259,32 @@ export function Sidebar() {
           </div>
         </div>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden md:flex w-64 bg-surface border-r border-border h-screen flex-col fixed left-0 top-0 z-30">
+        {sidebarContent}
+      </aside>
+
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={close}
+        />
+      )}
+
+      {/* Mobile drawer */}
+      <aside
+        className={`fixed left-0 top-0 w-64 bg-surface border-r border-border h-screen flex flex-col z-50 md:hidden transition-transform duration-300 ease-in-out ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {sidebarContent}
+      </aside>
+    </>
   );
 }

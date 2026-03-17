@@ -117,7 +117,7 @@ export default function MonthlyClosingPage() {
   return (
     <>
       <Header title="月次締め" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 締めフロー */}
         <div className="p-4 bg-surface rounded-xl border border-border">
           <p className="text-xs font-medium text-text-secondary mb-3">月次締めフロー</p>
@@ -171,7 +171,7 @@ export default function MonthlyClosingPage() {
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                     <div className="p-3 rounded-lg bg-surface border border-border">
                       <p className="text-xs text-text-tertiary mb-1">会社</p>
                       <p className="text-lg font-bold text-text">{mc.companyId}</p>
@@ -265,7 +265,7 @@ export default function MonthlyClosingPage() {
             )}
 
             {/* サマリー */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="p-3 bg-surface-tertiary rounded-lg">
                 <p className="text-xs text-text-tertiary">売上</p>
                 <p className="text-sm font-bold text-text">

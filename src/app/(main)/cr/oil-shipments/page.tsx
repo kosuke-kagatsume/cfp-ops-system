@@ -93,16 +93,16 @@ export default function OilShipmentsPage() {
   return (
     <>
       <Header title="出荷管理（油化）" />
-      <div className="p-6 space-y-4">
-        <div className="grid grid-cols-2 gap-3">
+      <div className="p-4 md:p-6 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="p-4 rounded-xl border border-border bg-surface text-center"><p className="text-2xl font-bold text-text">{shipments.length}</p><p className="text-sm text-text-secondary">出荷件数</p></div>
           <div className="p-4 rounded-xl border border-border bg-surface text-center"><p className="text-2xl font-bold text-text">{shipments.reduce((sum, s) => sum + s.quantity, 0).toLocaleString()} L</p><p className="text-sm text-text-secondary">総出荷量</p></div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
-            <input type="text" placeholder="出荷番号、顧客名で検索..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 pr-4 py-2 w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            <input type="text" placeholder="出荷番号、顧客名で検索..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10 pr-4 py-2 w-full md:w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
           <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors"><Plus className="w-4 h-4" />出荷登録</button>
         </div>
@@ -110,8 +110,8 @@ export default function OilShipmentsPage() {
         {isLoading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-500" /><span className="ml-2 text-sm text-text-secondary">読み込み中...</span></div>
         ) : (
-          <div className="bg-surface rounded-xl border border-border overflow-hidden">
-            <table className="w-full">
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead><tr className="border-b border-border bg-surface-secondary">
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷番号</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷日</th>
@@ -132,9 +132,9 @@ export default function OilShipmentsPage() {
                     <td className="px-4 py-3 text-center"><span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700"><Shield className="w-3 h-3" />認証</span></td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setShowDetail(s.id)} className="p-1 hover:bg-surface-tertiary rounded" title="詳細"><Eye className="w-4 h-4 text-text-tertiary" /></button>
-                        <button onClick={() => openEdit(s)} className="p-1 hover:bg-surface-tertiary rounded" title="編集"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
-                        <button onClick={() => handleDelete(s.id)} className="p-1 hover:bg-red-50 rounded" title="削除"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                        <button onClick={() => setShowDetail(s.id)} className="p-2 hover:bg-surface-tertiary rounded" title="詳細"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                        <button onClick={() => openEdit(s)} className="p-2 hover:bg-surface-tertiary rounded" title="編集"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                        <button onClick={() => handleDelete(s.id)} className="p-2 hover:bg-red-50 rounded" title="削除"><Trash2 className="w-4 h-4 text-red-400" /></button>
                       </div>
                     </td>
                   </tr>
@@ -152,7 +152,7 @@ export default function OilShipmentsPage() {
         <div className="space-y-4">
           <FormField label="顧客" required><FormSelect placeholder="選択" value={newForm.customerId} onChange={(e) => setNewForm({ ...newForm, customerId: e.target.value })} options={(customers ?? []).map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))} /></FormField>
           <FormField label="製品" required><FormSelect placeholder="選択" value={newForm.oilType} onChange={(e) => setNewForm({ ...newForm, oilType: e.target.value })} options={oilTypeOptions} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="数量(L)" required><FormInput type="number" placeholder="例: 19000" value={newForm.quantity} onChange={(e) => setNewForm({ ...newForm, quantity: e.target.value })} /></FormField>
             <FormField label="単価(円/L)"><FormInput type="number" placeholder="例: 120" value={newForm.unitPrice} onChange={(e) => setNewForm({ ...newForm, unitPrice: e.target.value })} /></FormField>
           </div>
@@ -166,7 +166,7 @@ export default function OilShipmentsPage() {
         <div className="space-y-4">
           <FormField label="顧客" required><FormSelect placeholder="選択" value={editForm.customerId} onChange={(e) => setEditForm({ ...editForm, customerId: e.target.value })} options={(customers ?? []).map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))} /></FormField>
           <FormField label="製品" required><FormSelect value={editForm.oilType} onChange={(e) => setEditForm({ ...editForm, oilType: e.target.value })} options={oilTypeOptions} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="数量(L)" required><FormInput type="number" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })} /></FormField>
             <FormField label="単価(円/L)"><FormInput type="number" value={editForm.unitPrice} onChange={(e) => setEditForm({ ...editForm, unitPrice: e.target.value })} /></FormField>
           </div>
@@ -183,18 +183,18 @@ export default function OilShipmentsPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium">{selected.shipmentNumber}</span>
               <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">出荷完了</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.customer.name}</p></div>
               <div><p className="text-xs text-text-tertiary">出荷日</p><p className="text-sm text-text">{new Date(selected.shipmentDate).toLocaleDateString("ja-JP")}</p></div>
               <div><p className="text-xs text-text-tertiary">製品</p><p className="text-sm text-text">{oilTypeLabels[selected.oilType] ?? selected.oilType}</p></div>
               <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selected.quantity.toLocaleString()} L</p></div>
             </div>
             {(selected.unitPrice != null || selected.amount != null) && (
-              <div className="p-3 bg-surface-tertiary rounded-lg grid grid-cols-2 gap-3">
+              <div className="p-3 bg-surface-tertiary rounded-lg grid grid-cols-1 md:grid-cols-2 gap-3">
                 {selected.unitPrice != null && <div><p className="text-xs text-text-tertiary">単価</p><p className="text-sm text-text">{selected.unitPrice.toLocaleString()} 円/L</p></div>}
                 {selected.amount != null && <div><p className="text-xs text-text-tertiary">金額</p><p className="text-sm text-text">{selected.amount.toLocaleString()} 円</p></div>}
               </div>

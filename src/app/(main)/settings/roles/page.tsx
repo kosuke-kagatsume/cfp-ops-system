@@ -44,9 +44,9 @@ export default function RolesPage() {
   return (
     <>
       <Header title="ロール管理" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* ロール一覧 */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {roles.map((role) => (
             <div key={role.name} className="bg-surface rounded-xl border border-border p-4">
               <div className="flex items-center justify-between mb-2">
@@ -59,12 +59,12 @@ export default function RolesPage() {
         </div>
 
         {/* 権限マトリクス */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           <div className="px-4 py-3 border-b border-border bg-surface-secondary">
             <h2 className="text-sm font-bold text-text">権限マトリクス</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left px-3 py-2 text-xs font-medium text-text-secondary bg-surface-secondary sticky left-0">リソース</th>

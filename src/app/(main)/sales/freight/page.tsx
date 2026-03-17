@@ -106,9 +106,9 @@ export default function FreightPage() {
   return (
     <>
       <Header title="運賃管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 集計 */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="p-3 rounded-xl border border-border bg-surface text-center">
             <p className="text-lg font-bold text-text">{"\u00a5"}{totalFreight.toLocaleString()}</p>
             <p className="text-xs text-text-secondary">運賃合計</p>
@@ -123,15 +123,15 @@ export default function FreightPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input type="text" placeholder="出荷番号、運送会社で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -139,7 +139,7 @@ export default function FreightPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷番号</th>
@@ -166,13 +166,13 @@ export default function FreightPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setShowDetail(f.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => setShowDetail(f.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleEdit(f)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => handleEdit(f)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Pencil className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleDelete(f)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                          <button onClick={() => handleDelete(f)} className="p-2 hover:bg-red-50 rounded transition-colors">
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -217,13 +217,13 @@ export default function FreightPage() {
         footer={<button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium text-text">{selected.shipment.shipmentNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${selected.freightCost && selected.freightCost > 0 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
                 {selected.freightCost && selected.freightCost > 0 ? "確定済" : "未確定"}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">運送会社</p><p className="text-sm text-text">{selected.carrier?.name ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.shipment.customer?.name ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">金額</p><p className="text-sm font-bold text-primary-700">{"\u00a5"}{(selected.freightCost ?? 0).toLocaleString()}</p></div>

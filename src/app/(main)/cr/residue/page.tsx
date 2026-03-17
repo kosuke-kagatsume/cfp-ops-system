@@ -77,8 +77,8 @@ export default function CrResiduePage() {
   return (
     <>
       <Header title="残渣管理" />
-      <div className="p-6 space-y-4">
-        <div className="grid grid-cols-3 gap-3">
+      <div className="p-4 md:p-6 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="bg-surface rounded-xl border border-border p-4"><div className="flex items-center gap-2 mb-1"><Trash2 className="w-4 h-4 text-text-tertiary" /><p className="text-xs text-text-tertiary">総排出量</p></div><p className="text-2xl font-bold text-text">{totalQuantity.toLocaleString()} kg</p></div>
           <div className="bg-surface rounded-xl border border-border p-4"><div className="flex items-center gap-2 mb-1"><AlertTriangle className="w-4 h-4 text-amber-500" /><p className="text-xs text-text-tertiary">登録件数</p></div><p className="text-2xl font-bold text-text">{residues.length}件</p></div>
           <div className="bg-surface rounded-xl border border-border p-4"><div className="flex items-center gap-2 mb-1"><TrendingUp className="w-4 h-4 text-text-tertiary" /><p className="text-xs text-text-tertiary">平均残渣率</p></div><p className="text-2xl font-bold text-text">---</p></div>
@@ -86,15 +86,15 @@ export default function CrResiduePage() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
           <FileText className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" /><div><p className="text-sm font-medium text-amber-800">産業廃棄物マニフェスト管理</p><p className="text-xs text-amber-600">全ての残渣はマニフェスト番号と紐付けて管理。処理完了後にマニフェストの返送確認を行います。</p></div>
         </div>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-text-secondary">{residues.length}件の残渣記録</p>
           <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors"><Plus className="w-4 h-4" />残渣記録登録</button>
         </div>
         {isLoading ? (
           <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary-500" /><span className="ml-2 text-sm text-text-secondary">読み込み中...</span></div>
         ) : (
-          <div className="bg-surface rounded-xl border border-border overflow-hidden">
-            <table className="w-full">
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead><tr className="border-b border-border bg-surface-secondary">
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">日付</th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量</th>
@@ -113,9 +113,9 @@ export default function CrResiduePage() {
                     <td className="px-4 py-3 text-sm text-text text-right">{r.disposalCost != null ? `${r.disposalCost.toLocaleString()} 円` : "---"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setShowDetail(r.id)} className="p-1 hover:bg-surface-tertiary rounded text-text-tertiary text-xs">詳細</button>
-                        <button onClick={() => openEdit(r)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-3.5 h-3.5 text-text-tertiary" /></button>
-                        <button onClick={() => handleDelete(r.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                        <button onClick={() => setShowDetail(r.id)} className="p-2 hover:bg-surface-tertiary rounded text-text-tertiary text-xs">詳細</button>
+                        <button onClick={() => openEdit(r)} className="p-2 hover:bg-surface-tertiary rounded"><Pencil className="w-3.5 h-3.5 text-text-tertiary" /></button>
+                        <button onClick={() => handleDelete(r.id)} className="p-2 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                       </div>
                     </td>
                   </tr>
@@ -130,7 +130,7 @@ export default function CrResiduePage() {
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="残渣記録登録"
         footer={<><button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button><button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button></>}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="数量(kg)" required><FormInput type="number" placeholder="例: 390" value={newForm.quantity} onChange={(e) => setNewForm({ ...newForm, quantity: e.target.value })} /></FormField>
             <FormField label="記録日" required><FormInput type="date" value={newForm.disposalDate} onChange={(e) => setNewForm({ ...newForm, disposalDate: e.target.value })} /></FormField>
           </div>
@@ -144,7 +144,7 @@ export default function CrResiduePage() {
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="残渣記録 編集"
         footer={<><button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button><button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button></>}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="数量(kg)" required><FormInput type="number" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })} /></FormField>
             <FormField label="記録日" required><FormInput type="date" value={editForm.disposalDate} onChange={(e) => setEditForm({ ...editForm, disposalDate: e.target.value })} /></FormField>
           </div>
@@ -163,11 +163,11 @@ export default function CrResiduePage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">日付</p><p className="text-sm text-text">{new Date(selected.disposalDate).toLocaleDateString("ja-JP")}</p></div>
               <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-medium text-text">{selected.quantity.toLocaleString()} kg</p></div>
             </div>
-            <div className="p-3 bg-surface-tertiary rounded-lg grid grid-cols-2 gap-3">
+            <div className="p-3 bg-surface-tertiary rounded-lg grid grid-cols-1 md:grid-cols-2 gap-3">
               <div><p className="text-xs text-text-tertiary">処理方法</p><p className="text-sm text-text">{selected.disposalMethod ?? "---"}</p></div>
               <div><p className="text-xs text-text-tertiary">処理委託先</p><p className="text-sm text-text">{selected.contractor ?? "---"}</p></div>
               <div><p className="text-xs text-text-tertiary">処理費用</p><p className="text-sm text-text">{selected.disposalCost != null ? `${selected.disposalCost.toLocaleString()} 円` : "---"}</p></div>

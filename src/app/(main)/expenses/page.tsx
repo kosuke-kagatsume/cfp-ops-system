@@ -166,7 +166,7 @@ export default function ExpensesPage() {
   return (
     <>
       <Header title="経費管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 電帳法バナー */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
           <Shield className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
@@ -177,7 +177,7 @@ export default function ExpensesPage() {
         </div>
 
         {/* サマリ */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary">当月合計</p>
             <p className="text-xl font-bold text-text">¥{allExpenses.reduce((s, e) => s + e.totalAmount, 0).toLocaleString()}</p>
@@ -197,12 +197,12 @@ export default function ExpensesPage() {
         </div>
 
         {/* ツールバー */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="経費番号、件名で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
               className="px-3 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500">
@@ -219,8 +219,8 @@ export default function ExpensesPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-border bg-surface-secondary">
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">番号</th>
@@ -256,9 +256,9 @@ export default function ExpensesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setShowDetail(e.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
-                        <button onClick={() => openEdit(e)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
-                        <button onClick={() => handleDelete(e.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                        <button onClick={() => setShowDetail(e.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                        <button onClick={() => openEdit(e)} className="p-2 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                        <button onClick={() => handleDelete(e.id)} className="p-2 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
                       </div>
                     </td>
                   </tr>
@@ -282,7 +282,7 @@ export default function ExpensesPage() {
           <div className="border-t border-border pt-4">
             <p className="text-xs font-medium text-text mb-2">経費明細</p>
             <FormField label="件名" required><FormInput placeholder="例: 大阪出張 交通費" value={newForm.itemDesc} onChange={(e) => setNewForm({ ...newForm, itemDesc: e.target.value })} /></FormField>
-            <div className="grid grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
               <FormField label="区分"><FormSelect placeholder="選択" value={newForm.itemCategory} onChange={(e) => setNewForm({ ...newForm, itemCategory: e.target.value })} options={categoryOptions} /></FormField>
               <FormField label="金額(円)" required><FormInput type="number" placeholder="例: 35000" value={newForm.itemAmount} onChange={(e) => setNewForm({ ...newForm, itemAmount: e.target.value })} /></FormField>
             </div>
@@ -320,17 +320,17 @@ export default function ExpensesPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-medium text-text">{selected.note ?? selected.expenseNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status]}`}>{statusLabel[selected.status]}</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">申請者</p><p className="text-sm text-text">{selected.applicant}{selected.department ? `（${selected.department}）` : ""}</p></div>
               <div><p className="text-xs text-text-tertiary">申請日</p><p className="text-sm text-text">{new Date(selected.expenseDate).toLocaleDateString("ja-JP")}</p></div>
             </div>
             {/* 明細 */}
-            <div className="bg-surface rounded-lg border border-border overflow-hidden">
-              <table className="w-full text-sm">
+            <div className="bg-surface rounded-lg border border-border overflow-x-auto">
+              <table className="w-full min-w-[800px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-3 py-2 text-xs text-text-secondary">項目</th>

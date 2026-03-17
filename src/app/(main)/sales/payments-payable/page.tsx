@@ -155,7 +155,7 @@ export default function PaymentsPayablePage() {
   return (
     <>
       <Header title="支払管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* Flow */}
         <div className="p-4 bg-surface rounded-xl border border-border">
           <p className="text-xs font-medium text-text-secondary mb-2">支払フロー</p>
@@ -177,11 +177,11 @@ export default function PaymentsPayablePage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input type="text" placeholder="支払番号、仕入先名で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => showToast("全銀データ（FBデータ）を出力しました（モック）", "success")} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
@@ -193,7 +193,7 @@ export default function PaymentsPayablePage() {
           </div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -201,7 +201,7 @@ export default function PaymentsPayablePage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">支払番号</th>
@@ -228,13 +228,13 @@ export default function PaymentsPayablePage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setShowDetail(p.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => setShowDetail(p.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleEdit(p)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => handleEdit(p)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Pencil className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleDelete(p)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                          <button onClick={() => handleDelete(p)} className="p-2 hover:bg-red-50 rounded transition-colors">
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -318,13 +318,13 @@ export default function PaymentsPayablePage() {
         footer={<button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">閉じる</button>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium text-text">{selected.paymentNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${selected.isReconciled ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
                 {selected.isReconciled ? "消込済" : "未消込"}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">仕入先</p><p className="text-sm text-text">{selected.supplier.name}</p></div>
               <div><p className="text-xs text-text-tertiary">支払日</p><p className="text-sm text-text">{formatDate(selected.paymentDate)}</p></div>
               <div><p className="text-xs text-text-tertiary">金額</p><p className="text-sm font-bold text-primary-700">{"\u00a5"}{selected.amount.toLocaleString()}</p></div>

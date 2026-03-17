@@ -133,7 +133,7 @@ export default function UsersPage() {
   return (
     <>
       <Header title="ユーザー管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
           <Shield className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
           <div>
@@ -142,12 +142,12 @@ export default function UsersPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="名前、メールで検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}
               className="px-3 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500">
@@ -166,8 +166,8 @@ export default function UsersPage() {
             <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
         ) : (
-          <div className="bg-surface rounded-xl border border-border overflow-hidden">
-            <table className="w-full">
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-surface-secondary">
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ユーザー</th>
@@ -204,7 +204,7 @@ export default function UsersPage() {
                       </td>
                       <td className="px-4 py-3 text-sm text-text-tertiary">{new Date(user.updatedAt).toLocaleDateString("ja-JP")}</td>
                       <td className="px-4 py-3 relative">
-                        <button onClick={() => setMenuOpen(menuOpen === user.id ? null : user.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                        <button onClick={() => setMenuOpen(menuOpen === user.id ? null : user.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                           <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
                         </button>
                         {menuOpen === user.id && (
@@ -291,7 +291,7 @@ export default function UsersPage() {
                 <p className="text-sm text-text-secondary">{selectedUser.email}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">ロール</p><p className="text-sm text-text">{getRoleLabel(selectedUser)}</p></div>
               <div><p className="text-xs text-text-tertiary">部署</p><p className="text-sm text-text">{selectedUser.department ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">役職</p><p className="text-sm text-text">{selectedUser.position ?? "-"}</p></div>

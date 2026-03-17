@@ -73,7 +73,7 @@ export default function TaxReportsPage() {
   return (
     <>
       <Header title="税務帳票" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 説明バナー */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
           <Calculator className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
@@ -84,7 +84,7 @@ export default function TaxReportsPage() {
         </div>
 
         {/* サマリ */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary">税額合計</p>
             <p className="text-2xl font-bold text-text">¥{totalTax.toLocaleString()}</p>
@@ -110,8 +110,8 @@ export default function TaxReportsPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-border bg-surface-secondary">
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">種別</th>
@@ -138,7 +138,7 @@ export default function TaxReportsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setShowDetail(r.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                    <button onClick={() => setShowDetail(r.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
                   </td>
                 </tr>
               ))}
@@ -165,7 +165,7 @@ export default function TaxReportsPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">税種別</p><p className="text-sm font-medium text-text">{selected.reportType}</p></div>
               <div><p className="text-xs text-text-tertiary">対象期間</p><p className="text-sm text-text">{selected.period}</p></div>
               <div><p className="text-xs text-text-tertiary">提出日</p><p className="text-sm text-text">{selected.filingDate ? new Date(selected.filingDate).toLocaleDateString("ja-JP") : "未提出"}</p></div>

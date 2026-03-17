@@ -159,7 +159,7 @@ export default function PaymentsReceivedPage() {
   return (
     <>
       <Header title="入金管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* CSV upload area */}
         <div className="p-6 border-2 border-dashed border-border rounded-xl bg-surface text-center">
           <Upload className="w-8 h-8 text-text-tertiary mx-auto mb-2" />
@@ -184,12 +184,12 @@ export default function PaymentsReceivedPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input type="text" placeholder="入金番号、顧客名で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-64 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              className="pl-10 pr-4 py-2 w-full md:w-64 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <div className="flex items-center gap-1">
               {([["all", "すべて"], ["false", "未消込"], ["true", "消込済"]] as const).map(([val, label]) => (
@@ -238,7 +238,7 @@ export default function PaymentsReceivedPage() {
           </div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -246,7 +246,7 @@ export default function PaymentsReceivedPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">入金番号</th>
@@ -273,13 +273,13 @@ export default function PaymentsReceivedPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setShowDetail(p.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => setShowDetail(p.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleEdit(p)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => handleEdit(p)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Pencil className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleDelete(p)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                          <button onClick={() => handleDelete(p)} className="p-2 hover:bg-red-50 rounded transition-colors">
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -366,13 +366,13 @@ export default function PaymentsReceivedPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium text-text">{selected.paymentNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${selected.isReconciled ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-700"}`}>
                 {selected.isReconciled ? "消込済" : "未消込"}
               </span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.customer.name}</p></div>
               <div><p className="text-xs text-text-tertiary">入金日</p><p className="text-sm text-text">{formatDate(selected.paymentDate)}</p></div>
               <div><p className="text-xs text-text-tertiary">金額</p><p className="text-sm font-bold text-primary-700">{"\u00a5"}{selected.amount.toLocaleString()}</p></div>

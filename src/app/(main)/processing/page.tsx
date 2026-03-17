@@ -230,9 +230,9 @@ export default function ProcessingPage() {
   return (
     <>
       <Header title="加工管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* ステータスカード */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {statusEnum.map(({ value, label }) => {
             const items = allOrders?.filter((o) => o.status === value) ?? [];
             return (
@@ -248,7 +248,7 @@ export default function ProcessingPage() {
           })}
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             {statusFilter !== "all" && (
               <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>
@@ -281,10 +281,10 @@ export default function ProcessingPage() {
                     </span>
                   </button>
                   <div className="flex items-center gap-2">
-                    <button onClick={() => openEdit(order)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="編集">
+                    <button onClick={() => openEdit(order)} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="編集">
                       <Pencil className="w-4 h-4 text-text-tertiary" />
                     </button>
-                    <button onClick={() => handleDelete(order.id)} className="p-1 hover:bg-red-50 rounded transition-colors" title="削除">
+                    <button onClick={() => handleDelete(order.id)} className="p-2 hover:bg-red-50 rounded transition-colors" title="削除">
                       <Trash2 className="w-4 h-4 text-red-400" />
                     </button>
                     <div className="text-right ml-2">
@@ -382,7 +382,7 @@ export default function ProcessingPage() {
           <FormField label="完成品コード" required>
             <FormSelect placeholder="選択" value={editForm.outputProductId} onChange={(e) => setEditForm({ ...editForm, outputProductId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="完成数量(kg)">
               <FormInput type="number" placeholder="例: 4500" value={editForm.outputQuantity} onChange={(e) => setEditForm({ ...editForm, outputQuantity: e.target.value })} />
             </FormField>
@@ -411,13 +411,13 @@ export default function ProcessingPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium">{selected.orderNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status] ?? "bg-gray-100 text-gray-700"}`}>
                 {statusLabels[selected.status] ?? selected.status}
               </span>
             </div>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div><p className="text-xs text-text-tertiary">加工種別</p><p className="text-sm font-medium text-text">{processTypeLabels[selected.processType] ?? selected.processType}</p></div>
               <div><p className="text-xs text-text-tertiary">工場</p><p className="text-sm text-text">{selected.plant.name}</p></div>
               <div><p className="text-xs text-text-tertiary">予定日</p><p className="text-sm text-text">{new Date(selected.orderDate).toLocaleDateString("ja-JP")}</p></div>

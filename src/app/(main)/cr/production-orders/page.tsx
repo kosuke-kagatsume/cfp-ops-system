@@ -121,7 +121,7 @@ export default function CrProductionOrdersPage() {
   return (
     <>
       <Header title="製造指図" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         <div className="bg-surface rounded-xl border border-border p-4">
           <div className="flex items-center gap-2">
             {statusList.map((step, i) => {
@@ -141,7 +141,7 @@ export default function CrProductionOrdersPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-text-secondary">{filtered.length}件の製造指図</p>
           <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
             <Plus className="w-4 h-4" />製造指図作成
@@ -165,8 +165,8 @@ export default function CrProductionOrdersPage() {
                       <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[o.status] ?? ""}`}>{statusLabels[o.status] ?? o.status}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEdit(o)} className="p-1 hover:bg-surface-tertiary rounded" title="編集"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
-                      <button onClick={() => handleDelete(o.id)} className="p-1 hover:bg-red-50 rounded" title="削除"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                      <button onClick={() => openEdit(o)} className="p-2 hover:bg-surface-tertiary rounded" title="編集"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => handleDelete(o.id)} className="p-2 hover:bg-red-50 rounded" title="削除"><Trash2 className="w-4 h-4 text-red-400" /></button>
                       <div className="text-right ml-2">
                         <p className="text-sm text-text-secondary">{new Date(o.orderDate).toLocaleDateString("ja-JP")}</p>
                         <p className="text-xs text-text-tertiary">{o.plant.name}</p>
@@ -235,7 +235,7 @@ export default function CrProductionOrdersPage() {
           <FormField label="ステータス">
             <FormSelect value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} options={statusOptions} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="軽質油(L)"><FormInput type="number" value={editForm.lightOilOutput} onChange={(e) => setEditForm({ ...editForm, lightOilOutput: e.target.value })} /></FormField>
             <FormField label="重質油(L)"><FormInput type="number" value={editForm.heavyOilOutput} onChange={(e) => setEditForm({ ...editForm, heavyOilOutput: e.target.value })} /></FormField>
             <FormField label="混合油(L)"><FormInput type="number" value={editForm.mixedOilOutput} onChange={(e) => setEditForm({ ...editForm, mixedOilOutput: e.target.value })} /></FormField>
@@ -259,11 +259,11 @@ export default function CrProductionOrdersPage() {
           const yieldRate = getYieldRate(selected);
           return (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <span className="text-sm font-mono font-medium">{selected.orderNumber}</span>
                 <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status] ?? ""}`}>{statusLabels[selected.status] ?? selected.status}</span>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><p className="text-xs text-text-tertiary">工場</p><p className="text-sm text-text">{selected.plant.name}</p></div>
                 <div><p className="text-xs text-text-tertiary">製造日</p><p className="text-sm text-text">{new Date(selected.orderDate).toLocaleDateString("ja-JP")}</p></div>
               </div>
@@ -272,7 +272,7 @@ export default function CrProductionOrdersPage() {
                 <p className="text-sm font-medium text-blue-800">{inputTotal.toLocaleString()} kg</p>
               </div>
               {outputOil > 0 && (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="p-3 bg-amber-50 rounded-lg"><p className="text-xs text-amber-600">生成油</p><p className="text-sm font-bold text-amber-800">{outputOil.toLocaleString()} L</p></div>
                   <div className="p-3 bg-gray-100 rounded-lg"><p className="text-xs text-gray-600">残渣</p><p className="text-sm font-bold text-gray-800">{selected.residueOutput?.toLocaleString() ?? "---"} kg</p></div>
                 </div>

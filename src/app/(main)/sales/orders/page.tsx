@@ -190,8 +190,8 @@ export default function OrdersPage() {
   return (
     <>
       <Header title="受注管理" />
-      <div className="p-6 space-y-4">
-        <div className="grid grid-cols-3 gap-3">
+      <div className="p-4 md:p-6 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {summaryStatuses.map((st) => {
             const count = allOrders?.filter((o) => o.status === st).length ?? 0;
             return (
@@ -204,12 +204,12 @@ export default function OrdersPage() {
           })}
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="受注番号、顧客名で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             {statusFilter !== "all" && (
               <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>
@@ -225,7 +225,7 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -233,7 +233,7 @@ export default function OrdersPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">受注番号</th>
@@ -271,13 +271,13 @@ export default function OrdersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
-                            <button onClick={() => setShowDetail(o.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                            <button onClick={() => setShowDetail(o.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                               <Eye className="w-4 h-4 text-text-tertiary" />
                             </button>
-                            <button onClick={() => handleEdit(o)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                            <button onClick={() => handleEdit(o)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                               <Pencil className="w-4 h-4 text-text-tertiary" />
                             </button>
-                            <button onClick={() => handleDelete(o)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                            <button onClick={() => handleDelete(o)} className="p-2 hover:bg-red-50 rounded transition-colors">
                               <Trash2 className="w-4 h-4 text-red-400" />
                             </button>
                           </div>
@@ -366,11 +366,11 @@ export default function OrdersPage() {
         footer={<button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">閉じる</button>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium text-text">{selected.orderNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status] ?? "bg-gray-50 text-gray-700"}`}>{statusLabels[selected.status] ?? selected.status}</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.customer.name}</p></div>
               <div><p className="text-xs text-text-tertiary">通貨</p><p className="text-sm text-text">{selected.currency}</p></div>
               <div><p className="text-xs text-text-tertiary">受注日</p><p className="text-sm text-text">{formatDate(selected.orderDate)}</p></div>
@@ -380,7 +380,7 @@ export default function OrdersPage() {
               <div className="p-3 bg-surface-tertiary rounded-lg space-y-2">
                 <p className="text-xs font-medium text-text-secondary">明細</p>
                 {selected.items.map((item) => (
-                  <div key={item.id} className="grid grid-cols-3 gap-3">
+                  <div key={item.id} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     <div>
                       <p className="text-xs text-text-tertiary">品目</p>
                       <p className="text-sm font-mono text-text">{item.product.code}</p>
@@ -392,7 +392,7 @@ export default function OrdersPage() {
                 ))}
               </div>
             )}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
               <div><p className="text-xs text-text-tertiary">小計</p><p className="text-sm text-text">{formatCurrency(selected.subtotal, selected.currency)}</p></div>
               <div><p className="text-xs text-text-tertiary">消費税</p><p className="text-sm text-text">{formatCurrency(selected.taxAmount, selected.currency)}</p></div>
               <div><p className="text-xs text-text-tertiary">合計</p><p className="text-sm font-bold text-primary-700">{formatCurrency(selected.total, selected.currency)}</p></div>

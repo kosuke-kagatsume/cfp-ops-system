@@ -183,7 +183,7 @@ export default function SubsidiesPage() {
   return (
     <>
       <Header title="補助金書類管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 期限アラート */}
         {documents && documents.filter((d) => d.status !== "COMPLETED" && (isNearDue(d.dueDate) || isOverdue(d.dueDate))).length > 0 && (
           <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start gap-2">
@@ -200,12 +200,12 @@ export default function SubsidiesPage() {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="補助金名、タイトルで検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-64 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-64 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <div className="flex items-center gap-1">
               <button onClick={() => setStatusFilter("")}
@@ -226,14 +226,14 @@ export default function SubsidiesPage() {
           </button>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
               <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-surface-secondary">
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">補助金名</th>
@@ -269,10 +269,10 @@ export default function SubsidiesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => handleEdit(doc)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                        <button onClick={() => handleEdit(doc)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                           <Pencil className="w-4 h-4 text-text-tertiary" />
                         </button>
-                        <button onClick={() => handleDelete(doc)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                        <button onClick={() => handleDelete(doc)} className="p-2 hover:bg-red-50 rounded transition-colors">
                           <Trash2 className="w-4 h-4 text-red-400" />
                         </button>
                       </div>

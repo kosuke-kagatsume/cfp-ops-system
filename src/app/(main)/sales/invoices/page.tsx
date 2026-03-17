@@ -188,14 +188,14 @@ export default function InvoicesPage() {
   return (
     <>
       <Header title="請求管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* Note */}
         <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
           <p className="text-xs text-amber-800">消費税は伝票単位で計算されます（請求書上での合算ではなく、各売上伝票の消費税を積み上げ）</p>
         </div>
 
         {/* Status summary */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {statusKeys.map((st) => {
             const count = allInvoices?.filter((inv) => inv.status === st).length ?? 0;
             return (
@@ -208,12 +208,12 @@ export default function InvoicesPage() {
           })}
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="請求番号、顧客名で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             {statusFilter !== "all" && (
               <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>
@@ -240,7 +240,7 @@ export default function InvoicesPage() {
           </div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -248,7 +248,7 @@ export default function InvoicesPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">請求番号</th>
@@ -281,19 +281,19 @@ export default function InvoicesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => window.open(`/api/documents/invoice/${inv.id}`, "_blank")} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="PDF印刷">
+                          <button onClick={() => window.open(`/api/documents/invoice/${inv.id}`, "_blank")} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="PDF印刷">
                             <Printer className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <a href={`/api/pdf/invoice?id=${inv.id}`} download className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="PDFダウンロード">
+                          <a href={`/api/pdf/invoice?id=${inv.id}`} download className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="PDFダウンロード">
                             <Download className="w-4 h-4 text-text-tertiary" />
                           </a>
-                          <button onClick={() => setShowDetail(inv.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => setShowDetail(inv.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleEdit(inv)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => handleEdit(inv)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <Pencil className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleDelete(inv)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                          <button onClick={() => handleDelete(inv)} className="p-2 hover:bg-red-50 rounded transition-colors">
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -336,7 +336,7 @@ export default function InvoicesPage() {
           <FormField label="支払期限">
             <FormInput type="date" value={newForm.dueDate} onChange={(e) => setNewForm({ ...newForm, dueDate: e.target.value })} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="前回残高">
               <FormInput type="number" placeholder="0" value={newForm.prevBalance} onChange={(e) => setNewForm({ ...newForm, prevBalance: e.target.value })} />
             </FormField>
@@ -344,7 +344,7 @@ export default function InvoicesPage() {
               <FormInput type="number" placeholder="0" value={newForm.paymentReceived} onChange={(e) => setNewForm({ ...newForm, paymentReceived: e.target.value })} />
             </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="当月売上小計">
               <FormInput type="number" placeholder="0" value={newForm.subtotal} onChange={(e) => setNewForm({ ...newForm, subtotal: e.target.value })} />
             </FormField>
@@ -379,7 +379,7 @@ export default function InvoicesPage() {
             <FormSelect value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
               options={Object.entries(statusLabels).map(([v, l]) => ({ value: v, label: l }))} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="前回残高">
               <FormInput type="number" value={editForm.prevBalance} onChange={(e) => setEditForm({ ...editForm, prevBalance: e.target.value })} />
             </FormField>
@@ -387,7 +387,7 @@ export default function InvoicesPage() {
               <FormInput type="number" value={editForm.paymentReceived} onChange={(e) => setEditForm({ ...editForm, paymentReceived: e.target.value })} />
             </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="当月売上小計">
               <FormInput type="number" value={editForm.subtotal} onChange={(e) => setEditForm({ ...editForm, subtotal: e.target.value })} />
             </FormField>
@@ -411,11 +411,11 @@ export default function InvoicesPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium text-text">{selected.invoiceNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status] ?? "bg-gray-50 text-gray-700"}`}>{statusLabels[selected.status] ?? selected.status}</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.customer.name}</p></div>
               <div><p className="text-xs text-text-tertiary">通貨</p><p className="text-sm text-text">{selected.currency}</p></div>
               <div><p className="text-xs text-text-tertiary">請求日</p><p className="text-sm text-text">{formatDate(selected.billingDate)}</p></div>

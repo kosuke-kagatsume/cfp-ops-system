@@ -99,7 +99,7 @@ export default function LabAnalysisPage() {
   return (
     <>
       <Header title="分析入力" />
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-6">
         {/* 分析待ちサンプル */}
         <div>
           <h2 className="text-sm font-medium text-text mb-3">分析待ち・分析中</h2>
@@ -109,7 +109,7 @@ export default function LabAnalysisPage() {
               <p className="text-sm text-text-tertiary">分析待ちのサンプルはありません</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {pendingSamples.map((s) => (
                 <button key={s.id} onClick={() => setSelectedSample(s.sampleNumber)}
                   className={`p-4 rounded-xl border text-left transition-colors ${selectedSample === s.sampleNumber ? "border-primary-400 bg-primary-50" : "border-border bg-surface hover:border-primary-200"}`}>
@@ -152,7 +152,7 @@ export default function LabAnalysisPage() {
                 <Save className="w-4 h-4" />保存
               </button>
             </div>
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left px-3 py-2 text-xs font-medium text-text-secondary">分析項目</th>

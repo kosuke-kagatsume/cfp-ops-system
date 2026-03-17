@@ -175,7 +175,7 @@ export default function CrMaterialsPage() {
   return (
     <>
       <Header title="原料受入" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
           <Shield className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
           <div>
@@ -184,7 +184,7 @@ export default function CrMaterialsPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {statusList.map((status) => {
             const count = materials.filter((m) => m.status === status).length;
             const isActive = statusFilter === status;
@@ -198,12 +198,12 @@ export default function CrMaterialsPage() {
           })}
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="ロット番号、仕入先で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             {statusFilter !== "all" && <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>}
           </div>
@@ -218,8 +218,8 @@ export default function CrMaterialsPage() {
             <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
         ) : (
-          <div className="bg-surface rounded-xl border border-border overflow-hidden">
-            <table className="w-full">
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-surface-secondary">
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">ロット番号</th>
@@ -244,9 +244,9 @@ export default function CrMaterialsPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setShowDetail(m.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="詳細"><Eye className="w-4 h-4 text-text-tertiary" /></button>
-                        <button onClick={() => openEdit(m)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="編集"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
-                        <button onClick={() => handleDelete(m.id)} className="p-1 hover:bg-red-50 rounded transition-colors" title="削除"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                        <button onClick={() => setShowDetail(m.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="詳細"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                        <button onClick={() => openEdit(m)} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="編集"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                        <button onClick={() => handleDelete(m.id)} className="p-2 hover:bg-red-50 rounded transition-colors" title="削除"><Trash2 className="w-4 h-4 text-red-400" /></button>
                       </div>
                     </td>
                   </tr>
@@ -277,7 +277,7 @@ export default function CrMaterialsPage() {
           <FormField label="原料名" required>
             <FormInput placeholder="例: PP廃プラスチック" value={newForm.materialName} onChange={(e) => setNewForm({ ...newForm, materialName: e.target.value })} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="数量(kg)" required>
               <FormInput type="number" placeholder="例: 8000" value={newForm.quantity} onChange={(e) => setNewForm({ ...newForm, quantity: e.target.value })} />
             </FormField>
@@ -305,7 +305,7 @@ export default function CrMaterialsPage() {
           <FormField label="原料名" required>
             <FormInput value={editForm.materialName} onChange={(e) => setEditForm({ ...editForm, materialName: e.target.value })} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="数量(kg)" required>
               <FormInput type="number" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })} />
             </FormField>
@@ -316,7 +316,7 @@ export default function CrMaterialsPage() {
           <FormField label="ステータス">
             <FormSelect value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} options={statusOptions} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="塩素含有量(%)">
               <FormInput type="number" placeholder="例: 0.5" value={editForm.chlorineContent} onChange={(e) => setEditForm({ ...editForm, chlorineContent: e.target.value })} />
             </FormField>
@@ -342,11 +342,11 @@ export default function CrMaterialsPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium">{selected.materialNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status] ?? ""}`}>{statusLabels[selected.status] ?? selected.status}</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">仕入先</p><p className="text-sm text-text">{selected.supplier.name}</p></div>
               <div><p className="text-xs text-text-tertiary">受入日</p><p className="text-sm text-text">{new Date(selected.arrivalDate).toLocaleDateString("ja-JP")}</p></div>
               <div><p className="text-xs text-text-tertiary">原料</p><p className="text-sm text-text">{selected.materialName}</p></div>
@@ -355,7 +355,7 @@ export default function CrMaterialsPage() {
             {(selected.chlorineContent != null || selected.moistureContent != null) && (
               <div className="p-3 bg-surface-tertiary rounded-lg">
                 <p className="text-xs font-medium text-text mb-2">検査結果</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div><p className="text-xs text-text-tertiary">塩素含有量</p><p className="text-sm text-text">{selected.chlorineContent != null ? `${selected.chlorineContent}%` : "-"}</p></div>
                   <div><p className="text-xs text-text-tertiary">水分含有量</p><p className="text-sm text-text">{selected.moistureContent != null ? `${selected.moistureContent}%` : "-"}</p></div>
                 </div>

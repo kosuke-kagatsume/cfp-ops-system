@@ -17,12 +17,12 @@ export function Modal({ isOpen, onClose, title, children, footer }: ModalProps) 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="fixed inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-surface rounded-2xl border border-border shadow-xl w-full max-w-lg max-h-[85vh] flex flex-col">
+      <div className="relative bg-surface w-full h-full md:h-auto md:rounded-2xl border-0 md:border border-border shadow-xl md:max-w-lg md:max-h-[85vh] flex flex-col">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <h2 className="text-base font-bold text-text">{title}</h2>
           <button
             onClick={onClose}
-            className="p-1.5 hover:bg-surface-tertiary rounded-lg transition-colors"
+            className="p-2.5 hover:bg-surface-tertiary rounded-lg transition-colors"
           >
             <X className="w-5 h-5 text-text-tertiary" />
           </button>

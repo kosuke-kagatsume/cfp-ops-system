@@ -129,7 +129,7 @@ export default function ElectronicDocumentsPage() {
   return (
     <>
       <Header title="電子帳簿保存" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* アップロードエリア */}
         <div
           className="p-6 border-2 border-dashed border-border rounded-xl bg-surface text-center"
@@ -175,7 +175,7 @@ export default function ElectronicDocumentsPage() {
             <p className="text-sm font-medium text-emerald-800 mb-2">
               OCR抽出結果
             </p>
-            <div className="grid grid-cols-3 gap-3 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
               <div>
                 <span className="text-xs text-emerald-600">日付:</span>{" "}
                 <span className="text-emerald-800">
@@ -209,7 +209,7 @@ export default function ElectronicDocumentsPage() {
           <p className="text-xs font-medium text-text-secondary mb-3">
             検索条件（電子帳簿保存法 検索3要件）
           </p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             <div>
               <div className="flex items-center gap-1 mb-1">
                 <Calendar className="w-3 h-3 text-text-tertiary" />
@@ -285,7 +285,7 @@ export default function ElectronicDocumentsPage() {
         </div>
 
         {/* ドキュメント一覧 */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -294,7 +294,7 @@ export default function ElectronicDocumentsPage() {
               </span>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-surface-secondary">
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">
@@ -359,7 +359,7 @@ export default function ElectronicDocumentsPage() {
                             href={doc.filePath}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="p-1 hover:bg-surface-tertiary rounded transition-colors"
+                            className="p-2 hover:bg-surface-tertiary rounded transition-colors"
                             title="表示"
                           >
                             <Eye className="w-4 h-4 text-text-tertiary" />
@@ -367,7 +367,7 @@ export default function ElectronicDocumentsPage() {
                         )}
                         <button
                           onClick={() => handleDelete(doc)}
-                          className="p-1 hover:bg-red-50 rounded transition-colors"
+                          className="p-2 hover:bg-red-50 rounded transition-colors"
                         >
                           <Trash2 className="w-4 h-4 text-red-400" />
                         </button>

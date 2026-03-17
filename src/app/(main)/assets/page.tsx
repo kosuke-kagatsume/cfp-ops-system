@@ -192,9 +192,9 @@ export default function AssetsPage() {
     <>
       <Header title="固定資産管理" />
 
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* アクションバー */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-1 bg-surface border border-border rounded-lg px-2">
             <input
               type="number"
@@ -226,7 +226,7 @@ export default function AssetsPage() {
         </div>
 
         {/* サマリーカード */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary mb-1">取得価額合計</p>
             <p className="text-lg font-bold text-text">
@@ -273,7 +273,7 @@ export default function AssetsPage() {
         </div>
 
         {/* 資産一覧 */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -282,7 +282,7 @@ export default function AssetsPage() {
               </span>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-surface-secondary">
                   <th className="w-8"></th>
@@ -325,7 +325,7 @@ export default function AssetsPage() {
                       <td className="pl-2">
                         <button
                           onClick={() => toggleSchedule(asset.id)}
-                          className="p-1 hover:bg-surface-tertiary rounded"
+                          className="p-2 hover:bg-surface-tertiary rounded"
                         >
                           {expandedAsset === asset.id ? (
                             <ChevronDown className="w-4 h-4 text-text-tertiary" />
@@ -404,7 +404,7 @@ export default function AssetsPage() {
                                   減価償却スケジュール
                                 </span>
                               </div>
-                              <table className="w-full text-sm">
+                              <table className="w-full min-w-[800px] text-sm">
                                 <thead>
                                   <tr className="border-b border-border">
                                     <th className="text-left py-2 text-xs text-text-secondary">
@@ -491,7 +491,7 @@ export default function AssetsPage() {
                 <X className="w-5 h-5 text-text-tertiary" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-4 md:p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1">
                   資産名称 *
@@ -504,7 +504,7 @@ export default function AssetsPage() {
                   placeholder="例: ノートPC ThinkPad X1"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">
                     カテゴリ *
@@ -537,7 +537,7 @@ export default function AssetsPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">
                     取得価額 *
@@ -566,7 +566,7 @@ export default function AssetsPage() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1">
                     耐用年数 *

@@ -107,7 +107,7 @@ export default function TraceabilityPage() {
   return (
     <>
       <Header title="トレーサビリティ" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 説明バナー */}
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 flex items-start gap-3">
           <Shield className="w-5 h-5 text-primary-600 mt-0.5 shrink-0" />
@@ -137,7 +137,7 @@ export default function TraceabilityPage() {
         ) : traceRecords && traceRecords.length > 0 ? (
           <div className="space-y-4">
             {traceRecords.map((trace) => (
-              <div key={trace.id} className="bg-surface rounded-xl border border-border overflow-hidden">
+              <div key={trace.id} className="bg-surface rounded-xl border border-border overflow-x-auto">
                 <div className="p-5">
                   <div className="flex items-center justify-between mb-4">
                     <div>
@@ -218,7 +218,7 @@ export default function TraceabilityPage() {
           <div className="border-t border-border pt-4">
             <p className="text-xs font-medium text-text mb-2">初期ステージ</p>
             <FormField label="ステージ名" required><FormSelect placeholder="選択" value={newForm.stageName} onChange={(e) => setNewForm({ ...newForm, stageName: e.target.value })} options={stageNameOptions} /></FormField>
-            <div className="grid grid-cols-2 gap-4 mt-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
               <FormField label="日付" required><FormInput type="date" value={newForm.stageDate} onChange={(e) => setNewForm({ ...newForm, stageDate: e.target.value })} /></FormField>
               <FormField label="数量(kg)"><FormInput type="number" placeholder="例: 5000" value={newForm.quantity} onChange={(e) => setNewForm({ ...newForm, quantity: e.target.value })} /></FormField>
             </div>
@@ -260,7 +260,7 @@ export default function TraceabilityPage() {
                         {i < selected.stages.length - 1 && <div className="w-0.5 h-8 bg-border" />}
                       </div>
                       <div className="pb-4 flex-1">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                           <p className="text-sm font-medium text-text">{stage.stageName}</p>
                           <span className="text-xs text-text-tertiary">{new Date(stage.stageDate).toLocaleDateString("ja-JP")}</span>
                         </div>

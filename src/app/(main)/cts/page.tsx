@@ -117,7 +117,7 @@ export default function CtsPage() {
   return (
     <>
       <Header title="CTS管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 説明バナー */}
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 flex items-start gap-3">
           <Globe className="w-5 h-5 text-purple-600 mt-0.5 shrink-0" />
@@ -128,7 +128,7 @@ export default function CtsPage() {
         </div>
 
         {/* サマリ */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary">当月取引件数</p>
             <p className="text-2xl font-bold text-text">{allTransactions.length}件</p>
@@ -148,7 +148,7 @@ export default function CtsPage() {
         </div>
 
         {/* タイプフィルタ */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-2">
             <button onClick={() => setTypeFilter("all")}
               className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${typeFilter === "all" ? "bg-primary-100 text-primary-700 font-medium" : "text-text-secondary hover:bg-surface-tertiary"}`}>
@@ -185,9 +185,9 @@ export default function CtsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-text-secondary">{new Date(t.transactionDate).toLocaleDateString("ja-JP")}</span>
-                    <button onClick={() => setShowDetail(t.id)} className="p-1 hover:bg-surface-tertiary rounded"><Eye className="w-4 h-4 text-text-tertiary" /></button>
-                    <button onClick={() => openEdit(t)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
-                    <button onClick={() => handleDelete(t.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                    <button onClick={() => setShowDetail(t.id)} className="p-2 hover:bg-surface-tertiary rounded"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                    <button onClick={() => openEdit(t)} className="p-2 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                    <button onClick={() => handleDelete(t.id)} className="p-2 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
                   </div>
                 </div>
 
@@ -214,7 +214,7 @@ export default function CtsPage() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-3 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-sm">
                   <div><span className="text-xs text-text-tertiary">金額({t.currency})</span><p className="font-bold text-text">{t.currency === "JPY" ? "¥" : t.currency === "USD" ? "$" : ""}{t.amount.toLocaleString()}</p></div>
                   <div><span className="text-xs text-text-tertiary">為替レート</span><p className="font-mono">{t.exchangeRate ?? "-"}</p></div>
                   <div><span className="text-xs text-text-tertiary">金額(JPY)</span><p className="font-medium text-text-secondary">{t.jpyAmount ? `¥${t.jpyAmount.toLocaleString()}` : "-"}</p></div>
@@ -238,17 +238,17 @@ export default function CtsPage() {
           <FormField label="取引種別" required><FormSelect placeholder="選択" value={newForm.transactionType} onChange={(e) => setNewForm({ ...newForm, transactionType: e.target.value })} options={[
             { value: "PURCHASE", label: "仕入" }, { value: "SALE", label: "販売" }, { value: "TRANSFER", label: "移転" },
           ]} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="出荷元国"><FormInput placeholder="例: 日本" value={newForm.fromCountry} onChange={(e) => setNewForm({ ...newForm, fromCountry: e.target.value })} /></FormField>
             <FormField label="仕向地国"><FormInput placeholder="例: インドネシア" value={newForm.toCountry} onChange={(e) => setNewForm({ ...newForm, toCountry: e.target.value })} /></FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="通貨" required><FormSelect placeholder="選択" value={newForm.currency} onChange={(e) => setNewForm({ ...newForm, currency: e.target.value })} options={[
               { value: "USD", label: "USD" }, { value: "SGD", label: "SGD" }, { value: "JPY", label: "JPY" },
             ]} /></FormField>
             <FormField label="金額" required><FormInput type="number" placeholder="例: 34000" value={newForm.amount} onChange={(e) => setNewForm({ ...newForm, amount: e.target.value })} /></FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="為替レート"><FormInput type="number" placeholder="例: 150.25" value={newForm.exchangeRate} onChange={(e) => setNewForm({ ...newForm, exchangeRate: e.target.value })} /></FormField>
             <FormField label="取引日" required><FormInput type="date" value={newForm.transactionDate} onChange={(e) => setNewForm({ ...newForm, transactionDate: e.target.value })} /></FormField>
           </div>
@@ -266,17 +266,17 @@ export default function CtsPage() {
           <FormField label="取引種別" required><FormSelect value={editForm.transactionType} onChange={(e) => setEditForm({ ...editForm, transactionType: e.target.value })} options={[
             { value: "PURCHASE", label: "仕入" }, { value: "SALE", label: "販売" }, { value: "TRANSFER", label: "移転" },
           ]} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="出荷元国"><FormInput value={editForm.fromCountry} onChange={(e) => setEditForm({ ...editForm, fromCountry: e.target.value })} /></FormField>
             <FormField label="仕向地国"><FormInput value={editForm.toCountry} onChange={(e) => setEditForm({ ...editForm, toCountry: e.target.value })} /></FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="通貨" required><FormSelect value={editForm.currency} onChange={(e) => setEditForm({ ...editForm, currency: e.target.value })} options={[
               { value: "USD", label: "USD" }, { value: "SGD", label: "SGD" }, { value: "JPY", label: "JPY" },
             ]} /></FormField>
             <FormField label="金額" required><FormInput type="number" value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })} /></FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="為替レート"><FormInput type="number" value={editForm.exchangeRate} onChange={(e) => setEditForm({ ...editForm, exchangeRate: e.target.value })} /></FormField>
             <FormField label="取引日" required><FormInput type="date" value={editForm.transactionDate} onChange={(e) => setEditForm({ ...editForm, transactionDate: e.target.value })} /></FormField>
           </div>
@@ -293,13 +293,13 @@ export default function CtsPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${typeColors[selected.transactionType] ?? "bg-gray-50 text-gray-700"}`}>
                 {typeLabels[selected.transactionType] ?? selected.transactionType}
               </span>
               <span className="text-sm text-text-secondary">{new Date(selected.transactionDate).toLocaleDateString("ja-JP")}</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">出荷元</p><p className="text-sm text-text">{selected.fromCountry ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">仕向地</p><p className="text-sm text-text">{selected.toCountry ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">通貨</p><p className="text-sm text-text">{selected.currency}</p></div>

@@ -67,7 +67,7 @@ export default function JournalEntriesPage() {
   return (
     <>
       <Header title="仕訳データ連携" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 説明バナー */}
         <div className="bg-surface-secondary rounded-xl p-4 flex items-start gap-3">
           <Upload className="w-5 h-5 text-text-secondary mt-0.5 shrink-0" />
@@ -78,7 +78,7 @@ export default function JournalEntriesPage() {
         </div>
 
         {/* サマリ */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary">未連携</p>
             <p className="text-2xl font-bold text-amber-600">{unlinked}件</p>
@@ -98,7 +98,7 @@ export default function JournalEntriesPage() {
         </div>
 
         {/* アクションバー */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1">
               <Calendar className="w-4 h-4 text-text-tertiary" />
@@ -124,14 +124,14 @@ export default function JournalEntriesPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
               <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-surface-secondary">
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">日付</th>
@@ -160,7 +160,7 @@ export default function JournalEntriesPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => setShowDetail(j.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => setShowDetail(j.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
                     </td>
                   </tr>
                 ))}
@@ -192,14 +192,14 @@ export default function JournalEntriesPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">日付</p><p className="text-sm text-text">{formatDate(selected.entryDate)}</p></div>
               <div><p className="text-xs text-text-tertiary">会社</p><p className="text-sm text-text">{selected.companyId}</p></div>
               <div><p className="text-xs text-text-tertiary">元伝票種別</p><p className="text-sm font-mono text-primary-600">{selected.sourceType ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">元伝票ID</p><p className="text-sm font-mono text-text-secondary">{selected.sourceId ?? "-"}</p></div>
             </div>
             <div className="p-4 bg-surface-tertiary rounded-lg">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <p className="text-xs text-blue-600">借方</p>
                   <p className="text-sm font-medium text-blue-800">{selected.debitAccount}</p>

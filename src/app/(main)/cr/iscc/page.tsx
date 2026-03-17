@@ -128,7 +128,7 @@ export default function IsccPage() {
   return (
     <>
       <Header title="ISCC PLUS管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 認証ステータスバナー */}
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
           <Shield className="w-5 h-5 text-emerald-600 mt-0.5 shrink-0" />
@@ -181,10 +181,10 @@ export default function IsccPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="inline-flex px-2.5 py-1 text-xs font-medium rounded-full bg-emerald-50 text-emerald-700">{statusLabel[cert.status] ?? cert.status}</span>
-                      <button onClick={() => handleDeleteCert(cert.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                      <button onClick={() => handleDeleteCert(cert.id)} className="p-2 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
                     </div>
                   </div>
-                  <div className="grid grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div><p className="text-xs text-text-tertiary">有効期間</p><p className="text-sm text-text">{new Date(cert.issueDate).toLocaleDateString("ja-JP")} 〜 {new Date(cert.expiryDate).toLocaleDateString("ja-JP")}</p></div>
                     <div><p className="text-xs text-text-tertiary">スコープ</p><p className="text-sm text-text">{cert.scope ?? "-"}</p></div>
                     <div><p className="text-xs text-text-tertiary">マスバランス件数</p><p className="text-sm text-text">{cert._count.massBalances}件</p></div>
@@ -211,8 +211,8 @@ export default function IsccPage() {
                 <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
               </div>
             ) : massBalances && massBalances.length > 0 ? (
-              <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                <table className="w-full">
+              <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+                <table className="w-full min-w-[800px]">
                   <thead>
                     <tr className="border-b border-border bg-surface-secondary">
                       <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">期間</th>
@@ -248,7 +248,7 @@ export default function IsccPage() {
         {/* SD文書タブ */}
         {activeTab === "sdDocuments" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <p className="text-xs text-text-tertiary">Sustainability Declaration（持続可能性宣言）文書の管理</p>
               <button onClick={() => setShowNewSdModal(true)} className="flex items-center gap-2 px-3 py-1.5 text-xs bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">
                 <Plus className="w-3 h-3" />新規作成
@@ -259,8 +259,8 @@ export default function IsccPage() {
                 <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
               </div>
             ) : sdDocuments && sdDocuments.length > 0 ? (
-              <div className="bg-surface rounded-xl border border-border overflow-hidden">
-                <table className="w-full">
+              <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+                <table className="w-full min-w-[800px]">
                   <thead>
                     <tr className="border-b border-border bg-surface-secondary">
                       <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">SD番号</th>
@@ -281,8 +281,8 @@ export default function IsccPage() {
                         <td className="px-4 py-3 text-sm font-medium text-text text-right">{doc.ghgValue != null ? doc.ghgValue.toFixed(2) : "-"}</td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
-                            <button onClick={() => setShowSdDetail(doc.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
-                            <button onClick={() => handleDeleteSd(doc.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                            <button onClick={() => setShowSdDetail(doc.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                            <button onClick={() => handleDeleteSd(doc.id)} className="p-2 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
                           </div>
                         </td>
                       </tr>
@@ -313,7 +313,7 @@ export default function IsccPage() {
           <FormField label="認証番号" required><FormInput placeholder="例: ISCC-PLUS-Cert-DE999-99999999" value={newCertForm.certNumber} onChange={(e) => setNewCertForm({ ...newCertForm, certNumber: e.target.value })} /></FormField>
           <FormField label="保有者名" required><FormInput placeholder="例: 株式会社CFP 福山工場" value={newCertForm.holderName} onChange={(e) => setNewCertForm({ ...newCertForm, holderName: e.target.value })} /></FormField>
           <FormField label="スコープ"><FormInput placeholder="例: Collection, Trading, Processing" value={newCertForm.scope} onChange={(e) => setNewCertForm({ ...newCertForm, scope: e.target.value })} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="発行日" required><FormInput type="date" value={newCertForm.issueDate} onChange={(e) => setNewCertForm({ ...newCertForm, issueDate: e.target.value })} /></FormField>
             <FormField label="有効期限" required><FormInput type="date" value={newCertForm.expiryDate} onChange={(e) => setNewCertForm({ ...newCertForm, expiryDate: e.target.value })} /></FormField>
           </div>
@@ -332,7 +332,7 @@ export default function IsccPage() {
         <div className="space-y-4">
           <FormField label="SD番号" required><FormInput placeholder="例: SD-CFP-2026-001" value={newSdForm.sdNumber} onChange={(e) => setNewSdForm({ ...newSdForm, sdNumber: e.target.value })} /></FormField>
           <FormField label="発行日" required><FormInput type="date" value={newSdForm.issueDate} onChange={(e) => setNewSdForm({ ...newSdForm, issueDate: e.target.value })} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="原材料"><FormInput placeholder="例: 廃プラスチック" value={newSdForm.rawMaterial} onChange={(e) => setNewSdForm({ ...newSdForm, rawMaterial: e.target.value })} /></FormField>
             <FormField label="原産国"><FormInput placeholder="例: 日本" value={newSdForm.countryOfOrigin} onChange={(e) => setNewSdForm({ ...newSdForm, countryOfOrigin: e.target.value })} /></FormField>
           </div>
@@ -350,7 +350,7 @@ export default function IsccPage() {
         </>}>
         {selectedSd && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">SD番号</p><p className="text-sm font-mono text-text">{selectedSd.sdNumber}</p></div>
               <div><p className="text-xs text-text-tertiary">発行日</p><p className="text-sm text-text">{new Date(selectedSd.issueDate).toLocaleDateString("ja-JP")}</p></div>
               <div><p className="text-xs text-text-tertiary">原材料</p><p className="text-sm text-text">{selectedSd.rawMaterial ?? "-"}</p></div>

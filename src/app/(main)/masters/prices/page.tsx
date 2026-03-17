@@ -136,8 +136,8 @@ export default function PricesPage() {
   return (
     <>
       <Header title="単価マスタ" />
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 space-y-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input
@@ -145,7 +145,7 @@ export default function PricesPage() {
               placeholder="取引先名、品目コードで検索..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -166,7 +166,7 @@ export default function PricesPage() {
           </div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -174,7 +174,7 @@ export default function PricesPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">取引先</th>
@@ -217,7 +217,7 @@ export default function PricesPage() {
                           )}
                         </td>
                         <td className="px-4 py-3 relative">
-                          <button onClick={() => setMenuOpen(menuOpen === price.id ? null : price.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                          <button onClick={() => setMenuOpen(menuOpen === price.id ? null : price.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                             <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
                           </button>
                           {menuOpen === price.id && (
@@ -266,7 +266,7 @@ export default function PricesPage() {
             <FormSelect placeholder="選択" value={editForm.productId} onChange={(e) => setEditForm({ ...editForm, productId: e.target.value })}
               options={products?.map((p) => ({ value: p.id, label: `${p.code} - ${p.name.name}` })) ?? []} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="単価" required>
               <FormInput type="number" value={editForm.unitPrice} onChange={(e) => setEditForm({ ...editForm, unitPrice: e.target.value })} />
             </FormField>
@@ -275,7 +275,7 @@ export default function PricesPage() {
                 options={[{ value: "JPY", label: "JPY (円)" }, { value: "USD", label: "USD (ドル)" }, { value: "SGD", label: "SGD" }]} />
             </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="有効開始日" required>
               <FormInput type="date" value={editForm.validFrom} onChange={(e) => setEditForm({ ...editForm, validFrom: e.target.value })} />
             </FormField>
@@ -310,7 +310,7 @@ export default function PricesPage() {
             <FormSelect placeholder="選択" value={newForm.productId} onChange={(e) => setNewForm({ ...newForm, productId: e.target.value })}
               options={products?.map((p) => ({ value: p.id, label: `${p.code} - ${p.name.name}` })) ?? []} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="単価" required>
               <FormInput type="number" placeholder="例: 185" value={newForm.unitPrice} onChange={(e) => setNewForm({ ...newForm, unitPrice: e.target.value })} />
             </FormField>
@@ -319,7 +319,7 @@ export default function PricesPage() {
                 options={[{ value: "JPY", label: "JPY (円)" }, { value: "USD", label: "USD (ドル)" }, { value: "SGD", label: "SGD" }]} />
             </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="有効開始日" required>
               <FormInput type="date" value={newForm.validFrom} onChange={(e) => setNewForm({ ...newForm, validFrom: e.target.value })} />
             </FormField>

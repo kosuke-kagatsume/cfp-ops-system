@@ -177,9 +177,9 @@ export default function PartnersPage() {
   return (
     <>
       <Header title="取引先マスタ" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* ツールバー */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
@@ -188,7 +188,7 @@ export default function PartnersPage() {
                 placeholder="コード、名称で検索..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="pl-10 pr-4 py-2 w-full md:w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
             <select
@@ -238,7 +238,7 @@ export default function PartnersPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -246,7 +246,7 @@ export default function PartnersPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">コード</th>
@@ -302,7 +302,7 @@ export default function PartnersPage() {
                         <td className="px-4 py-3 relative">
                           <button
                             onClick={() => setMenuOpen(menuOpen === partner.id ? null : partner.id)}
-                            className="p-1 hover:bg-surface-tertiary rounded transition-colors"
+                            className="p-2 hover:bg-surface-tertiary rounded transition-colors"
                           >
                             <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
                           </button>
@@ -392,7 +392,7 @@ export default function PartnersPage() {
               ]}
             />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="締日">
               <FormSelect
                 placeholder="選択"
@@ -421,7 +421,7 @@ export default function PartnersPage() {
           <FormField label="住所">
             <FormInput placeholder="例: 東京都中央区日本橋1-1-1" value={newForm.address} onChange={(e) => setNewForm({ ...newForm, address: e.target.value })} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="電話番号">
               <FormInput placeholder="例: 03-1234-5678" value={newForm.tel} onChange={(e) => setNewForm({ ...newForm, tel: e.target.value })} />
             </FormField>
@@ -483,7 +483,7 @@ export default function PartnersPage() {
               ]}
             />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="締日">
               <FormSelect
                 placeholder="選択"
@@ -511,7 +511,7 @@ export default function PartnersPage() {
           <FormField label="住所">
             <FormInput value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="電話番号">
               <FormInput value={editForm.tel} onChange={(e) => setEditForm({ ...editForm, tel: e.target.value })} />
             </FormField>
@@ -549,7 +549,7 @@ export default function PartnersPage() {
       >
         {selectedPartner && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-text-tertiary">コード</p>
                 <p className="text-sm font-mono font-medium text-text">{selectedPartner.code}</p>
@@ -568,7 +568,7 @@ export default function PartnersPage() {
               <p className="text-xs text-text-tertiary">住所</p>
               <p className="text-sm text-text">{[selectedPartner.prefecture, selectedPartner.city, selectedPartner.address].filter(Boolean).join("") || "-"}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-text-tertiary">電話番号</p>
                 <p className="text-sm text-text">{selectedPartner.tel ?? "-"}</p>
@@ -578,7 +578,7 @@ export default function PartnersPage() {
                 <p className="text-sm text-text">{selectedPartner.closingDay ? closingDayLabels[selectedPartner.closingDay] ?? selectedPartner.closingDay : "-"}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-text-tertiary">ISCC認証</p>
                 <p className="text-sm text-text">{selectedPartner.isIsccCertified ? "認証済み" : "なし"}</p>

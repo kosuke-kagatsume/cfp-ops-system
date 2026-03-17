@@ -130,13 +130,13 @@ export default function ProductsPage() {
   return (
     <>
       <Header title="品目マスタ" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
           <p className="text-sm font-medium text-primary-800">品目コード体系: 品名 x 形状 x 色 x グレード（4軸）</p>
           <p className="text-xs text-primary-600 mt-1">例: 1-1-1-1 = PP / ペレット / ナチュラル / 素材品</p>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input
@@ -144,7 +144,7 @@ export default function ProductsPage() {
               placeholder="コード、品名、形状、色、グレードで検索..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-96 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="pl-10 pr-4 py-2 w-full md:w-96 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export default function ProductsPage() {
           </div>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -173,7 +173,7 @@ export default function ProductsPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目コード</th>
@@ -211,7 +211,7 @@ export default function ProductsPage() {
                       <td className="px-4 py-3 relative">
                         <button
                           onClick={() => setMenuOpen(menuOpen === product.id ? null : product.id)}
-                          className="p-1 hover:bg-surface-tertiary rounded transition-colors"
+                          className="p-2 hover:bg-surface-tertiary rounded transition-colors"
                         >
                           <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
                         </button>
@@ -246,7 +246,7 @@ export default function ProductsPage() {
         </div>
 
         {/* 4軸マスタカード */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: "品名", count: productNames?.length ?? 0, desc: "PP/PE/PET/PS/エンプラ等" },
             { label: "形状", count: productShapes?.length ?? 0, desc: "ペレット/フレーク/粉砕等" },
@@ -334,7 +334,7 @@ export default function ProductsPage() {
               <p className="text-xs text-text-tertiary">品目コード（変更不可）</p>
               <p className="text-sm font-mono font-bold text-primary-700 mt-1">{editingProduct.code}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">品名</p><p className="text-sm text-text">{editingProduct.name.name}</p></div>
               <div><p className="text-xs text-text-tertiary">形状</p><p className="text-sm text-text">{editingProduct.shape.name}</p></div>
               <div><p className="text-xs text-text-tertiary">色</p><p className="text-sm text-text">{editingProduct.color.name}</p></div>
@@ -368,7 +368,7 @@ export default function ProductsPage() {
               <p className="text-xs text-text-tertiary">品目コード</p>
               <p className="text-xl font-mono font-bold text-primary-700 mt-1">{selectedProduct.code}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">品名</p><p className="text-sm text-text">{selectedProduct.name.name}</p></div>
               <div><p className="text-xs text-text-tertiary">形状</p><p className="text-sm text-text">{selectedProduct.shape.name}</p></div>
               <div><p className="text-xs text-text-tertiary">色</p><p className="text-sm text-text">{selectedProduct.color.name}</p></div>

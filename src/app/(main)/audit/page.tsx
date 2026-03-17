@@ -68,13 +68,13 @@ export default function AuditPage() {
   return (
     <>
       <Header title="監査ログ" />
-      <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="p-4 md:p-6 space-y-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="ユーザー、テーブル、操作内容で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             <select value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}
               className="px-3 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500">
@@ -99,8 +99,8 @@ export default function AuditPage() {
             <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
         ) : (
-          <div className="bg-surface rounded-xl border border-border overflow-hidden">
-            <table className="w-full">
+          <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+            <table className="w-full min-w-[800px]">
               <thead>
                 <tr className="border-b border-border bg-surface-secondary">
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">日時</th>
@@ -128,7 +128,7 @@ export default function AuditPage() {
                     <td className="px-4 py-3 text-sm font-mono text-text-secondary">{log.tableName}</td>
                     <td className="px-4 py-3 text-sm text-text">{summarizeChange(log)}</td>
                     <td className="px-4 py-3">
-                      <button onClick={() => setShowDetail(log.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                      <button onClick={() => setShowDetail(log.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                         <Eye className="w-4 h-4 text-text-tertiary" />
                       </button>
                     </td>
@@ -147,7 +147,7 @@ export default function AuditPage() {
       >
         {selectedLog && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">日時</p><p className="text-sm font-mono text-text">{new Date(selectedLog.createdAt).toLocaleString("ja-JP")}</p></div>
               <div><p className="text-xs text-text-tertiary">ユーザー</p><p className="text-sm text-text">{selectedLog.user?.name ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">操作</p>
@@ -163,7 +163,7 @@ export default function AuditPage() {
             {selectedLog.ipAddress && (
               <div><p className="text-xs text-text-tertiary">IPアドレス</p><p className="text-sm font-mono text-text">{selectedLog.ipAddress}</p></div>
             )}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="p-3 bg-red-50 rounded-lg">
                 <p className="text-xs text-red-600 mb-1">変更前データ</p>
                 <pre className="text-xs font-mono text-red-700 whitespace-pre-wrap max-h-40 overflow-auto">{formatJson(selectedLog.oldData)}</pre>

@@ -26,7 +26,7 @@ export function Pagination({ page, limit, total, onPageChange }: PaginationProps
   }
 
   return (
-    <div className="flex items-center justify-between mt-4">
+    <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3">
       <p className="text-sm text-gray-500">
         {total}件中 {(page - 1) * limit + 1}–{Math.min(page * limit, total)}件を表示
       </p>
@@ -34,20 +34,20 @@ export function Pagination({ page, limit, total, onPageChange }: PaginationProps
         <button
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-1 min-h-[44px] text-sm border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           前へ
         </button>
         {pages.map((p, i) =>
           p === "..." ? (
-            <span key={`ellipsis-${i}`} className="px-2 text-gray-400">…</span>
+            <span key={`ellipsis-${i}`} className="px-2 text-gray-400 hidden sm:inline">…</span>
           ) : (
             <button
               key={p}
               onClick={() => onPageChange(p)}
-              className={`px-3 py-1 text-sm border rounded ${
+              className={`px-3 py-1 min-h-[44px] text-sm border rounded hidden sm:inline-flex items-center justify-center ${
                 p === page
-                  ? "bg-blue-600 text-white border-blue-600"
+                  ? "bg-blue-600 text-white border-blue-600 !inline-flex"
                   : "hover:bg-gray-50"
               }`}
             >
@@ -58,7 +58,7 @@ export function Pagination({ page, limit, total, onPageChange }: PaginationProps
         <button
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          className="px-3 py-1 text-sm border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="px-3 py-1 min-h-[44px] text-sm border rounded hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           次へ
         </button>

@@ -60,7 +60,7 @@ export default function InventoryPage() {
   return (
     <>
       <Header title="在庫管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 在庫管理4軸の説明 */}
         <div className="bg-primary-50 border border-primary-200 rounded-xl p-4">
           <p className="text-sm font-medium text-primary-800">在庫管理軸: 倉庫 x 引取先 x 品目 x 荷姿</p>
@@ -68,7 +68,7 @@ export default function InventoryPage() {
         </div>
 
         {/* サマリー */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary">在庫品目数</p>
             <p className="text-2xl font-bold text-text">{inventoryItems.length ?? 0}</p>
@@ -88,12 +88,12 @@ export default function InventoryPage() {
         </div>
 
         {/* ツールバー */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="品目コード、倉庫、引取先で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -115,7 +115,7 @@ export default function InventoryPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -123,7 +123,7 @@ export default function InventoryPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">倉庫</th>
@@ -153,7 +153,7 @@ export default function InventoryPage() {
                       <td className="px-4 py-3 text-sm text-text-secondary text-right">¥{Math.round(item.movingAvgCost).toLocaleString()}/kg</td>
                       <td className="px-4 py-3 text-sm font-medium text-text text-right">¥{Math.round(item.quantity * item.movingAvgCost).toLocaleString()}</td>
                       <td className="px-4 py-3">
-                        <button onClick={() => setShowDetail(item.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                        <button onClick={() => setShowDetail(item.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors">
                           <Eye className="w-4 h-4 text-text-tertiary" />
                         </button>
                       </td>
@@ -192,7 +192,7 @@ export default function InventoryPage() {
               <p className="text-lg font-mono font-bold text-primary-700">{selected.product.code}</p>
               <p className="text-sm text-text-secondary">{selected.product.name?.name ?? "-"}</p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">倉庫</p><p className="text-sm text-text">{selected.warehouse.name}</p><p className="text-xs text-text-tertiary">{selected.warehouse.plant.name}</p></div>
               <div><p className="text-xs text-text-tertiary">引取先</p><p className="text-sm text-text">{selected.pickupPartner?.name ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">荷姿</p><p className="text-sm text-text">{selected.packagingType ? packagingLabels[selected.packagingType] ?? selected.packagingType : "-"}</p></div>
@@ -200,7 +200,7 @@ export default function InventoryPage() {
             </div>
             <div className="p-3 bg-primary-50 rounded-lg">
               <p className="text-xs text-primary-600 mb-2">移動平均法による在庫評価</p>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div><p className="text-xs text-text-tertiary">移動平均単価</p><p className="text-sm font-medium text-text">¥{Math.round(selected.movingAvgCost).toLocaleString()}/kg</p></div>
                 <div><p className="text-xs text-text-tertiary">評価額</p><p className="text-sm font-bold text-primary-700">¥{Math.round(selected.quantity * selected.movingAvgCost).toLocaleString()}</p></div>
               </div>

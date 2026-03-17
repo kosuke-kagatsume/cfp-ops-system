@@ -130,9 +130,9 @@ export default function ProductionCalendarPage() {
   return (
     <>
       <Header title="生産カレンダー" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* 月切替 */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div />
           <div className="flex items-center gap-3">
             <button onClick={goToPrevMonth} className="p-2 hover:bg-surface-tertiary rounded-lg"><ChevronLeft className="w-5 h-5 text-text-secondary" /></button>
@@ -161,7 +161,7 @@ export default function ProductionCalendarPage() {
         </div>
 
         {/* カレンダー */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           <div className="grid grid-cols-7 border-b border-border">
             {weekDays.map((day, i) => (
               <div key={day} className={`px-2 py-2 text-center text-xs font-medium ${i === 0 ? "text-red-500" : i === 6 ? "text-blue-500" : "text-text-secondary"} bg-surface-secondary`}>
@@ -172,7 +172,7 @@ export default function ProductionCalendarPage() {
           <div className="grid grid-cols-7">
             {/* 空セル */}
             {Array.from({ length: firstDay }).map((_, i) => (
-              <div key={`empty-${i}`} className="min-h-[100px] border-b border-r border-border bg-surface-secondary/30" />
+              <div key={`empty-${i}`} className="min-h-[60px] md:min-h-[100px] border-b border-r border-border bg-surface-secondary/30" />
             ))}
             {/* 日付セル */}
             {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -185,7 +185,7 @@ export default function ProductionCalendarPage() {
 
               return (
                 <button key={day} onClick={() => setSelectedDate(dateStr)}
-                  className={`min-h-[100px] border-b border-r border-border p-1.5 text-left hover:bg-primary-50/30 transition-colors ${isToday ? "bg-primary-50/50" : ""}`}>
+                  className={`min-h-[60px] md:min-h-[100px] border-b border-r border-border p-1.5 text-left hover:bg-primary-50/30 transition-colors ${isToday ? "bg-primary-50/50" : ""}`}>
                   <span className={`inline-flex w-6 h-6 items-center justify-center text-xs rounded-full ${
                     isToday ? "bg-primary-600 text-white font-bold" :
                     dayOfWeek === 0 ? "text-red-500" : dayOfWeek === 6 ? "text-blue-500" : "text-text-secondary"
@@ -238,7 +238,7 @@ export default function ProductionCalendarPage() {
               <div className={`p-3 rounded-lg border ${entry.isHoliday ? eventColors.holiday : entry.isWorkday ? eventColors.workday : eventColors.note}`}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium">{entry.isHoliday ? "休日" : "稼働日"}</span>
-                  <button onClick={() => handleDeleteEntry(entry.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
+                  <button onClick={() => handleDeleteEntry(entry.id)} className="p-2 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                 </div>
                 {entry.holidayName && <p className="text-sm font-medium">{entry.holidayName}</p>}
                 {entry.note && <p className="text-sm">{entry.note}</p>}

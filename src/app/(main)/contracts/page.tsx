@@ -142,7 +142,7 @@ export default function ContractsPage() {
   return (
     <>
       <Header title="契約書管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* アラート */}
         {(expiringSoon > 0 || expired > 0) && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-center gap-3">
@@ -155,7 +155,7 @@ export default function ContractsPage() {
         )}
 
         {/* サマリ */}
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {statusKeys.map((status) => {
             const count = all.filter((c) => c.status === status).length;
             const isActive = statusFilter === status;
@@ -170,11 +170,11 @@ export default function ContractsPage() {
         </div>
 
         {/* ツールバー */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input type="text" placeholder="契約番号、件名、取引先で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
           <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
             <Plus className="w-4 h-4" />契約登録
@@ -182,8 +182,8 @@ export default function ContractsPage() {
         </div>
 
         {/* テーブル */}
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
-          <table className="w-full">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+          <table className="w-full min-w-[800px]">
             <thead>
               <tr className="border-b border-border bg-surface-secondary">
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">契約番号</th>
@@ -212,9 +212,9 @@ export default function ContractsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setShowDetail(c.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
-                      <button onClick={() => openEdit(c)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
-                      <button onClick={() => handleDelete(c.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                      <button onClick={() => setShowDetail(c.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => openEdit(c)} className="p-2 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => handleDelete(c.id)} className="p-2 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
                     </div>
                   </td>
                 </tr>
@@ -238,7 +238,7 @@ export default function ContractsPage() {
           <FormField label="件名" required><FormInput placeholder="例: PP再生ペレット販売基本契約" value={newForm.title} onChange={(e) => setNewForm({ ...newForm, title: e.target.value })} /></FormField>
           <FormField label="取引先" required><FormSelect placeholder="選択" value={newForm.partnerId} onChange={(e) => setNewForm({ ...newForm, partnerId: e.target.value })} options={(partners ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))} /></FormField>
           <FormField label="種別"><FormSelect placeholder="選択" value={newForm.contractType} onChange={(e) => setNewForm({ ...newForm, contractType: e.target.value })} options={contractTypeOptions} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="開始日" required><FormInput type="date" value={newForm.startDate} onChange={(e) => setNewForm({ ...newForm, startDate: e.target.value })} /></FormField>
             <FormField label="終了日"><FormInput type="date" value={newForm.endDate} onChange={(e) => setNewForm({ ...newForm, endDate: e.target.value })} /></FormField>
           </div>
@@ -256,7 +256,7 @@ export default function ContractsPage() {
           <FormField label="件名" required><FormInput value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></FormField>
           <FormField label="取引先" required><FormSelect value={editForm.partnerId} onChange={(e) => setEditForm({ ...editForm, partnerId: e.target.value })} options={(partners ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))} /></FormField>
           <FormField label="種別"><FormSelect value={editForm.contractType} onChange={(e) => setEditForm({ ...editForm, contractType: e.target.value })} options={contractTypeOptions} /></FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="開始日" required><FormInput type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} /></FormField>
             <FormField label="終了日"><FormInput type="date" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} /></FormField>
           </div>
@@ -276,12 +276,12 @@ export default function ContractsPage() {
         </>}>
         {selected && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <span className="text-sm font-mono font-medium">{selected.contractNumber}</span>
               <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[selected.status]}`}>{statusLabel[selected.status]}</span>
             </div>
             <div><p className="text-base font-medium text-text">{selected.title}</p></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">取引先</p><p className="text-sm text-text">{selected.partner.name}</p></div>
               <div><p className="text-xs text-text-tertiary">種別</p><p className="text-sm text-text">{selected.contractType ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">有効期間</p><p className="text-sm text-text">{new Date(selected.startDate).toLocaleDateString("ja-JP")} 〜 {selected.endDate ? new Date(selected.endDate).toLocaleDateString("ja-JP") : "-"}</p></div>

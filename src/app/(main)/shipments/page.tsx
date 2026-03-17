@@ -214,7 +214,7 @@ export default function ShipmentsPage() {
   return (
     <>
       <Header title="出荷管理" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         {/* ステータスパイプライン */}
         <div className="bg-surface rounded-xl border border-border p-4">
           <div className="flex items-center gap-2">
@@ -235,12 +235,12 @@ export default function ShipmentsPage() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input type="text" placeholder="出荷番号、顧客名、品目で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                className="pl-10 pr-4 py-2 w-full md:w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
             </div>
             {statusFilter !== "all" && <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>}
           </div>
@@ -249,7 +249,7 @@ export default function ShipmentsPage() {
           </button>
         </div>
 
-        <div className="bg-surface rounded-xl border border-border overflow-hidden">
+        <div className="bg-surface rounded-xl border border-border overflow-x-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
@@ -257,7 +257,7 @@ export default function ShipmentsPage() {
             </div>
           ) : (
             <>
-              <table className="w-full">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">出荷番号</th>
@@ -294,13 +294,13 @@ export default function ShipmentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setShowDetail(s.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="詳細">
+                          <button onClick={() => setShowDetail(s.id)} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="詳細">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => openEdit(s)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="編集">
+                          <button onClick={() => openEdit(s)} className="p-2 hover:bg-surface-tertiary rounded transition-colors" title="編集">
                             <Pencil className="w-4 h-4 text-text-tertiary" />
                           </button>
-                          <button onClick={() => handleDelete(s.id)} className="p-1 hover:bg-red-50 rounded transition-colors" title="削除">
+                          <button onClick={() => handleDelete(s.id)} className="p-2 hover:bg-red-50 rounded transition-colors" title="削除">
                             <Trash2 className="w-4 h-4 text-red-400" />
                           </button>
                         </div>
@@ -337,7 +337,7 @@ export default function ShipmentsPage() {
           <FormField label="品目" required>
             <FormSelect placeholder="在庫から選択" value={newForm.productId} onChange={(e) => setNewForm({ ...newForm, productId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="数量(kg)" required>
               <FormInput type="number" placeholder="例: 5000" value={newForm.quantity} onChange={(e) => setNewForm({ ...newForm, quantity: e.target.value })} />
             </FormField>
@@ -345,7 +345,7 @@ export default function ShipmentsPage() {
               <FormSelect placeholder="選択" value={newForm.warehouseId} onChange={(e) => setNewForm({ ...newForm, warehouseId: e.target.value })} options={(warehouses ?? []).map((w) => ({ value: w.id, label: `${w.code} ${w.name}` }))} />
             </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="出荷日" required>
               <FormInput type="date" value={newForm.shipmentDate} onChange={(e) => setNewForm({ ...newForm, shipmentDate: e.target.value })} />
             </FormField>
@@ -372,7 +372,7 @@ export default function ShipmentsPage() {
           <FormField label="品目" required>
             <FormSelect placeholder="選択" value={editForm.productId} onChange={(e) => setEditForm({ ...editForm, productId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
           </FormField>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="数量(kg)" required>
               <FormInput type="number" placeholder="例: 5000" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })} />
             </FormField>
@@ -380,7 +380,7 @@ export default function ShipmentsPage() {
               <FormSelect placeholder="選択" value={editForm.warehouseId} onChange={(e) => setEditForm({ ...editForm, warehouseId: e.target.value })} options={(warehouses ?? []).map((w) => ({ value: w.id, label: `${w.code} ${w.name}` }))} />
             </FormField>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField label="出荷日">
               <FormInput type="date" value={editForm.shipmentDate} onChange={(e) => setEditForm({ ...editForm, shipmentDate: e.target.value })} />
             </FormField>
@@ -423,19 +423,19 @@ export default function ShipmentsPage() {
             </div>
             <p className="text-center text-xs text-text-secondary">{statusLabels[selected.status] ?? selected.status}</p>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">顧客</p><p className="text-sm text-text">{selected.customer.name}</p></div>
               <div><p className="text-xs text-text-tertiary">出荷番号</p><p className="text-sm font-mono text-text">{selected.shipmentNumber}</p></div>
               <div><p className="text-xs text-text-tertiary">出荷日</p><p className="text-sm text-text">{selected.shipmentDate ? new Date(selected.shipmentDate).toLocaleDateString("ja-JP") : "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">納品日</p><p className="text-sm text-text">{selected.deliveryDate ? new Date(selected.deliveryDate).toLocaleDateString("ja-JP") : "-"}</p></div>
             </div>
             <div className="p-3 bg-surface-tertiary rounded-lg">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div><p className="text-xs text-text-tertiary">品目</p><p className="text-sm font-mono">{selected.product.code}</p><p className="text-xs text-text-secondary">{selected.product.name?.name ?? "-"}</p></div>
                 <div><p className="text-xs text-text-tertiary">数量</p><p className="text-sm font-bold">{selected.quantity.toLocaleString()} kg</p></div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">運送会社</p><p className="text-sm text-text">{selected.dispatch?.carrier?.name ?? "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">出荷倉庫</p><p className="text-sm text-text">{selected.warehouse?.name ?? "-"}</p></div>
             </div>

@@ -189,7 +189,7 @@ export default function PlantsPage() {
   return (
     <>
       <Header title="工場・倉庫マスタ" />
-      <div className="p-6 space-y-4">
+      <div className="p-4 md:p-6 space-y-4">
         <div className="flex items-center gap-1 bg-surface-tertiary rounded-lg p-1 w-fit">
           <button
             onClick={() => setTab("plants")}
@@ -217,7 +217,7 @@ export default function PlantsPage() {
             <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
         ) : tab === "plants" ? (
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {plants.map((plant) => (
               <button
                 key={plant.id}
@@ -258,7 +258,7 @@ export default function PlantsPage() {
           </div>
         ) : (
           <>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <p className="text-sm text-text-secondary">{warehouses?.length ?? 0}件の倉庫</p>
               <button
                 onClick={() => setShowNewWarehouse(true)}
@@ -268,8 +268,8 @@ export default function PlantsPage() {
                 倉庫追加
               </button>
             </div>
-            <div className="bg-surface rounded-xl border border-border overflow-hidden">
-              <table className="w-full">
+            <div className="bg-surface rounded-xl border border-border overflow-x-auto">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">コード</th>
@@ -295,7 +295,7 @@ export default function PlantsPage() {
                       <td className="px-4 py-3 relative">
                         <button
                           onClick={() => setWhMenuOpen(whMenuOpen === wh.id ? null : wh.id)}
-                          className="p-1 hover:bg-surface-tertiary rounded transition-colors"
+                          className="p-2 hover:bg-surface-tertiary rounded transition-colors"
                         >
                           <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
                         </button>
@@ -462,13 +462,13 @@ export default function PlantsPage() {
       >
         {selectedPlant && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">コード</p><p className="text-sm font-mono font-medium text-text">{selectedPlant.code}</p></div>
               <div><p className="text-xs text-text-tertiary">会社</p><p className="text-sm text-text">{companyLabels[selectedPlant.companyId] ?? selectedPlant.companyId}</p></div>
             </div>
             <div><p className="text-xs text-text-tertiary">工場名</p><p className="text-sm font-medium text-text">{selectedPlant.name}</p></div>
             <div><p className="text-xs text-text-tertiary">所在地</p><p className="text-sm text-text">{selectedPlant.address ?? "-"}</p></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div><p className="text-xs text-text-tertiary">倉庫数</p><p className="text-sm text-text">{selectedPlant.warehouses.length}</p></div>
               <div><p className="text-xs text-text-tertiary">タンク数</p><p className="text-sm text-text">{selectedPlant.tanks.length}</p></div>
             </div>
