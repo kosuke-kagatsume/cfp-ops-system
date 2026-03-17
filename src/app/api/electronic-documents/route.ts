@@ -127,6 +127,16 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // 監査ログ記録
+    await prisma.auditLog.create({
+      data: {
+        tableName: "ElectronicDocument",
+        recordId: doc.id,
+        action: "CREATE",
+        newData: { originalFileName: file.name, amount, partnerName, documentType },
+      },
+    });
+
     return NextResponse.json({ document: doc, ocrData }, { status: 201 });
   }
 
@@ -164,7 +174,20 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
+  const doc = await prisma.electronicDocument.findUnique({ where: { id } });
   await prisma.electronicDocument.delete({ where: { id } });
+
+  // 監査ログ記録
+  if (doc) {
+    await prisma.auditLog.create({
+      data: {
+        tableName: "ElectronicDocument",
+        recordId: id,
+        action: "DELETE",
+        oldData: { originalFileName: doc.originalFileName, amount: doc.amount, partnerName: doc.partnerName },
+      },
+    });
+  }
 
   return NextResponse.json({ success: true });
 }

@@ -313,7 +313,7 @@ export default function ElectronicDocumentsPage() {
                     ファイル
                   </th>
                   <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">
-                    タイムスタンプ
+                    登録日時
                   </th>
                   <th className="w-20"></th>
                 </tr>
@@ -392,7 +392,7 @@ export default function ElectronicDocumentsPage() {
 
         <div className="text-xs text-text-tertiary p-3 bg-surface-secondary rounded-lg">
           ※ 電子帳簿保存法の要件に基づき、取引日付・金額・取引先名での検索が可能です。
-          タイムスタンプはアップロード時刻を自動記録しています。
+          登録日時はアップロード時刻を自動記録し、変更履歴は監査ログに記録されます。
         </div>
       </div>
     </>
