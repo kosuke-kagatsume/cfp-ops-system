@@ -1,9 +1,9 @@
 "use client";
 
 import { Header } from "@/components/header";
-import { Modal } from "@/components/modal";
+import { Modal, FormField, FormInput } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Search, Eye, CheckCircle, Loader2 } from "lucide-react";
+import { Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -28,12 +28,14 @@ type Dispatch = {
 export default function FreightPage() {
   const [search, setSearch] = useState("");
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<Dispatch | null>(null);
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
   if (search) params.set("search", search);
 
-  const { data: dispatches, isLoading } = useSWR<Dispatch[]>(
+  const { data: dispatches, isLoading, mutate } = useSWR<Dispatch[]>(
     `/api/sales/freight?${params.toString()}`,
     fetcher
   );
@@ -41,6 +43,59 @@ export default function FreightPage() {
   const selected = dispatches?.find((f) => f.id === showDetail);
   const totalFreight = dispatches?.reduce((s, f) => s + (f.freightCost ?? 0), 0) ?? 0;
   const withCostCount = dispatches?.filter((f) => f.freightCost && f.freightCost > 0).length ?? 0;
+
+  const [editForm, setEditForm] = useState({
+    vehicleNumber: "",
+    driverName: "",
+    freightCost: "",
+    note: "",
+  });
+
+  const handleEdit = (d: Dispatch) => {
+    setEditTarget(d);
+    setEditForm({
+      vehicleNumber: d.vehicleNumber ?? "",
+      driverName: d.driverName ?? "",
+      freightCost: d.freightCost != null ? String(d.freightCost) : "",
+      note: d.note ?? "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editTarget) return;
+    try {
+      const res = await fetch(`/api/sales/freight/${editTarget.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vehicleNumber: editForm.vehicleNumber || null,
+          driverName: editForm.driverName || null,
+          freightCost: editForm.freightCost ? parseFloat(editForm.freightCost) : null,
+          note: editForm.note || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setShowEditModal(false);
+      setEditTarget(null);
+      mutate();
+      showToast("運賃情報を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const handleDelete = async (d: Dispatch) => {
+    if (!confirm(`配車 ${d.shipment.shipmentNumber} を削除しますか？`)) return;
+    try {
+      const res = await fetch(`/api/sales/freight/${d.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      mutate();
+      showToast("配車を削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
+    }
+  };
 
   const formatDate = (d: string | null) => {
     if (!d) return "-";
@@ -92,7 +147,7 @@ export default function FreightPage() {
                     <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">金額</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">日付</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">状態</th>
-                    <th className="w-10"></th>
+                    <th className="w-24"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -109,9 +164,17 @@ export default function FreightPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => setShowDetail(f.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                          <Eye className="w-4 h-4 text-text-tertiary" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setShowDetail(f.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                            <Eye className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          <button onClick={() => handleEdit(f)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                            <Pencil className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          <button onClick={() => handleDelete(f)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -126,11 +189,31 @@ export default function FreightPage() {
         </div>
       </div>
 
-      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `運賃詳細: ${selected.shipment.shipmentNumber}` : ""}
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title={`運賃編集: ${editTarget?.shipment.shipmentNumber ?? ""}`}
         footer={<>
-          {selected && (!selected.freightCost || selected.freightCost === 0) && <button onClick={() => { setShowDetail(null); showToast("承認しました（モック）", "success"); }} className="flex items-center gap-1.5 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700"><CheckCircle className="w-4 h-4" />承認する</button>}
-          <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleUpdate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
         </>}>
+        <div className="space-y-4">
+          <FormField label="車番">
+            <FormInput value={editForm.vehicleNumber} onChange={(e) => setEditForm({ ...editForm, vehicleNumber: e.target.value })} placeholder="例: 滋賀 100 あ 1234" />
+          </FormField>
+          <FormField label="ドライバー">
+            <FormInput value={editForm.driverName} onChange={(e) => setEditForm({ ...editForm, driverName: e.target.value })} placeholder="ドライバー名を入力..." />
+          </FormField>
+          <FormField label="運賃">
+            <FormInput type="number" value={editForm.freightCost} onChange={(e) => setEditForm({ ...editForm, freightCost: e.target.value })} placeholder="例: 50000" />
+          </FormField>
+          <FormField label="備考">
+            <FormInput value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} placeholder="備考を入力..." />
+          </FormField>
+        </div>
+      </Modal>
+
+      {/* 詳細モーダル */}
+      <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `運賃詳細: ${selected.shipment.shipmentNumber}` : ""}
+        footer={<button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>}>
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">

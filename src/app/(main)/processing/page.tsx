@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, ArrowRight, Loader2 } from "lucide-react";
+import { Plus, ArrowRight, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -73,6 +73,14 @@ const processTypeColors: Record<string, string> = {
   OTHER: "bg-gray-100 text-gray-800",
 };
 
+const processTypeOptions = [
+  { value: "EXTRUDER", label: "ルーダー（溶融ペレット化）" },
+  { value: "CRUSHING", label: "破砕" },
+  { value: "TRANSFER", label: "積替" },
+  { value: "REPACK", label: "詰替" },
+  { value: "OTHER", label: "その他" },
+];
+
 type PlantOption = { id: string; code: string; name: string };
 type ProductOption = { id: string; code: string; name: { name: string } | null };
 
@@ -80,6 +88,8 @@ export default function ProcessingPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
@@ -92,13 +102,14 @@ export default function ProcessingPage() {
 
   const { data: allOrders } = useSWR<ProcessingOrder[]>("/api/mr/processing", fetcher);
 
-  // Master data for create form
+  // Master data for create/edit form
+  const needMasters = showNewModal || showEditModal;
   const { data: plants } = useSWR<PlantOption[]>(
-    showNewModal ? "/api/masters/plants" : null,
+    needMasters ? "/api/masters/plants" : null,
     fetcher
   );
   const { data: products } = useSWR<ProductOption[]>(
-    showNewModal ? "/api/masters/products" : null,
+    needMasters ? "/api/masters/products" : null,
     fetcher
   );
 
@@ -111,6 +122,19 @@ export default function ProcessingPage() {
     inputQuantity: "",
     outputProductId: "",
     orderDate: new Date().toISOString().split("T")[0],
+    note: "",
+  });
+
+  const [editForm, setEditForm] = useState({
+    processType: "",
+    plantId: "",
+    inputProductId: "",
+    inputQuantity: "",
+    outputProductId: "",
+    outputQuantity: "",
+    yieldRate: "",
+    orderDate: "",
+    status: "",
     note: "",
   });
 
@@ -142,6 +166,65 @@ export default function ProcessingPage() {
       showToast("加工指示を作成しました", "success");
     } catch {
       showToast("作成に失敗しました", "error");
+    }
+  };
+
+  const openEdit = (o: ProcessingOrder) => {
+    setEditingId(o.id);
+    setEditForm({
+      processType: o.processType,
+      plantId: o.plant.id,
+      inputProductId: o.inputProduct.id,
+      inputQuantity: String(o.inputQuantity),
+      outputProductId: o.outputProduct.id,
+      outputQuantity: o.outputQuantity != null ? String(o.outputQuantity) : "",
+      yieldRate: o.yieldRate != null ? String(o.yieldRate) : "",
+      orderDate: o.orderDate.split("T")[0],
+      status: o.status,
+      note: o.note ?? "",
+    });
+    setShowDetail(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    if (!editingId) return;
+    try {
+      const res = await fetch(`/api/mr/processing/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          processType: editForm.processType,
+          plantId: editForm.plantId,
+          inputProductId: editForm.inputProductId,
+          inputQuantity: parseFloat(editForm.inputQuantity),
+          outputProductId: editForm.outputProductId,
+          outputQuantity: editForm.outputQuantity ? parseFloat(editForm.outputQuantity) : undefined,
+          yieldRate: editForm.yieldRate ? parseFloat(editForm.yieldRate) : undefined,
+          orderDate: editForm.orderDate,
+          status: editForm.status,
+          note: editForm.note || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setShowEditModal(false);
+      mutate();
+      showToast("加工指示を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この加工指示を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/mr/processing/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      setShowDetail(null);
+      mutate();
+      showToast("加工指示を削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
     }
   };
 
@@ -190,55 +273,64 @@ export default function ProcessingPage() {
         ) : (
           <div className="space-y-3">
             {orders?.map((order) => (
-              <button key={order.id} onClick={() => setShowDetail(order.id)}
-                className="w-full bg-surface rounded-xl border border-border p-5 hover:border-primary-300 transition-colors text-left">
+              <div key={order.id} className="w-full bg-surface rounded-xl border border-border p-5 hover:border-primary-300 transition-colors text-left">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
+                  <button onClick={() => setShowDetail(order.id)} className="flex items-center gap-3">
                     <span className="text-sm font-mono text-primary-600">{order.orderNumber}</span>
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[order.status] ?? "bg-gray-100 text-gray-700"}`}>
                       {statusLabels[order.status] ?? order.status}
                     </span>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-text-tertiary">{order.plant.name}</p>
-                    <p className="text-xs text-text-secondary">{new Date(order.orderDate).toLocaleDateString("ja-JP")}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 p-3 bg-surface-secondary rounded-lg">
-                    <p className="text-xs text-text-tertiary">投入</p>
-                    <p className="text-sm font-mono text-text">{order.inputProduct.code}</p>
-                    <p className="text-xs text-text-secondary">{order.inputQuantity.toLocaleString()} kg</p>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${processTypeColors[order.processType] ?? "bg-gray-100 text-gray-800"}`}>
-                      {processTypeLabels[order.processType] ?? order.processType}
-                    </span>
-                    <ArrowRight className="w-4 h-4 text-text-tertiary mt-1" />
-                  </div>
-                  <div className="flex-1 p-3 bg-surface-secondary rounded-lg">
-                    <p className="text-xs text-text-tertiary">完成</p>
-                    <p className="text-sm font-mono text-text">{order.outputProduct.code}</p>
-                    {order.outputQuantity ? (
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-text-secondary">{order.outputQuantity.toLocaleString()} kg</p>
-                        {order.yieldRate != null && <span className="text-xs font-medium text-emerald-600">歩留 {order.yieldRate}%</span>}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-text-tertiary">-</p>
-                    )}
+                  </button>
+                  <div className="flex items-center gap-2">
+                    <button onClick={() => openEdit(order)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="編集">
+                      <Pencil className="w-4 h-4 text-text-tertiary" />
+                    </button>
+                    <button onClick={() => handleDelete(order.id)} className="p-1 hover:bg-red-50 rounded transition-colors" title="削除">
+                      <Trash2 className="w-4 h-4 text-red-400" />
+                    </button>
+                    <div className="text-right ml-2">
+                      <p className="text-xs text-text-tertiary">{order.plant.name}</p>
+                      <p className="text-xs text-text-secondary">{new Date(order.orderDate).toLocaleDateString("ja-JP")}</p>
+                    </div>
                   </div>
                 </div>
-                {order.note && (
-                  <p className="text-xs text-text-tertiary mt-2">{order.note}</p>
-                )}
-              </button>
+                <button onClick={() => setShowDetail(order.id)} className="w-full">
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 p-3 bg-surface-secondary rounded-lg text-left">
+                      <p className="text-xs text-text-tertiary">投入</p>
+                      <p className="text-sm font-mono text-text">{order.inputProduct.code}</p>
+                      <p className="text-xs text-text-secondary">{order.inputQuantity.toLocaleString()} kg</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${processTypeColors[order.processType] ?? "bg-gray-100 text-gray-800"}`}>
+                        {processTypeLabels[order.processType] ?? order.processType}
+                      </span>
+                      <ArrowRight className="w-4 h-4 text-text-tertiary mt-1" />
+                    </div>
+                    <div className="flex-1 p-3 bg-surface-secondary rounded-lg text-left">
+                      <p className="text-xs text-text-tertiary">完成</p>
+                      <p className="text-sm font-mono text-text">{order.outputProduct.code}</p>
+                      {order.outputQuantity ? (
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-text-secondary">{order.outputQuantity.toLocaleString()} kg</p>
+                          {order.yieldRate != null && <span className="text-xs font-medium text-emerald-600">歩留 {order.yieldRate}%</span>}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-text-tertiary">-</p>
+                      )}
+                    </div>
+                  </div>
+                  {order.note && (
+                    <p className="text-xs text-text-tertiary mt-2 text-left">{order.note}</p>
+                  )}
+                </button>
+              </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* 加工指示モーダル */}
+      {/* 加工指示 新規作成モーダル */}
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="加工指示 作成"
         footer={<>
           <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
@@ -246,45 +338,19 @@ export default function ProcessingPage() {
         </>}>
         <div className="space-y-4">
           <FormField label="加工種別" required>
-            <FormSelect
-              placeholder="選択"
-              value={newForm.processType}
-              onChange={(e) => setNewForm({ ...newForm, processType: e.target.value })}
-              options={[
-                { value: "EXTRUDER", label: "ルーダー（溶融ペレット化）" },
-                { value: "CRUSHING", label: "破砕" },
-                { value: "TRANSFER", label: "積替" },
-                { value: "REPACK", label: "詰替" },
-                { value: "OTHER", label: "その他" },
-              ]}
-            />
+            <FormSelect placeholder="選択" value={newForm.processType} onChange={(e) => setNewForm({ ...newForm, processType: e.target.value })} options={processTypeOptions} />
           </FormField>
           <FormField label="工場" required>
-            <FormSelect
-              placeholder="選択"
-              value={newForm.plantId}
-              onChange={(e) => setNewForm({ ...newForm, plantId: e.target.value })}
-              options={(plants ?? []).map((p) => ({ value: p.id, label: p.name }))}
-            />
+            <FormSelect placeholder="選択" value={newForm.plantId} onChange={(e) => setNewForm({ ...newForm, plantId: e.target.value })} options={(plants ?? []).map((p) => ({ value: p.id, label: p.name }))} />
           </FormField>
           <FormField label="投入原料（品目コード）" required>
-            <FormSelect
-              placeholder="在庫から選択"
-              value={newForm.inputProductId}
-              onChange={(e) => setNewForm({ ...newForm, inputProductId: e.target.value })}
-              options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))}
-            />
+            <FormSelect placeholder="在庫から選択" value={newForm.inputProductId} onChange={(e) => setNewForm({ ...newForm, inputProductId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
           </FormField>
           <FormField label="投入量(kg)" required>
             <FormInput type="number" placeholder="例: 5000" value={newForm.inputQuantity} onChange={(e) => setNewForm({ ...newForm, inputQuantity: e.target.value })} />
           </FormField>
           <FormField label="完成品コード" required>
-            <FormSelect
-              placeholder="選択"
-              value={newForm.outputProductId}
-              onChange={(e) => setNewForm({ ...newForm, outputProductId: e.target.value })}
-              options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))}
-            />
+            <FormSelect placeholder="選択" value={newForm.outputProductId} onChange={(e) => setNewForm({ ...newForm, outputProductId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
           </FormField>
           <FormField label="作業日" required>
             <FormInput type="date" value={newForm.orderDate} onChange={(e) => setNewForm({ ...newForm, orderDate: e.target.value })} />
@@ -295,11 +361,53 @@ export default function ProcessingPage() {
         </div>
       </Modal>
 
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="加工指示 編集"
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="加工種別" required>
+            <FormSelect placeholder="選択" value={editForm.processType} onChange={(e) => setEditForm({ ...editForm, processType: e.target.value })} options={processTypeOptions} />
+          </FormField>
+          <FormField label="工場" required>
+            <FormSelect placeholder="選択" value={editForm.plantId} onChange={(e) => setEditForm({ ...editForm, plantId: e.target.value })} options={(plants ?? []).map((p) => ({ value: p.id, label: p.name }))} />
+          </FormField>
+          <FormField label="投入原料" required>
+            <FormSelect placeholder="選択" value={editForm.inputProductId} onChange={(e) => setEditForm({ ...editForm, inputProductId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
+          </FormField>
+          <FormField label="投入量(kg)" required>
+            <FormInput type="number" placeholder="例: 5000" value={editForm.inputQuantity} onChange={(e) => setEditForm({ ...editForm, inputQuantity: e.target.value })} />
+          </FormField>
+          <FormField label="完成品コード" required>
+            <FormSelect placeholder="選択" value={editForm.outputProductId} onChange={(e) => setEditForm({ ...editForm, outputProductId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="完成数量(kg)">
+              <FormInput type="number" placeholder="例: 4500" value={editForm.outputQuantity} onChange={(e) => setEditForm({ ...editForm, outputQuantity: e.target.value })} />
+            </FormField>
+            <FormField label="歩留率(%)">
+              <FormInput type="number" placeholder="例: 90" value={editForm.yieldRate} onChange={(e) => setEditForm({ ...editForm, yieldRate: e.target.value })} />
+            </FormField>
+          </div>
+          <FormField label="作業日" required>
+            <FormInput type="date" value={editForm.orderDate} onChange={(e) => setEditForm({ ...editForm, orderDate: e.target.value })} />
+          </FormField>
+          <FormField label="ステータス">
+            <FormSelect value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} options={statusEnum} />
+          </FormField>
+          <FormField label="指示内容">
+            <FormInput placeholder="例: 温度設定220度" value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} />
+          </FormField>
+        </div>
+      </Modal>
+
       {/* 詳細モーダル */}
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `加工詳細: ${selected.orderNumber}` : ""}
         footer={<>
-          {selected?.status === "PLANNED" && <button onClick={() => { setShowDetail(null); showToast("作業開始しました（開発中）", "info"); }} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">作業開始</button>}
-          {selected?.status === "IN_PROGRESS" && <button onClick={() => { setShowDetail(null); showToast("完了処理画面へ（開発中）", "info"); }} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">完了入力</button>}
+          <button onClick={() => selected && openEdit(selected)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">編集</button>
+          <button onClick={() => selected && handleDelete(selected.id)} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">削除</button>
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (
@@ -319,7 +427,7 @@ export default function ProcessingPage() {
               <div><p className="text-xs text-text-tertiary">投入</p><p className="text-sm font-mono">{selected.inputProduct.code}</p><p className="text-xs text-text-secondary">{selected.inputProduct.name?.name ?? "-"} / {selected.inputQuantity.toLocaleString()} kg</p></div>
               <div><p className="text-xs text-text-tertiary">完成品</p><p className="text-sm font-mono">{selected.outputProduct.code}</p>
                 {selected.outputQuantity ? (
-                  <p className="text-xs text-text-secondary">{selected.outputProduct.name?.name ?? "-"} / {selected.outputQuantity.toLocaleString()} kg{selected.yieldRate != null ? `（歩留 ${selected.yieldRate}%）` : ""}</p>
+                  <p className="text-xs text-text-secondary">{selected.outputProduct.name?.name ?? "-"} / {selected.outputQuantity.toLocaleString()} kg{selected.yieldRate != null ? ` (歩留 ${selected.yieldRate}%)` : ""}</p>
                 ) : (
                   <p className="text-xs text-text-tertiary">{selected.outputProduct.name?.name ?? "-"} / 未計量</p>
                 )}

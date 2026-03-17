@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Eye, FileText, Receipt, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, FileText, Receipt, ChevronRight, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -26,14 +26,18 @@ type ExternalAnalysisItem = {
   };
 };
 
+type SampleOption = {
+  id: string;
+  sampleNumber: string;
+  sampleName: string;
+};
+
 // Derive display status from the ExternalAnalysis data
-// The Prisma model doesn't have a status field; we derive it from dates/paths
 type DisplayStatus = "依頼受付" | "分析中" | "報告済";
 
 function deriveStatus(item: ExternalAnalysisItem): DisplayStatus {
   if (item.resultDate) return "報告済";
   if (item.reportPath) return "報告済";
-  // If request exists but no result yet
   return item.requestDate ? "分析中" : "依頼受付";
 }
 
@@ -48,10 +52,14 @@ const statusList: DisplayStatus[] = ["依頼受付", "分析中", "報告済"];
 export default function ExternalAnalysisPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: externals, isLoading } = useSWR<ExternalAnalysisItem[]>("/api/lab/external", fetcher);
+  const { data: externals, isLoading, mutate } = useSWR<ExternalAnalysisItem[]>("/api/lab/external", fetcher);
+  const needMasters = showNewModal || showEditModal;
+  const { data: samples } = useSWR<SampleOption[]>(needMasters ? "/api/lab/samples" : null, fetcher);
 
   if (isLoading) {
     return (
@@ -78,6 +86,67 @@ export default function ExternalAnalysisPage() {
 
   const selected = withStatus.find((a) => a.id === showDetail);
   const totalCost = allExternals.reduce((sum, a) => sum + (a.cost ?? 0), 0);
+
+  const [newForm, setNewForm] = useState({ sampleId: "", laboratoryName: "", requestDate: new Date().toISOString().split("T")[0], cost: "", note: "" });
+  const [editForm, setEditForm] = useState({ sampleId: "", laboratoryName: "", requestDate: "", resultDate: "", cost: "", note: "" });
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/lab/external", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sampleId: newForm.sampleId, laboratoryName: newForm.laboratoryName, requestDate: newForm.requestDate, cost: newForm.cost ? parseFloat(newForm.cost) : undefined, note: newForm.note || undefined }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowNewModal(false);
+      setNewForm({ sampleId: "", laboratoryName: "", requestDate: new Date().toISOString().split("T")[0], cost: "", note: "" });
+      mutate();
+      showToast("外部分析依頼を登録しました", "success");
+    } catch { showToast("登録に失敗しました", "error"); }
+  };
+
+  const openEdit = (a: ExternalAnalysisItem) => {
+    setEditingId(a.id);
+    setEditForm({ sampleId: a.sampleId, laboratoryName: a.laboratoryName, requestDate: a.requestDate.split("T")[0], resultDate: a.resultDate?.split("T")[0] ?? "", cost: a.cost != null ? String(a.cost) : "", note: a.note ?? "" });
+    setShowDetail(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    try {
+      const res = await fetch(`/api/lab/external/${editingId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sampleId: editForm.sampleId, laboratoryName: editForm.laboratoryName, requestDate: editForm.requestDate, resultDate: editForm.resultDate || null, cost: editForm.cost ? parseFloat(editForm.cost) : null, note: editForm.note || null }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowEditModal(false);
+      mutate();
+      showToast("外部分析依頼を更新しました", "success");
+    } catch { showToast("更新に失敗しました", "error"); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この外部分析依頼を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/lab/external/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast("外部分析依頼を削除しました", "success");
+    } catch { showToast("削除に失敗しました", "error"); }
+  };
+
+  const handleResultRegister = async (a: ExternalAnalysisItem) => {
+    try {
+      const res = await fetch(`/api/lab/external/${a.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ resultDate: new Date().toISOString() }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast("結果日を登録しました", "success");
+    } catch { showToast("更新に失敗しました", "error"); }
+  };
 
   return (
     <>
@@ -138,7 +207,7 @@ export default function ExternalAnalysisPage() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">結果日</th>
                 <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">費用</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                <th className="w-10"></th>
+                <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -154,7 +223,11 @@ export default function ExternalAnalysisPage() {
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${displayStatusColors[a.displayStatus]}`}>{a.displayStatus}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setShowDetail(a.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setShowDetail(a.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => openEdit(a)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => handleDelete(a.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -167,25 +240,43 @@ export default function ExternalAnalysisPage() {
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="外部分析依頼 登録"
         footer={<>
           <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
-          <button onClick={() => { setShowNewModal(false); showToast("依頼を登録しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
         </>}>
         <div className="space-y-4">
-          <FormField label="外部分析機関名" required><FormInput placeholder="例: SGS Japan" /></FormField>
-          <FormField label="サンプル" required><FormSelect placeholder="サンプルを選択" options={[]} /></FormField>
+          <FormField label="外部分析機関名" required><FormInput placeholder="例: SGS Japan" value={newForm.laboratoryName} onChange={(e) => setNewForm({ ...newForm, laboratoryName: e.target.value })} /></FormField>
+          <FormField label="サンプル" required><FormSelect placeholder="サンプルを選択" value={newForm.sampleId} onChange={(e) => setNewForm({ ...newForm, sampleId: e.target.value })} options={(samples ?? []).map((s) => ({ value: s.id, label: `${s.sampleNumber} ${s.sampleName}` }))} /></FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="依頼日" required><FormInput type="date" defaultValue="2026-03-17" /></FormField>
-            <FormField label="費用(円)"><FormInput type="number" placeholder="例: 35000" /></FormField>
+            <FormField label="依頼日" required><FormInput type="date" value={newForm.requestDate} onChange={(e) => setNewForm({ ...newForm, requestDate: e.target.value })} /></FormField>
+            <FormField label="費用(円)"><FormInput type="number" placeholder="例: 35000" value={newForm.cost} onChange={(e) => setNewForm({ ...newForm, cost: e.target.value })} /></FormField>
           </div>
-          <FormField label="備考"><FormInput placeholder="備考" /></FormField>
+          <FormField label="備考"><FormInput placeholder="備考" value={newForm.note} onChange={(e) => setNewForm({ ...newForm, note: e.target.value })} /></FormField>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="外部分析依頼 編集"
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="外部分析機関名" required><FormInput value={editForm.laboratoryName} onChange={(e) => setEditForm({ ...editForm, laboratoryName: e.target.value })} /></FormField>
+          <FormField label="サンプル" required><FormSelect value={editForm.sampleId} onChange={(e) => setEditForm({ ...editForm, sampleId: e.target.value })} options={(samples ?? []).map((s) => ({ value: s.id, label: `${s.sampleNumber} ${s.sampleName}` }))} /></FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="依頼日" required><FormInput type="date" value={editForm.requestDate} onChange={(e) => setEditForm({ ...editForm, requestDate: e.target.value })} /></FormField>
+            <FormField label="結果日"><FormInput type="date" value={editForm.resultDate} onChange={(e) => setEditForm({ ...editForm, resultDate: e.target.value })} /></FormField>
+          </div>
+          <FormField label="費用(円)"><FormInput type="number" value={editForm.cost} onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })} /></FormField>
+          <FormField label="備考"><FormInput value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} /></FormField>
         </div>
       </Modal>
 
       {/* 詳細モーダル */}
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `外部分析: ${selected.sample.sampleNumber}` : ""}
         footer={<>
-          {selected?.displayStatus === "依頼受付" && <button onClick={() => { setShowDetail(null); showToast("分析中に更新しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">分析開始</button>}
-          {selected?.displayStatus === "分析中" && <button onClick={() => { setShowDetail(null); showToast("報告済に更新しました（モック）", "success"); }} className="flex items-center gap-1 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700"><FileText className="w-4 h-4" />結果登録</button>}
-          {selected?.displayStatus === "報告済" && <button onClick={() => { setShowDetail(null); showToast("請求処理しました（モック）", "success"); }} className="flex items-center gap-1 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700"><Receipt className="w-4 h-4" />請求する</button>}
+          {selected?.displayStatus === "分析中" && <button onClick={() => selected && handleResultRegister(selected)} className="flex items-center gap-1 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700"><FileText className="w-4 h-4" />結果登録</button>}
+          <button onClick={() => selected && openEdit(selected)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">編集</button>
+          <button onClick={() => selected && handleDelete(selected.id)} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">削除</button>
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (

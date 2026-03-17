@@ -1,9 +1,9 @@
 "use client";
 
 import { Header } from "@/components/header";
-import { Modal } from "@/components/modal";
+import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Award, Download, Mail, Printer, Eye, Search, Loader2, CheckCircle, XCircle } from "lucide-react";
+import { Award, Download, Mail, Printer, Eye, Search, Loader2, CheckCircle, XCircle, Plus, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -56,12 +56,23 @@ type CertificateItem = {
   };
 };
 
+type SampleOption = {
+  id: string;
+  sampleNumber: string;
+  sampleName: string;
+};
+
 export default function LabCertificatesPage() {
   const [search, setSearch] = useState("");
   const [showPreview, setShowPreview] = useState<string | null>(null);
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: certificates, isLoading } = useSWR<CertificateItem[]>("/api/lab/certificates", fetcher);
+  const { data: certificates, isLoading, mutate } = useSWR<CertificateItem[]>("/api/lab/certificates", fetcher);
+  const needMasters = showNewModal || showEditModal;
+  const { data: samples } = useSWR<SampleOption[]>(needMasters ? "/api/lab/samples" : null, fetcher);
 
   if (isLoading) {
     return (
@@ -95,6 +106,67 @@ export default function LabCertificatesPage() {
   const judgedCount = allCerts.filter((c) => c.sample.status === "JUDGED").length;
   const reportedCount = allCerts.filter((c) => c.sample.status === "REPORTED").length;
 
+  const [newForm, setNewForm] = useState({ sampleId: "", issueDate: new Date().toISOString().split("T")[0], note: "" });
+  const [editForm, setEditForm] = useState({ sampleId: "", issueDate: "", note: "" });
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/lab/certificates", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sampleId: newForm.sampleId, issueDate: newForm.issueDate, note: newForm.note || undefined }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowNewModal(false);
+      setNewForm({ sampleId: "", issueDate: new Date().toISOString().split("T")[0], note: "" });
+      mutate();
+      showToast("成績書を発行しました", "success");
+    } catch { showToast("登録に失敗しました", "error"); }
+  };
+
+  const openEdit = (c: CertificateItem) => {
+    setEditingId(c.id);
+    setEditForm({ sampleId: c.sampleId, issueDate: c.issueDate.split("T")[0], note: c.note ?? "" });
+    setShowPreview(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    try {
+      const res = await fetch(`/api/lab/certificates/${editingId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sampleId: editForm.sampleId, issueDate: editForm.issueDate, note: editForm.note || null }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowEditModal(false);
+      mutate();
+      showToast("成績書を更新しました", "success");
+    } catch { showToast("更新に失敗しました", "error"); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この成績書を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/lab/certificates/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setShowPreview(null);
+      mutate();
+      showToast("成績書を削除しました", "success");
+    } catch { showToast("削除に失敗しました", "error"); }
+  };
+
+  const handleIssue = async (c: CertificateItem) => {
+    try {
+      // Mark sample as REPORTED
+      await fetch(`/api/lab/samples/${c.sampleId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "REPORTED" }),
+      });
+      setShowPreview(null);
+      mutate();
+      showToast("成績書を発行しました", "success");
+    } catch { showToast("発行に失敗しました", "error"); }
+  };
+
   return (
     <>
       <Header title="成績書発行" />
@@ -125,9 +197,9 @@ export default function LabCertificatesPage() {
             <input type="text" placeholder="成績書番号、サンプルIDで検索..." value={search} onChange={(e) => setSearch(e.target.value)}
               className="pl-10 pr-4 py-2 w-72 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
           </div>
-          <button onClick={() => showToast("一括PDF生成（開発中）", "info")}
-            className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
-            <Download className="w-4 h-4" />一括PDF
+          <button onClick={() => setShowNewModal(true)}
+            className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
+            <Plus className="w-4 h-4" />成績書作成
           </button>
         </div>
 
@@ -172,11 +244,11 @@ export default function LabCertificatesPage() {
                         <button onClick={() => setShowPreview(c.id)} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="プレビュー">
                           <Eye className="w-4 h-4 text-text-tertiary" />
                         </button>
-                        <button onClick={() => showToast("PDF生成（開発中）", "info")} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="PDF出力">
-                          <Printer className="w-4 h-4 text-text-tertiary" />
+                        <button onClick={() => openEdit(c)} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="編集">
+                          <Pencil className="w-4 h-4 text-text-tertiary" />
                         </button>
-                        <button onClick={() => showToast("メール送信（開発中）", "info")} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="メール送信">
-                          <Mail className="w-4 h-4 text-text-tertiary" />
+                        <button onClick={() => handleDelete(c.id)} className="p-1.5 hover:bg-red-50 rounded transition-colors" title="削除">
+                          <Trash2 className="w-4 h-4 text-red-400" />
                         </button>
                       </div>
                     </td>
@@ -191,17 +263,42 @@ export default function LabCertificatesPage() {
         </div>
       </div>
 
+      {/* 成績書作成モーダル */}
+      <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="成績書作成"
+        footer={<>
+          <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">作成する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="サンプル" required><FormSelect placeholder="サンプルを選択" value={newForm.sampleId} onChange={(e) => setNewForm({ ...newForm, sampleId: e.target.value })} options={(samples ?? []).map((s) => ({ value: s.id, label: `${s.sampleNumber} ${s.sampleName}` }))} /></FormField>
+          <FormField label="発行日" required><FormInput type="date" value={newForm.issueDate} onChange={(e) => setNewForm({ ...newForm, issueDate: e.target.value })} /></FormField>
+          <FormField label="備考"><FormInput placeholder="備考" value={newForm.note} onChange={(e) => setNewForm({ ...newForm, note: e.target.value })} /></FormField>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="成績書 編集"
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="サンプル" required><FormSelect value={editForm.sampleId} onChange={(e) => setEditForm({ ...editForm, sampleId: e.target.value })} options={(samples ?? []).map((s) => ({ value: s.id, label: `${s.sampleNumber} ${s.sampleName}` }))} /></FormField>
+          <FormField label="発行日" required><FormInput type="date" value={editForm.issueDate} onChange={(e) => setEditForm({ ...editForm, issueDate: e.target.value })} /></FormField>
+          <FormField label="備考"><FormInput value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} /></FormField>
+        </div>
+      </Modal>
+
       {/* 成績書プレビューモーダル */}
       <Modal isOpen={!!showPreview} onClose={() => setShowPreview(null)} title={selected ? `分析成績書: ${selected.certificateNumber}` : ""}
         footer={<>
           <button onClick={() => showToast("PDF生成（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Printer className="w-4 h-4" />PDF出力</button>
           <button onClick={() => showToast("メール送信（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Mail className="w-4 h-4" />メール</button>
-          {selected?.sample.status === "JUDGED" && <button onClick={() => { setShowPreview(null); showToast("成績書を発行しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">発行する</button>}
+          {selected?.sample.status === "JUDGED" && <button onClick={() => selected && handleIssue(selected)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">発行する</button>}
           <button onClick={() => setShowPreview(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (
           <div className="space-y-4">
-            {/* 成績書プレビュー */}
             <div className="border-2 border-dashed border-border rounded-xl p-6 bg-white min-h-[400px]">
               <div className="text-center mb-6">
                 <h3 className="text-lg font-bold">分析成績書</h3>
@@ -271,7 +368,6 @@ export default function LabCertificatesPage() {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-text-tertiary text-center">※ これはプレビューです。実際のPDF生成はDB接続後に実装します。</p>
           </div>
         )}
       </Modal>

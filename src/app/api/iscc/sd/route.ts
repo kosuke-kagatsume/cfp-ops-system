@@ -19,3 +19,21 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(data);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const record = await prisma.sustainabilityDeclaration.create({
+    data: {
+      sdNumber: body.sdNumber,
+      issueDate: new Date(body.issueDate),
+      rawMaterial: body.rawMaterial,
+      countryOfOrigin: body.countryOfOrigin,
+      ghgValue: body.ghgValue,
+      pdfPath: body.pdfPath,
+      note: body.note,
+    },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}

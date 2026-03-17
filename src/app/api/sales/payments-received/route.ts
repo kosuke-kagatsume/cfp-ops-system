@@ -24,3 +24,30 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(payments);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const seq = await prisma.numberSequence.update({
+    where: { prefix_year: { prefix: "RCV", year: new Date().getFullYear() } },
+    data: { currentNumber: { increment: 1 } },
+  });
+  const paymentNumber = `RCV-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+
+  const payment = await prisma.paymentReceived.create({
+    data: {
+      paymentNumber,
+      customerId: body.customerId,
+      paymentDate: new Date(body.paymentDate),
+      amount: body.amount,
+      paymentMethod: body.paymentMethod,
+      isReconciled: false,
+      note: body.note || null,
+    },
+    include: {
+      customer: { select: { id: true, code: true, name: true } },
+    },
+  });
+
+  return NextResponse.json(payment, { status: 201 });
+}

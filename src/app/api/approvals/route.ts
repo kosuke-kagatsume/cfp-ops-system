@@ -32,3 +32,46 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(data);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const seq = await prisma.numberSequence.upsert({
+    where: { prefix_year: { prefix: "APR", year: new Date().getFullYear() } },
+    update: { currentNumber: { increment: 1 } },
+    create: { prefix: "APR", year: new Date().getFullYear(), currentNumber: 1 },
+  });
+  const requestNumber = `APR-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+
+  const record = await prisma.approvalRequest.create({
+    data: {
+      requestNumber,
+      category: body.category,
+      targetType: body.targetType,
+      targetId: body.targetId,
+      title: body.title,
+      description: body.description,
+      status: "PENDING",
+      createdBy: body.createdBy,
+      steps: body.steps
+        ? {
+            create: body.steps.map((s: { stepOrder: number; approverId: string }) => ({
+              stepOrder: s.stepOrder,
+              approverId: s.approverId,
+              status: "PENDING",
+            })),
+          }
+        : undefined,
+    },
+    include: {
+      steps: {
+        include: {
+          approver: { select: { id: true, name: true } },
+        },
+        orderBy: { stepOrder: "asc" },
+      },
+    },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}

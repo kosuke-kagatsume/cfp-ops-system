@@ -81,7 +81,7 @@ export default function ApprovalsPage() {
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const { data: approvalItems, isLoading } = useSWR<ApprovalRequestItem[]>(
+  const { data: approvalItems, isLoading, mutate } = useSWR<ApprovalRequestItem[]>(
     "/api/approvals",
     fetcher
   );
@@ -98,6 +98,32 @@ export default function ApprovalsPage() {
     if (!approvalItems) return 0;
     if (filter === "all") return approvalItems.length;
     return approvalItems.filter((i) => i.status === filter).length;
+  };
+
+  const handleAction = async (id: string, action: "approve" | "reject", stepId?: string) => {
+    try {
+      const res = await fetch(`/api/approvals/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, stepId }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast(action === "approve" ? "承認しました" : "却下しました", action === "approve" ? "success" : "warning");
+    } catch { showToast("処理に失敗しました", "error"); }
+  };
+
+  const handleReturn = async (id: string) => {
+    try {
+      const res = await fetch(`/api/approvals/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "RETURNED" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast("差戻ししました", "warning");
+    } catch { showToast("処理に失敗しました", "error"); }
   };
 
   return (
@@ -185,9 +211,9 @@ export default function ApprovalsPage() {
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `承認詳細` : ""}
         footer={<>
           {selected?.status === "PENDING" && <>
-            <button onClick={() => { setShowDetail(null); showToast("差戻ししました（モック）", "warning"); }} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><ArrowLeft className="w-4 h-4" />差戻し</button>
-            <button onClick={() => { setShowDetail(null); showToast("却下しました（モック）", "warning"); }} className="flex items-center gap-1 px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"><XCircle className="w-4 h-4" />却下</button>
-            <button onClick={() => { setShowDetail(null); showToast("承認しました（モック）", "success"); }} className="flex items-center gap-1 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700"><CheckCircle className="w-4 h-4" />承認</button>
+            <button onClick={() => selected && handleReturn(selected.id)} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><ArrowLeft className="w-4 h-4" />差戻し</button>
+            <button onClick={() => { const step = selected?.steps.find((s) => s.status === "PENDING"); selected && handleAction(selected.id, "reject", step?.id); }} className="flex items-center gap-1 px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-medium hover:bg-red-700"><XCircle className="w-4 h-4" />却下</button>
+            <button onClick={() => { const step = selected?.steps.find((s) => s.status === "PENDING"); selected && handleAction(selected.id, "approve", step?.id); }} className="flex items-center gap-1 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700"><CheckCircle className="w-4 h-4" />承認</button>
           </>}
           {selected?.status !== "PENDING" && <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>}
         </>}>

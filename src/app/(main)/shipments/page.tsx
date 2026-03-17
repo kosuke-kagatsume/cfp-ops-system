@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Search, Eye, FileText, Camera, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -19,6 +19,7 @@ type Shipment = {
   amount: number | null;
   packagingType: string | null;
   status: string;
+  note: string | null;
   customer: { id: string; code: string; name: string };
   deliveryPartner: { id: string; name: string } | null;
   product: {
@@ -66,6 +67,8 @@ export default function ShipmentsPage() {
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
@@ -79,21 +82,18 @@ export default function ShipmentsPage() {
 
   const { data: allShipments } = useSWR<Shipment[]>("/api/mr/shipments", fetcher);
 
-  // Master data for create form
+  // Master data for create/edit form
+  const needMasters = showNewModal || showEditModal;
   const { data: customers } = useSWR<PartnerOption[]>(
-    showNewModal ? "/api/masters/partners?type=customer" : null,
+    needMasters ? "/api/masters/partners?type=customer" : null,
     fetcher
   );
   const { data: products } = useSWR<ProductOption[]>(
-    showNewModal ? "/api/masters/products" : null,
+    needMasters ? "/api/masters/products" : null,
     fetcher
   );
   const { data: warehouses } = useSWR<WarehouseOption[]>(
-    showNewModal ? "/api/masters/warehouses" : null,
-    fetcher
-  );
-  const { data: carriers } = useSWR<PartnerOption[]>(
-    showNewModal ? "/api/masters/partners?type=carrier" : null,
+    needMasters ? "/api/masters/warehouses" : null,
     fetcher
   );
 
@@ -107,6 +107,18 @@ export default function ShipmentsPage() {
     unitPrice: "",
     shipmentDate: new Date().toISOString().split("T")[0],
     deliveryDate: "",
+  });
+
+  const [editForm, setEditForm] = useState({
+    customerId: "",
+    productId: "",
+    warehouseId: "",
+    quantity: "",
+    unitPrice: "",
+    shipmentDate: "",
+    deliveryDate: "",
+    status: "",
+    note: "",
   });
 
   const resetForm = () => {
@@ -138,6 +150,66 @@ export default function ShipmentsPage() {
       showToast("出荷を登録しました", "success");
     } catch {
       showToast("登録に失敗しました", "error");
+    }
+  };
+
+  const openEdit = (s: Shipment) => {
+    setEditingId(s.id);
+    setEditForm({
+      customerId: s.customer.id,
+      productId: s.product.id,
+      warehouseId: s.warehouse?.id ?? "",
+      quantity: String(s.quantity),
+      unitPrice: s.unitPrice != null ? String(s.unitPrice) : "",
+      shipmentDate: s.shipmentDate ? s.shipmentDate.split("T")[0] : "",
+      deliveryDate: s.deliveryDate ? s.deliveryDate.split("T")[0] : "",
+      status: s.status,
+      note: s.note ?? "",
+    });
+    setShowDetail(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    if (!editingId) return;
+    try {
+      const qty = parseFloat(editForm.quantity);
+      const up = editForm.unitPrice ? parseFloat(editForm.unitPrice) : undefined;
+      const res = await fetch(`/api/mr/shipments/${editingId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: editForm.customerId,
+          productId: editForm.productId,
+          warehouseId: editForm.warehouseId || undefined,
+          quantity: qty,
+          unitPrice: up,
+          amount: up ? qty * up : undefined,
+          shipmentDate: editForm.shipmentDate || undefined,
+          deliveryDate: editForm.deliveryDate || undefined,
+          status: editForm.status,
+          note: editForm.note || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setShowEditModal(false);
+      mutate();
+      showToast("出荷情報を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この出荷データを削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/mr/shipments/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      setShowDetail(null);
+      mutate();
+      showToast("出荷データを削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
     }
   };
 
@@ -174,14 +246,9 @@ export default function ShipmentsPage() {
             </div>
             {statusFilter !== "all" && <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>}
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => showToast("出庫表を生成しました（開発中）", "info")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">
-              <FileText className="w-4 h-4" />出庫表作成
-            </button>
-            <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
-              <Plus className="w-4 h-4" />出荷登録
-            </button>
-          </div>
+          <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
+            <Plus className="w-4 h-4" />出荷登録
+          </button>
         </div>
 
         <div className="bg-surface rounded-xl border border-border overflow-hidden">
@@ -202,7 +269,7 @@ export default function ShipmentsPage() {
                     <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">数量(kg)</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">運送</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                    <th className="w-10"></th>
+                    <th className="w-24"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -228,9 +295,17 @@ export default function ShipmentsPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => setShowDetail(s.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                          <Eye className="w-4 h-4 text-text-tertiary" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setShowDetail(s.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="詳細">
+                            <Eye className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          <button onClick={() => openEdit(s)} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="編集">
+                            <Pencil className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          <button onClick={() => handleDelete(s.id)} className="p-1 hover:bg-red-50 rounded transition-colors" title="削除">
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -259,32 +334,17 @@ export default function ShipmentsPage() {
         </>}>
         <div className="space-y-4">
           <FormField label="顧客" required>
-            <FormSelect
-              placeholder="選択"
-              value={newForm.customerId}
-              onChange={(e) => setNewForm({ ...newForm, customerId: e.target.value })}
-              options={(customers ?? []).map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))}
-            />
+            <FormSelect placeholder="選択" value={newForm.customerId} onChange={(e) => setNewForm({ ...newForm, customerId: e.target.value })} options={(customers ?? []).map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))} />
           </FormField>
           <FormField label="品目" required>
-            <FormSelect
-              placeholder="在庫から選択"
-              value={newForm.productId}
-              onChange={(e) => setNewForm({ ...newForm, productId: e.target.value })}
-              options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))}
-            />
+            <FormSelect placeholder="在庫から選択" value={newForm.productId} onChange={(e) => setNewForm({ ...newForm, productId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
           </FormField>
           <div className="grid grid-cols-2 gap-4">
             <FormField label="数量(kg)" required>
               <FormInput type="number" placeholder="例: 5000" value={newForm.quantity} onChange={(e) => setNewForm({ ...newForm, quantity: e.target.value })} />
             </FormField>
             <FormField label="出荷倉庫">
-              <FormSelect
-                placeholder="選択"
-                value={newForm.warehouseId}
-                onChange={(e) => setNewForm({ ...newForm, warehouseId: e.target.value })}
-                options={(warehouses ?? []).map((w) => ({ value: w.id, label: `${w.code} ${w.name}` }))}
-              />
+              <FormSelect placeholder="選択" value={newForm.warehouseId} onChange={(e) => setNewForm({ ...newForm, warehouseId: e.target.value })} options={(warehouses ?? []).map((w) => ({ value: w.id, label: `${w.code} ${w.name}` }))} />
             </FormField>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -301,11 +361,52 @@ export default function ShipmentsPage() {
         </div>
       </Modal>
 
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="出荷 編集"
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="顧客" required>
+            <FormSelect placeholder="選択" value={editForm.customerId} onChange={(e) => setEditForm({ ...editForm, customerId: e.target.value })} options={(customers ?? []).map((c) => ({ value: c.id, label: `${c.code} ${c.name}` }))} />
+          </FormField>
+          <FormField label="品目" required>
+            <FormSelect placeholder="選択" value={editForm.productId} onChange={(e) => setEditForm({ ...editForm, productId: e.target.value })} options={(products ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name?.name ?? ""}` }))} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="数量(kg)" required>
+              <FormInput type="number" placeholder="例: 5000" value={editForm.quantity} onChange={(e) => setEditForm({ ...editForm, quantity: e.target.value })} />
+            </FormField>
+            <FormField label="出荷倉庫">
+              <FormSelect placeholder="選択" value={editForm.warehouseId} onChange={(e) => setEditForm({ ...editForm, warehouseId: e.target.value })} options={(warehouses ?? []).map((w) => ({ value: w.id, label: `${w.code} ${w.name}` }))} />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="出荷日">
+              <FormInput type="date" value={editForm.shipmentDate} onChange={(e) => setEditForm({ ...editForm, shipmentDate: e.target.value })} />
+            </FormField>
+            <FormField label="納品日">
+              <FormInput type="date" value={editForm.deliveryDate} onChange={(e) => setEditForm({ ...editForm, deliveryDate: e.target.value })} />
+            </FormField>
+          </div>
+          <FormField label="単価(円/kg)">
+            <FormInput type="number" placeholder="例: 120" value={editForm.unitPrice} onChange={(e) => setEditForm({ ...editForm, unitPrice: e.target.value })} />
+          </FormField>
+          <FormField label="ステータス">
+            <FormSelect value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} options={statusSteps} />
+          </FormField>
+          <FormField label="備考">
+            <FormInput placeholder="備考" value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} />
+          </FormField>
+        </div>
+      </Modal>
+
       {/* 詳細モーダル */}
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `出荷詳細: ${selected.shipmentNumber}` : ""}
         footer={<>
-          {selected?.status !== "COMPLETED" && <button onClick={() => { setShowDetail(null); showToast("ステータスを進めました（開発中）", "info"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">次のステップへ</button>}
-          <button onClick={() => { setShowDetail(null); showToast("写真登録（開発中）", "info"); }} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Camera className="w-4 h-4" />写真</button>
+          <button onClick={() => selected && openEdit(selected)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">編集</button>
+          <button onClick={() => selected && handleDelete(selected.id)} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">削除</button>
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (

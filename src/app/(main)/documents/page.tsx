@@ -1,9 +1,9 @@
 "use client";
 
 import { Header } from "@/components/header";
-import { Modal } from "@/components/modal";
+import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Search, Download, Eye, Printer, Mail, FileText, Filter, Loader2 } from "lucide-react";
+import { Search, Download, Eye, Printer, Mail, Plus, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -56,7 +56,6 @@ const documentTypeColors: Record<DocumentTypeEnum, string> = {
   CONTRACT_DOC: "bg-gray-50 text-gray-700",
 };
 
-// The main document types to show as filter cards
 const mainDocumentTypes: DocumentTypeEnum[] = [
   "BILLING_INVOICE",
   "DELIVERY_NOTE_FINAL",
@@ -68,6 +67,8 @@ const mainDocumentTypes: DocumentTypeEnum[] = [
   "DELIVERY_NOTICE",
   "DELIVERY_NOTE_TEMP",
 ];
+
+const documentTypeOptions = Object.entries(documentTypeLabel).map(([v, l]) => ({ value: v, label: l }));
 
 type DocumentData = {
   id: string;
@@ -87,23 +88,50 @@ export default function DocumentsPage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [showPreview, setShowPreview] = useState<string | null>(null);
+  const [showNewModal, setShowNewModal] = useState(false);
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (typeFilter !== "all") params.set("documentType", typeFilter);
 
-  const { data: documents, isLoading } = useSWR<DocumentData[]>(
+  const { data: documents, isLoading, mutate } = useSWR<DocumentData[]>(
     `/api/documents?${params.toString()}`,
     fetcher
   );
 
-  // For counts in filter cards, need all documents
   const { data: allDocuments } = useSWR<DocumentData[]>("/api/documents", fetcher);
 
   const allDocs = documents ?? [];
   const allDocsForCount = allDocuments ?? [];
   const selected = allDocs.find((d) => d.id === showPreview);
+
+  const [newForm, setNewForm] = useState({ documentType: "", title: "", filePath: "", note: "" });
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/documents", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ documentType: newForm.documentType, title: newForm.title, filePath: newForm.filePath || "/documents/placeholder.pdf", mimeType: "application/pdf", note: newForm.note || undefined }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowNewModal(false);
+      setNewForm({ documentType: "", title: "", filePath: "", note: "" });
+      mutate();
+      showToast("帳票を登録しました", "success");
+    } catch { showToast("登録に失敗しました", "error"); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この帳票を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/documents/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setShowPreview(null);
+      mutate();
+      showToast("帳票を削除しました", "success");
+    } catch { showToast("削除に失敗しました", "error"); }
+  };
 
   if (isLoading) {
     return (
@@ -147,8 +175,8 @@ export default function DocumentsPage() {
             </div>
             {typeFilter !== "all" && <button onClick={() => setTypeFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>}
           </div>
-          <button onClick={() => showToast("一括PDF生成（開発中）", "info")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
-            <Download className="w-4 h-4" />一括PDF
+          <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
+            <Plus className="w-4 h-4" />帳票登録
           </button>
         </div>
 
@@ -178,11 +206,8 @@ export default function DocumentsPage() {
                       <button onClick={() => setShowPreview(doc.id)} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="プレビュー">
                         <Eye className="w-4 h-4 text-text-tertiary" />
                       </button>
-                      <button onClick={() => showToast(`${documentTypeLabel[doc.documentType]} PDF生成（開発中）`, "info")} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="PDF出力">
-                        <Printer className="w-4 h-4 text-text-tertiary" />
-                      </button>
-                      <button onClick={() => showToast("メール送信（開発中）", "info")} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="メール送信">
-                        <Mail className="w-4 h-4 text-text-tertiary" />
+                      <button onClick={() => handleDelete(doc.id)} className="p-1.5 hover:bg-red-50 rounded transition-colors" title="削除">
+                        <Trash2 className="w-4 h-4 text-red-400" />
                       </button>
                     </div>
                   </td>
@@ -196,16 +221,29 @@ export default function DocumentsPage() {
         </div>
       </div>
 
+      {/* 帳票登録モーダル */}
+      <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="帳票登録"
+        footer={<>
+          <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="種別" required><FormSelect placeholder="選択" value={newForm.documentType} onChange={(e) => setNewForm({ ...newForm, documentType: e.target.value })} options={documentTypeOptions} /></FormField>
+          <FormField label="タイトル" required><FormInput placeholder="例: 請求書 2026年3月分" value={newForm.title} onChange={(e) => setNewForm({ ...newForm, title: e.target.value })} /></FormField>
+          <FormField label="備考"><FormInput placeholder="備考" value={newForm.note} onChange={(e) => setNewForm({ ...newForm, note: e.target.value })} /></FormField>
+        </div>
+      </Modal>
+
       {/* プレビューモーダル */}
       <Modal isOpen={!!showPreview} onClose={() => setShowPreview(null)} title={selected ? `${documentTypeLabel[selected.documentType]}: ${selected.title}` : ""}
         footer={<>
           <button onClick={() => showToast("PDF生成（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Printer className="w-4 h-4" />PDF出力</button>
           <button onClick={() => showToast("メール送信（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Mail className="w-4 h-4" />メール</button>
+          <button onClick={() => selected && handleDelete(selected.id)} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">削除</button>
           <button onClick={() => setShowPreview(null)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">閉じる</button>
         </>}>
         {selected && (
           <div className="space-y-4">
-            {/* 帳票プレビュー（モック） */}
             <div className="border-2 border-dashed border-border rounded-xl p-6 bg-white min-h-[300px]">
               <div className="text-center mb-4">
                 <h3 className="text-lg font-bold">{documentTypeLabel[selected.documentType]}</h3>
@@ -235,7 +273,6 @@ export default function DocumentsPage() {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-text-tertiary text-center">※ これはプレビューモックです。実際のPDF生成はDB接続後に実装します。</p>
           </div>
         )}
       </Modal>

@@ -127,7 +127,24 @@ export default function LabAnalysisPage() {
           <div className="bg-surface rounded-xl border border-border p-5">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-medium text-text">分析入力: {selectedSample}</h3>
-              <button onClick={() => showToast("分析結果を保存しました（モック）", "success")}
+              <button onClick={async () => {
+                const inputs = document.querySelectorAll<HTMLInputElement>(`[data-sample="${selectedSample}"]`);
+                const sample = samples.find((s) => s.sampleNumber === selectedSample);
+                if (!sample) return;
+                let created = 0;
+                for (const input of inputs) {
+                  if (!input.value) continue;
+                  const item = analysisTemplate[parseInt(input.dataset.idx ?? "0")];
+                  try {
+                    await fetch("/api/lab/analysis", {
+                      method: "POST", headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ sampleId: sample.id, testItem: item.name, testMethod: "JIS", result: input.value, unit: item.unit || undefined, standard: item.spec, analysisDate: new Date().toISOString() }),
+                    });
+                    created++;
+                  } catch { /* skip */ }
+                }
+                if (created > 0) { showToast(`${created}件の分析結果を保存しました`, "success"); } else { showToast("入力値がありません", "warning"); }
+              }}
                 className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
                 <Save className="w-4 h-4" />保存
               </button>
@@ -149,7 +166,7 @@ export default function LabAnalysisPage() {
                     <td className="px-3 py-3 text-sm text-text-secondary font-mono">{item.spec}</td>
                     <td className="px-3 py-3 text-sm text-text-tertiary">{item.unit || "-"}</td>
                     <td className="px-3 py-3">
-                      <input type="text" className="w-24 px-2 py-1 text-sm border border-border rounded bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono" placeholder="入力" />
+                      <input type="text" data-sample={selectedSample} data-idx={analysisTemplate.indexOf(item)} className="w-24 px-2 py-1 text-sm border border-border rounded bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono" placeholder="入力" />
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span className="text-xs text-text-tertiary">-</span>
@@ -159,12 +176,20 @@ export default function LabAnalysisPage() {
               </tbody>
             </table>
             <div className="mt-4 flex items-center justify-end gap-3">
-              <button onClick={() => showToast("合格判定しました（モック）", "success")}
-                className="flex items-center gap-1 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">
+              <button onClick={async () => {
+                const sample = samples.find((s) => s.sampleNumber === selectedSample);
+                if (!sample) return;
+                await fetch(`/api/lab/samples/${sample.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "JUDGED" }) });
+                showToast("合格判定しました", "success");
+              }} className="flex items-center gap-1 px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">
                 <CheckCircle className="w-4 h-4" />合格判定
               </button>
-              <button onClick={() => showToast("不合格判定しました（モック）", "warning")}
-                className="flex items-center gap-1 px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">
+              <button onClick={async () => {
+                const sample = samples.find((s) => s.sampleNumber === selectedSample);
+                if (!sample) return;
+                await fetch(`/api/lab/samples/${sample.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "JUDGED" }) });
+                showToast("不合格判定しました", "warning");
+              }} className="flex items-center gap-1 px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">
                 <XCircle className="w-4 h-4" />不合格判定
               </button>
             </div>

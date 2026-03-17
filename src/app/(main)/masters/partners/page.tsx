@@ -59,6 +59,7 @@ export default function PartnersPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -82,6 +83,15 @@ export default function PartnersPage() {
     closingDay: "", currency: "JPY",
     address: "", tel: "", fax: "", email: "",
     isIsccCertified: false,
+  });
+
+  // 編集用
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    code: "", name: "", nameKana: "", type: "",
+    closingDay: "", currency: "JPY",
+    address: "", tel: "", fax: "", email: "",
+    isIsccCertified: false, isActive: true,
   });
 
   const handleCreate = async () => {
@@ -118,6 +128,52 @@ export default function PartnersPage() {
       showToast("削除に失敗しました", "error");
     }
     setMenuOpen(null);
+  };
+
+  const openEdit = (partner: Partner) => {
+    const pType = getPartnerType(partner);
+    setEditId(partner.id);
+    setEditForm({
+      code: partner.code,
+      name: partner.name,
+      nameKana: partner.nameKana ?? "",
+      type: pType,
+      closingDay: partner.closingDay ?? "",
+      currency: "JPY",
+      address: partner.address ?? "",
+      tel: partner.tel ?? "",
+      fax: partner.fax ?? "",
+      email: partner.email ?? "",
+      isIsccCertified: partner.isIsccCertified,
+      isActive: partner.isActive,
+    });
+    setShowEditModal(true);
+    setMenuOpen(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editId) return;
+    try {
+      const res = await fetch(`/api/masters/partners/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editForm,
+          isCustomer: editForm.type === "customer" || editForm.type === "mixed",
+          isSupplier: editForm.type === "supplier" || editForm.type === "mixed",
+          isCarrier: editForm.type === "carrier",
+          closingDay: editForm.closingDay || undefined,
+          currency: editForm.currency || undefined,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setShowEditModal(false);
+      setEditId(null);
+      mutate();
+      showToast("取引先を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
   };
 
   return (
@@ -253,7 +309,7 @@ export default function PartnersPage() {
                                 <Eye className="w-4 h-4" /> 詳細
                               </button>
                               <button
-                                onClick={() => { showToast("編集画面を開きます（開発中）", "info"); setMenuOpen(null); }}
+                                onClick={() => openEdit(partner)}
                                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"
                               >
                                 <Edit className="w-4 h-4" /> 編集
@@ -375,6 +431,100 @@ export default function PartnersPage() {
           <div className="flex items-center gap-2 pt-2">
             <input type="checkbox" id="iscc" className="rounded border-border" checked={newForm.isIsccCertified} onChange={(e) => setNewForm({ ...newForm, isIsccCertified: e.target.checked })} />
             <label htmlFor="iscc" className="text-sm text-text">ISCC PLUS認証取得済み</label>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="取引先 編集"
+        footer={
+          <>
+            <button
+              onClick={() => setShowEditModal(false)}
+              className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors"
+            >
+              キャンセル
+            </button>
+            <button
+              onClick={handleUpdate}
+              className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors"
+            >
+              更新する
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="取引先コード">
+            <FormInput value={editForm.code} onChange={() => {}} />
+          </FormField>
+          <FormField label="取引先名" required>
+            <FormInput value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} />
+          </FormField>
+          <FormField label="取引先名カナ">
+            <FormInput value={editForm.nameKana} onChange={(e) => setEditForm({ ...editForm, nameKana: e.target.value })} />
+          </FormField>
+          <FormField label="種別" required>
+            <FormSelect
+              value={editForm.type}
+              onChange={(e) => setEditForm({ ...editForm, type: e.target.value })}
+              options={[
+                { value: "customer", label: "顧客" },
+                { value: "supplier", label: "仕入先" },
+                { value: "carrier", label: "運送会社" },
+                { value: "mixed", label: "複合" },
+              ]}
+            />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="締日">
+              <FormSelect
+                placeholder="選択"
+                value={editForm.closingDay}
+                onChange={(e) => setEditForm({ ...editForm, closingDay: e.target.value })}
+                options={[
+                  { value: "DAY_15", label: "15日" },
+                  { value: "DAY_20", label: "20日" },
+                  { value: "END_OF_MONTH", label: "末日" },
+                ]}
+              />
+            </FormField>
+            <FormField label="通貨">
+              <FormSelect
+                value={editForm.currency}
+                onChange={(e) => setEditForm({ ...editForm, currency: e.target.value })}
+                options={[
+                  { value: "JPY", label: "JPY" },
+                  { value: "USD", label: "USD" },
+                  { value: "SGD", label: "SGD" },
+                ]}
+              />
+            </FormField>
+          </div>
+          <FormField label="住所">
+            <FormInput value={editForm.address} onChange={(e) => setEditForm({ ...editForm, address: e.target.value })} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="電話番号">
+              <FormInput value={editForm.tel} onChange={(e) => setEditForm({ ...editForm, tel: e.target.value })} />
+            </FormField>
+            <FormField label="FAX">
+              <FormInput value={editForm.fax} onChange={(e) => setEditForm({ ...editForm, fax: e.target.value })} />
+            </FormField>
+          </div>
+          <FormField label="メールアドレス">
+            <FormInput type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} />
+          </FormField>
+          <div className="flex items-center gap-2 pt-2">
+            <input type="checkbox" id="edit-iscc" className="rounded border-border" checked={editForm.isIsccCertified} onChange={(e) => setEditForm({ ...editForm, isIsccCertified: e.target.checked })} />
+            <label htmlFor="edit-iscc" className="text-sm text-text">ISCC PLUS認証取得済み</label>
+          </div>
+          <div className="flex items-center gap-2">
+            <input type="checkbox" id="edit-active" className="rounded border-border" checked={editForm.isActive} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.checked })} />
+            <label htmlFor="edit-active" className="text-sm text-text">有効</label>
           </div>
         </div>
       </Modal>

@@ -27,3 +27,22 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(data);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const record = await prisma.externalAnalysis.create({
+    data: {
+      sampleId: body.sampleId,
+      laboratoryName: body.laboratoryName,
+      requestDate: new Date(body.requestDate),
+      resultDate: body.resultDate ? new Date(body.resultDate) : undefined,
+      reportPath: body.reportPath,
+      cost: body.cost,
+      note: body.note,
+    },
+    include: { sample: true },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}

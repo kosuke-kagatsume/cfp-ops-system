@@ -24,3 +24,23 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(tanks);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const record = await prisma.tank.create({
+    data: {
+      code: body.code,
+      name: body.name,
+      tankType: body.tankType,
+      plantId: body.plantId,
+      capacity: body.capacity,
+      currentLevel: body.currentLevel ?? 0,
+    },
+    include: {
+      plant: { select: { id: true, code: true, name: true } },
+    },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}

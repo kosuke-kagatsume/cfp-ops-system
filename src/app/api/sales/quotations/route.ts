@@ -31,3 +31,35 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(quotations);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const seq = await prisma.numberSequence.update({
+    where: { prefix_year: { prefix: "QUO", year: new Date().getFullYear() } },
+    data: { currentNumber: { increment: 1 } },
+  });
+  const quotationNumber = `QUO-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+
+  const quotation = await prisma.quotation.create({
+    data: {
+      quotationNumber,
+      customerId: body.customerId,
+      quotationDate: new Date(body.quotationDate),
+      validUntil: body.validUntil ? new Date(body.validUntil) : null,
+      subject: body.subject || null,
+      items: body.items ?? [],
+      subtotal: body.subtotal ?? 0,
+      taxAmount: body.taxAmount ?? 0,
+      total: body.total ?? 0,
+      currency: body.currency ?? "JPY",
+      status: "DRAFT",
+      note: body.note || null,
+    },
+    include: {
+      customer: { select: { name: true } },
+    },
+  });
+
+  return NextResponse.json(quotation, { status: 201 });
+}

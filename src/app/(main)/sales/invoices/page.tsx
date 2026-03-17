@@ -1,9 +1,9 @@
 "use client";
 
 import { Header } from "@/components/header";
-import { Modal } from "@/components/modal";
+import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Download, Search, Eye, FileText, Loader2 } from "lucide-react";
+import { Plus, Download, Search, Eye, Pencil, Trash2, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -28,6 +28,12 @@ type Invoice = {
   revenues: { id: string; revenueNumber: string; amount: number }[];
 };
 
+type Partner = {
+  id: string;
+  code: string;
+  name: string;
+};
+
 const statusLabels: Record<string, string> = {
   DRAFT: "下書き",
   ISSUED: "発行済",
@@ -48,20 +54,133 @@ export default function InvoicesPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<Invoice | null>(null);
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: invoices, isLoading } = useSWR<Invoice[]>(
+  const { data: invoices, isLoading, mutate } = useSWR<Invoice[]>(
     `/api/sales/invoices?${params.toString()}`,
     fetcher
   );
 
   const { data: allInvoices } = useSWR<Invoice[]>("/api/sales/invoices", fetcher);
 
+  const { data: partners } = useSWR<Partner[]>(
+    showNewModal || showEditModal ? "/api/masters/partners?type=customer" : null,
+    fetcher
+  );
+
   const selected = invoices?.find((inv) => inv.id === showDetail);
+
+  const [newForm, setNewForm] = useState({
+    customerId: "",
+    billingDate: "",
+    dueDate: "",
+    prevBalance: "",
+    paymentReceived: "",
+    subtotal: "",
+    taxAmount: "",
+    note: "",
+  });
+
+  const [editForm, setEditForm] = useState({
+    customerId: "",
+    billingDate: "",
+    dueDate: "",
+    status: "",
+    prevBalance: "",
+    paymentReceived: "",
+    subtotal: "",
+    taxAmount: "",
+    note: "",
+  });
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/sales/invoices", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: newForm.customerId,
+          billingDate: newForm.billingDate,
+          dueDate: newForm.dueDate || null,
+          prevBalance: parseFloat(newForm.prevBalance) || 0,
+          paymentReceived: parseFloat(newForm.paymentReceived) || 0,
+          subtotal: parseFloat(newForm.subtotal) || 0,
+          taxAmount: parseFloat(newForm.taxAmount) || 0,
+          note: newForm.note || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to create");
+      setShowNewModal(false);
+      setNewForm({ customerId: "", billingDate: "", dueDate: "", prevBalance: "", paymentReceived: "", subtotal: "", taxAmount: "", note: "" });
+      mutate();
+      showToast("請求書を登録しました", "success");
+    } catch {
+      showToast("登録に失敗しました", "error");
+    }
+  };
+
+  const handleEdit = (inv: Invoice) => {
+    setEditTarget(inv);
+    setEditForm({
+      customerId: inv.customer.id,
+      billingDate: inv.billingDate.slice(0, 10),
+      dueDate: inv.dueDate?.slice(0, 10) ?? "",
+      status: inv.status,
+      prevBalance: String(inv.prevBalance),
+      paymentReceived: String(inv.paymentReceived),
+      subtotal: String(inv.subtotal),
+      taxAmount: String(inv.taxAmount),
+      note: inv.note ?? "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editTarget) return;
+    try {
+      const res = await fetch(`/api/sales/invoices/${editTarget.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: editForm.customerId,
+          billingDate: editForm.billingDate,
+          dueDate: editForm.dueDate || null,
+          status: editForm.status,
+          prevBalance: parseFloat(editForm.prevBalance) || 0,
+          paymentReceived: parseFloat(editForm.paymentReceived) || 0,
+          subtotal: parseFloat(editForm.subtotal) || 0,
+          taxAmount: parseFloat(editForm.taxAmount) || 0,
+          note: editForm.note || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setShowEditModal(false);
+      setEditTarget(null);
+      mutate();
+      showToast("請求書を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const handleDelete = async (inv: Invoice) => {
+    if (!confirm(`請求書 ${inv.invoiceNumber} を削除しますか？`)) return;
+    try {
+      const res = await fetch(`/api/sales/invoices/${inv.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      mutate();
+      showToast("請求書を削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
+    }
+  };
 
   const formatDate = (d: string | null) => {
     if (!d) return "-";
@@ -109,6 +228,9 @@ export default function InvoicesPage() {
             <button onClick={() => showToast("CSVダウンロードしました", "success")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
               <Download className="w-4 h-4" />CSV出力
             </button>
+            <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
+              <Plus className="w-4 h-4" />請求書作成
+            </button>
           </div>
         </div>
 
@@ -133,7 +255,7 @@ export default function InvoicesPage() {
                     <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">消費税</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">請求額</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                    <th className="w-10"></th>
+                    <th className="w-24"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -143,18 +265,26 @@ export default function InvoicesPage() {
                       <td className="px-4 py-3 text-sm text-text">{inv.customer.name}</td>
                       <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(inv.billingDate)}</td>
                       <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(inv.dueDate)}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary text-right">¥{inv.prevBalance.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary text-right">¥{inv.carryover.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-text text-right">¥{inv.subtotal.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-text-secondary text-right">¥{inv.taxAmount.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-text text-right font-medium">¥{inv.total.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary text-right">{"\u00a5"}{inv.prevBalance.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary text-right">{"\u00a5"}{inv.carryover.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-text text-right">{"\u00a5"}{inv.subtotal.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-text-secondary text-right">{"\u00a5"}{inv.taxAmount.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm text-text text-right font-medium">{"\u00a5"}{inv.total.toLocaleString()}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[inv.status] ?? "bg-gray-50 text-gray-700"}`}>{statusLabels[inv.status] ?? inv.status}</span>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => setShowDetail(inv.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                          <Eye className="w-4 h-4 text-text-tertiary" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setShowDetail(inv.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                            <Eye className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          <button onClick={() => handleEdit(inv)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                            <Pencil className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          <button onClick={() => handleDelete(inv)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                            <Trash2 className="w-4 h-4 text-red-400" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -169,12 +299,94 @@ export default function InvoicesPage() {
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
                 <p className="text-xs text-text-tertiary">{invoices?.length ?? 0}件</p>
-                <p className="text-xs text-text-secondary">請求合計: ¥{(invoices?.reduce((s, inv) => s + inv.total, 0) ?? 0).toLocaleString()}</p>
+                <p className="text-xs text-text-secondary">請求合計: {"\u00a5"}{(invoices?.reduce((s, inv) => s + inv.total, 0) ?? 0).toLocaleString()}</p>
               </div>
             </>
           )}
         </div>
       </div>
+
+      {/* 新規登録モーダル */}
+      <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="請求書作成"
+        footer={<>
+          <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">登録する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="顧客" required>
+            <FormSelect placeholder="選択してください" value={newForm.customerId} onChange={(e) => setNewForm({ ...newForm, customerId: e.target.value })}
+              options={(partners ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))} />
+          </FormField>
+          <FormField label="請求日" required>
+            <FormInput type="date" value={newForm.billingDate} onChange={(e) => setNewForm({ ...newForm, billingDate: e.target.value })} />
+          </FormField>
+          <FormField label="支払期限">
+            <FormInput type="date" value={newForm.dueDate} onChange={(e) => setNewForm({ ...newForm, dueDate: e.target.value })} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="前回残高">
+              <FormInput type="number" placeholder="0" value={newForm.prevBalance} onChange={(e) => setNewForm({ ...newForm, prevBalance: e.target.value })} />
+            </FormField>
+            <FormField label="入金額">
+              <FormInput type="number" placeholder="0" value={newForm.paymentReceived} onChange={(e) => setNewForm({ ...newForm, paymentReceived: e.target.value })} />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="当月売上小計">
+              <FormInput type="number" placeholder="0" value={newForm.subtotal} onChange={(e) => setNewForm({ ...newForm, subtotal: e.target.value })} />
+            </FormField>
+            <FormField label="消費税">
+              <FormInput type="number" placeholder="0" value={newForm.taxAmount} onChange={(e) => setNewForm({ ...newForm, taxAmount: e.target.value })} />
+            </FormField>
+          </div>
+          <FormField label="備考">
+            <FormInput value={newForm.note} onChange={(e) => setNewForm({ ...newForm, note: e.target.value })} placeholder="備考を入力..." />
+          </FormField>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title={`請求書編集: ${editTarget?.invoiceNumber ?? ""}`}
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
+          <button onClick={handleUpdate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="顧客" required>
+            <FormSelect placeholder="選択してください" value={editForm.customerId} onChange={(e) => setEditForm({ ...editForm, customerId: e.target.value })}
+              options={(partners ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))} />
+          </FormField>
+          <FormField label="請求日" required>
+            <FormInput type="date" value={editForm.billingDate} onChange={(e) => setEditForm({ ...editForm, billingDate: e.target.value })} />
+          </FormField>
+          <FormField label="支払期限">
+            <FormInput type="date" value={editForm.dueDate} onChange={(e) => setEditForm({ ...editForm, dueDate: e.target.value })} />
+          </FormField>
+          <FormField label="ステータス" required>
+            <FormSelect value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              options={Object.entries(statusLabels).map(([v, l]) => ({ value: v, label: l }))} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="前回残高">
+              <FormInput type="number" value={editForm.prevBalance} onChange={(e) => setEditForm({ ...editForm, prevBalance: e.target.value })} />
+            </FormField>
+            <FormField label="入金額">
+              <FormInput type="number" value={editForm.paymentReceived} onChange={(e) => setEditForm({ ...editForm, paymentReceived: e.target.value })} />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="当月売上小計">
+              <FormInput type="number" value={editForm.subtotal} onChange={(e) => setEditForm({ ...editForm, subtotal: e.target.value })} />
+            </FormField>
+            <FormField label="消費税">
+              <FormInput type="number" value={editForm.taxAmount} onChange={(e) => setEditForm({ ...editForm, taxAmount: e.target.value })} />
+            </FormField>
+          </div>
+          <FormField label="備考">
+            <FormInput value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} placeholder="備考を入力..." />
+          </FormField>
+        </div>
+      </Modal>
 
       {/* Detail modal */}
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `請求詳細: ${selected.invoiceNumber}` : ""}
@@ -198,12 +410,12 @@ export default function InvoicesPage() {
             <div className="p-3 bg-surface-tertiary rounded-lg space-y-2">
               <p className="text-xs font-medium text-text-secondary">繰越残高方式 内訳</p>
               <div className="space-y-1">
-                <div className="flex justify-between text-sm"><span className="text-text-tertiary">前回請求残高</span><span className="text-text">¥{selected.prevBalance.toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-text-tertiary">入金額</span><span className="text-emerald-600">- ¥{selected.paymentReceived.toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm border-t border-border pt-1"><span className="text-text-tertiary">繰越残高</span><span className="text-text font-medium">¥{selected.carryover.toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-text-tertiary">今回売上（税抜）</span><span className="text-text">¥{selected.subtotal.toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm"><span className="text-text-tertiary">消費税</span><span className="text-text">¥{selected.taxAmount.toLocaleString()}</span></div>
-                <div className="flex justify-between text-sm border-t border-border pt-1 font-bold"><span className="text-text">今回請求額</span><span className="text-primary-700">¥{selected.total.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-text-tertiary">前回請求残高</span><span className="text-text">{"\u00a5"}{selected.prevBalance.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-text-tertiary">入金額</span><span className="text-emerald-600">- {"\u00a5"}{selected.paymentReceived.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm border-t border-border pt-1"><span className="text-text-tertiary">繰越残高</span><span className="text-text font-medium">{"\u00a5"}{selected.carryover.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-text-tertiary">今回売上（税抜）</span><span className="text-text">{"\u00a5"}{selected.subtotal.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-text-tertiary">消費税</span><span className="text-text">{"\u00a5"}{selected.taxAmount.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm border-t border-border pt-1 font-bold"><span className="text-text">今回請求額</span><span className="text-primary-700">{"\u00a5"}{selected.total.toLocaleString()}</span></div>
               </div>
             </div>
             {selected.revenues.length > 0 && (
@@ -213,7 +425,7 @@ export default function InvoicesPage() {
                   {selected.revenues.map((rev) => (
                     <div key={rev.id} className="flex justify-between text-sm">
                       <span className="font-mono text-primary-600">{rev.revenueNumber}</span>
-                      <span className="text-text">¥{rev.amount.toLocaleString()}</span>
+                      <span className="text-text">{"\u00a5"}{rev.amount.toLocaleString()}</span>
                     </div>
                   ))}
                 </div>

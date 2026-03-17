@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Download, Search, MoreHorizontal, AlertTriangle, Eye, Edit, Trash2, Loader2 } from "lucide-react";
+import { Plus, Download, Search, MoreHorizontal, AlertTriangle, Edit, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -32,6 +32,7 @@ type Product = { id: string; code: string; name: { name: string } };
 export default function PricesPage() {
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
 
@@ -46,6 +47,13 @@ export default function PricesPage() {
   const { data: products } = useSWR<Product[]>("/api/masters/products", fetcher);
 
   const today = new Date().toISOString().slice(0, 10);
+
+  // 編集用
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    partnerId: "", productId: "", unitPrice: "",
+    currency: "JPY", validFrom: "", validTo: "", note: "",
+  });
 
   // 新規フォーム
   const [newForm, setNewForm] = useState({
@@ -71,6 +79,55 @@ export default function PricesPage() {
     } catch {
       showToast("登録に失敗しました", "error");
     }
+  };
+
+  const openEdit = (price: PriceRecord) => {
+    setEditId(price.id);
+    setEditForm({
+      partnerId: price.partner.id,
+      productId: price.product.id,
+      unitPrice: String(price.unitPrice),
+      currency: price.currency,
+      validFrom: price.validFrom.slice(0, 10),
+      validTo: price.validTo?.slice(0, 10) ?? "",
+      note: "",
+    });
+    setShowEditModal(true);
+    setMenuOpen(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editId) return;
+    try {
+      const res = await fetch(`/api/masters/prices/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...editForm,
+          unitPrice: parseFloat(editForm.unitPrice),
+          validTo: editForm.validTo || null,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      setShowEditModal(false);
+      setEditId(null);
+      mutate();
+      showToast("単価を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この単価レコードを削除しますか？")) return;
+    try {
+      await fetch(`/api/masters/prices/${id}`, { method: "DELETE" });
+      mutate();
+      showToast("単価を削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
+    }
+    setMenuOpen(null);
   };
 
   const customerPartners = partners?.filter((p) => p.isCustomer) ?? [];
@@ -164,9 +221,8 @@ export default function PricesPage() {
                           </button>
                           {menuOpen === price.id && (
                             <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-36">
-                              <button onClick={() => { showToast("単価詳細画面（開発中）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Eye className="w-4 h-4" /> 詳細</button>
-                              <button onClick={() => { showToast("単価編集（承認ワークフロー経由）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Edit className="w-4 h-4" /> 編集</button>
-                              <button onClick={() => { showToast("削除機能は開発中です", "warning"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-surface-tertiary"><Trash2 className="w-4 h-4" /> 削除</button>
+                              <button onClick={() => openEdit(price)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Edit className="w-4 h-4" /> 編集</button>
+                              <button onClick={() => handleDelete(price.id)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-surface-tertiary"><Trash2 className="w-4 h-4" /> 削除</button>
                             </div>
                           )}
                         </td>
@@ -188,6 +244,48 @@ export default function PricesPage() {
         </div>
       </div>
 
+      {/* 編集モーダル */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="単価 編集"
+        footer={
+          <>
+            <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
+            <button onClick={handleUpdate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">更新する</button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="取引先" required>
+            <FormSelect placeholder="選択" value={editForm.partnerId} onChange={(e) => setEditForm({ ...editForm, partnerId: e.target.value })}
+              options={customerPartners.map((p) => ({ value: p.id, label: p.name }))} />
+          </FormField>
+          <FormField label="品目" required>
+            <FormSelect placeholder="選択" value={editForm.productId} onChange={(e) => setEditForm({ ...editForm, productId: e.target.value })}
+              options={products?.map((p) => ({ value: p.id, label: `${p.code} - ${p.name.name}` })) ?? []} />
+          </FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="単価" required>
+              <FormInput type="number" value={editForm.unitPrice} onChange={(e) => setEditForm({ ...editForm, unitPrice: e.target.value })} />
+            </FormField>
+            <FormField label="通貨" required>
+              <FormSelect value={editForm.currency} onChange={(e) => setEditForm({ ...editForm, currency: e.target.value })}
+                options={[{ value: "JPY", label: "JPY (円)" }, { value: "USD", label: "USD (ドル)" }, { value: "SGD", label: "SGD" }]} />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="有効開始日" required>
+              <FormInput type="date" value={editForm.validFrom} onChange={(e) => setEditForm({ ...editForm, validFrom: e.target.value })} />
+            </FormField>
+            <FormField label="有効終了日">
+              <FormInput type="date" value={editForm.validTo} onChange={(e) => setEditForm({ ...editForm, validTo: e.target.value })} />
+            </FormField>
+          </div>
+        </div>
+      </Modal>
+
+      {/* 新規登録モーダル */}
       <Modal
         isOpen={showNewModal}
         onClose={() => setShowNewModal(false)}

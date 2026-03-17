@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Search, Eye, AlertTriangle, Camera, FileText, Shield, Clock, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, AlertTriangle, Camera, Shield, Clock, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -49,18 +49,25 @@ type ExpenseData = {
   items: ExpenseItemData[];
 };
 
+const categoryOptions = [
+  { value: "交通費", label: "交通費" }, { value: "宿泊費", label: "宿泊費" }, { value: "接待費", label: "接待費" },
+  { value: "事務用品", label: "事務用品" }, { value: "消耗品", label: "消耗品" }, { value: "修繕費", label: "修繕費" },
+];
+
 export default function ExpensesPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: expenses, isLoading } = useSWR<ExpenseData[]>(
+  const { data: expenses, isLoading, mutate } = useSWR<ExpenseData[]>(
     `/api/expenses?${params.toString()}`,
     fetcher
   );
@@ -68,6 +75,81 @@ export default function ExpensesPage() {
   const allExpenses = expenses ?? [];
   const selected = allExpenses.find((e) => e.id === showDetail);
   const requiresApproval = (e: ExpenseData) => e.totalAmount >= 30000;
+
+  const [newForm, setNewForm] = useState({ applicant: "", department: "", expenseDate: new Date().toISOString().split("T")[0], note: "", itemDesc: "", itemCategory: "", itemAmount: "" });
+  const [editForm, setEditForm] = useState({ applicant: "", department: "", expenseDate: "", status: "" as string, note: "" });
+
+  const handleCreate = async () => {
+    try {
+      const items = newForm.itemDesc ? [{ description: newForm.itemDesc, category: newForm.itemCategory || null, amount: parseFloat(newForm.itemAmount) || 0 }] : [];
+      const res = await fetch("/api/expenses", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicant: newForm.applicant, department: newForm.department || undefined, expenseDate: newForm.expenseDate, note: newForm.note || undefined, items }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowNewModal(false);
+      setNewForm({ applicant: "", department: "", expenseDate: new Date().toISOString().split("T")[0], note: "", itemDesc: "", itemCategory: "", itemAmount: "" });
+      mutate();
+      showToast("経費を申請しました", "success");
+    } catch { showToast("申請に失敗しました", "error"); }
+  };
+
+  const openEdit = (e: ExpenseData) => {
+    setEditingId(e.id);
+    setEditForm({ applicant: e.applicant, department: e.department ?? "", expenseDate: e.expenseDate.split("T")[0], status: e.status, note: e.note ?? "" });
+    setShowDetail(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    try {
+      const res = await fetch(`/api/expenses/${editingId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicant: editForm.applicant, department: editForm.department || null, expenseDate: editForm.expenseDate, status: editForm.status, note: editForm.note || null }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowEditModal(false);
+      mutate();
+      showToast("経費を更新しました", "success");
+    } catch { showToast("更新に失敗しました", "error"); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この経費を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/expenses/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast("経費を削除しました", "success");
+    } catch { showToast("削除に失敗しました", "error"); }
+  };
+
+  const handleApprove = async (id: string) => {
+    try {
+      const res = await fetch(`/api/expenses/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "APPROVED" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast("承認しました", "success");
+    } catch { showToast("承認に失敗しました", "error"); }
+  };
+
+  const handleReject = async (id: string) => {
+    try {
+      const res = await fetch(`/api/expenses/${id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "REJECTED" }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast("却下しました", "warning");
+    } catch { showToast("却下に失敗しました", "error"); }
+  };
 
   if (isLoading) {
     return (
@@ -147,7 +229,7 @@ export default function ExpensesPage() {
                 <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">金額</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">領収書</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                <th className="w-10"></th>
+                <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -172,7 +254,11 @@ export default function ExpensesPage() {
                       <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[e.status]}`}>{statusLabel[e.status]}</span>
                     </td>
                     <td className="px-4 py-3">
-                      <button onClick={() => setShowDetail(e.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                      <div className="flex items-center gap-1">
+                        <button onClick={() => setShowDetail(e.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                        <button onClick={() => openEdit(e)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                        <button onClick={() => handleDelete(e.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -186,24 +272,38 @@ export default function ExpensesPage() {
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="経費申請"
         footer={<>
           <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
-          <button onClick={() => { setShowNewModal(false); showToast("経費を申請しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">申請する</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">申請する</button>
         </>}>
         <div className="space-y-4">
-          <FormField label="件名" required><FormInput placeholder="例: 大阪出張 3/15" /></FormField>
-          <div className="grid grid-cols-2 gap-4">
-            <FormField label="区分" required><FormSelect placeholder="選択" options={[
-              { value: "1", label: "交通費" }, { value: "2", label: "宿泊費" }, { value: "3", label: "接待費" },
-              { value: "4", label: "事務用品" }, { value: "5", label: "消耗品" }, { value: "6", label: "修繕費" },
-            ]} /></FormField>
-            <FormField label="金額(円)" required><FormInput type="number" placeholder="例: 35000" /></FormField>
-          </div>
-          <FormField label="申請日" required><FormInput type="date" defaultValue="2026-03-12" /></FormField>
-          <FormField label="備考"><FormInput placeholder="例: 顧客訪問のため" /></FormField>
+          <FormField label="申請者" required><FormInput placeholder="例: 福田太郎" value={newForm.applicant} onChange={(e) => setNewForm({ ...newForm, applicant: e.target.value })} /></FormField>
+          <FormField label="部署"><FormInput placeholder="例: 営業部" value={newForm.department} onChange={(e) => setNewForm({ ...newForm, department: e.target.value })} /></FormField>
+          <FormField label="申請日" required><FormInput type="date" value={newForm.expenseDate} onChange={(e) => setNewForm({ ...newForm, expenseDate: e.target.value })} /></FormField>
           <div className="border-t border-border pt-4">
-            <button onClick={() => showToast("領収書OCR（開発中）", "info")} className="flex items-center gap-2 px-4 py-2 text-sm border border-dashed border-border rounded-lg text-text-secondary hover:bg-surface-tertiary w-full justify-center">
-              <Camera className="w-4 h-4" />領収書をアップロード（OCR自動読取）
-            </button>
+            <p className="text-xs font-medium text-text mb-2">経費明細</p>
+            <FormField label="件名" required><FormInput placeholder="例: 大阪出張 交通費" value={newForm.itemDesc} onChange={(e) => setNewForm({ ...newForm, itemDesc: e.target.value })} /></FormField>
+            <div className="grid grid-cols-2 gap-4 mt-2">
+              <FormField label="区分"><FormSelect placeholder="選択" value={newForm.itemCategory} onChange={(e) => setNewForm({ ...newForm, itemCategory: e.target.value })} options={categoryOptions} /></FormField>
+              <FormField label="金額(円)" required><FormInput type="number" placeholder="例: 35000" value={newForm.itemAmount} onChange={(e) => setNewForm({ ...newForm, itemAmount: e.target.value })} /></FormField>
+            </div>
           </div>
+          <FormField label="備考"><FormInput placeholder="例: 顧客訪問のため" value={newForm.note} onChange={(e) => setNewForm({ ...newForm, note: e.target.value })} /></FormField>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="経費 編集"
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="申請者" required><FormInput value={editForm.applicant} onChange={(e) => setEditForm({ ...editForm, applicant: e.target.value })} /></FormField>
+          <FormField label="部署"><FormInput value={editForm.department} onChange={(e) => setEditForm({ ...editForm, department: e.target.value })} /></FormField>
+          <FormField label="申請日" required><FormInput type="date" value={editForm.expenseDate} onChange={(e) => setEditForm({ ...editForm, expenseDate: e.target.value })} /></FormField>
+          <FormField label="ステータス"><FormSelect value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} options={[
+            { value: "DRAFT", label: "下書き" }, { value: "SUBMITTED", label: "申請中" }, { value: "APPROVED", label: "承認済" }, { value: "REJECTED", label: "却下" }, { value: "PAID", label: "精算済" },
+          ]} /></FormField>
+          <FormField label="備考"><FormInput value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} /></FormField>
         </div>
       </Modal>
 
@@ -211,9 +311,10 @@ export default function ExpensesPage() {
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `経費詳細: ${selected.expenseNumber}` : ""}
         footer={<>
           {selected?.status === "SUBMITTED" && requiresApproval(selected) && <>
-            <button onClick={() => { setShowDetail(null); showToast("却下しました（モック）", "warning"); }} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">却下</button>
-            <button onClick={() => { setShowDetail(null); showToast("承認しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">承認</button>
+            <button onClick={() => selected && handleReject(selected.id)} className="px-4 py-2 text-sm bg-red-600 text-white rounded-lg font-medium hover:bg-red-700">却下</button>
+            <button onClick={() => selected && handleApprove(selected.id)} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">承認</button>
           </>}
+          <button onClick={() => selected && openEdit(selected)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">編集</button>
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (

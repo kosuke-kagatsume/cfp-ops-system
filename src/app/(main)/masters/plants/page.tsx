@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Factory, Warehouse as WarehouseIcon, Droplets, Eye, Loader2 } from "lucide-react";
+import { Plus, Factory, Warehouse as WarehouseIcon, Droplets, Edit, Trash2, MoreHorizontal, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -37,8 +37,11 @@ const companyLabels: Record<string, string> = {
 export default function PlantsPage() {
   const [tab, setTab] = useState<"plants" | "warehouses">("plants");
   const [showNewPlant, setShowNewPlant] = useState(false);
+  const [showEditPlant, setShowEditPlant] = useState(false);
   const [showNewWarehouse, setShowNewWarehouse] = useState(false);
+  const [showEditWarehouse, setShowEditWarehouse] = useState(false);
   const [showPlantDetail, setShowPlantDetail] = useState<string | null>(null);
+  const [whMenuOpen, setWhMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
 
   const { data: plants, isLoading: plantsLoading, mutate: mutatePlants } = useSWR<Plant[]>("/api/masters/plants", fetcher);
@@ -83,6 +86,99 @@ export default function PlantsPage() {
     } catch {
       showToast("登録に失敗しました", "error");
     }
+  };
+
+  // 工場編集
+  const [editPlantId, setEditPlantId] = useState<string | null>(null);
+  const [editPlantForm, setEditPlantForm] = useState({ name: "", address: "", companyId: "CFP", tel: "" });
+
+  const openEditPlant = (plant: Plant) => {
+    setEditPlantId(plant.id);
+    setEditPlantForm({
+      name: plant.name,
+      address: plant.address ?? "",
+      companyId: plant.companyId,
+      tel: plant.tel ?? "",
+    });
+    setShowEditPlant(true);
+    setShowPlantDetail(null);
+  };
+
+  const handleUpdatePlant = async () => {
+    if (!editPlantId) return;
+    try {
+      const res = await fetch(`/api/masters/plants/${editPlantId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editPlantForm),
+      });
+      if (!res.ok) throw new Error();
+      setShowEditPlant(false);
+      setEditPlantId(null);
+      mutatePlants();
+      showToast("工場を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const handleDeletePlant = async (id: string) => {
+    if (!confirm("この工場を削除しますか？")) return;
+    try {
+      await fetch(`/api/masters/plants/${id}`, { method: "DELETE" });
+      mutatePlants();
+      showToast("工場を削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
+    }
+    setShowPlantDetail(null);
+  };
+
+  // 倉庫編集
+  const [editWhId, setEditWhId] = useState<string | null>(null);
+  const [editWhForm, setEditWhForm] = useState({ name: "", plantId: "", type: "INTERNAL" });
+
+  const openEditWarehouse = (wh: Warehouse) => {
+    setEditWhId(wh.id);
+    setEditWhForm({
+      name: wh.name,
+      plantId: wh.plant?.id ?? "",
+      type: wh.type,
+    });
+    setShowEditWarehouse(true);
+    setWhMenuOpen(null);
+  };
+
+  const handleUpdateWarehouse = async () => {
+    if (!editWhId) return;
+    try {
+      const res = await fetch(`/api/masters/warehouses/${editWhId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...editWhForm, plantId: editWhForm.plantId || undefined }),
+      });
+      if (!res.ok) throw new Error();
+      setShowEditWarehouse(false);
+      setEditWhId(null);
+      mutateWarehouses();
+      mutatePlants();
+      showToast("倉庫を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const handleDeleteWarehouse = async (id: string) => {
+    if (!confirm("この倉庫を削除しますか？")) return;
+    try {
+      await fetch(`/api/masters/warehouses/${id}`, { method: "DELETE" });
+      mutateWarehouses();
+      mutatePlants();
+      showToast("倉庫を削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
+    }
+    setWhMenuOpen(null);
   };
 
   const isLoading = tab === "plants" ? plantsLoading : warehousesLoading;
@@ -193,13 +289,23 @@ export default function PlantsPage() {
                           {wh.type === "INTERNAL" ? "自社" : "外部"}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 relative">
                         <button
-                          onClick={() => showToast(`${wh.name}の詳細（開発中）`, "info")}
+                          onClick={() => setWhMenuOpen(whMenuOpen === wh.id ? null : wh.id)}
                           className="p-1 hover:bg-surface-tertiary rounded transition-colors"
                         >
-                          <Eye className="w-4 h-4 text-text-tertiary" />
+                          <MoreHorizontal className="w-4 h-4 text-text-tertiary" />
                         </button>
+                        {whMenuOpen === wh.id && (
+                          <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-36">
+                            <button onClick={() => openEditWarehouse(wh)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary">
+                              <Edit className="w-4 h-4" /> 編集
+                            </button>
+                            <button onClick={() => handleDeleteWarehouse(wh.id)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-surface-tertiary">
+                              <Trash2 className="w-4 h-4" /> 削除
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -276,6 +382,64 @@ export default function PlantsPage() {
         </div>
       </Modal>
 
+      {/* 工場編集モーダル */}
+      <Modal
+        isOpen={showEditPlant}
+        onClose={() => setShowEditPlant(false)}
+        title="工場・拠点 編集"
+        footer={
+          <>
+            <button onClick={() => setShowEditPlant(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
+            <button onClick={handleUpdatePlant} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">更新する</button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="工場名" required>
+            <FormInput value={editPlantForm.name} onChange={(e) => setEditPlantForm({ ...editPlantForm, name: e.target.value })} />
+          </FormField>
+          <FormField label="所在地">
+            <FormInput value={editPlantForm.address} onChange={(e) => setEditPlantForm({ ...editPlantForm, address: e.target.value })} />
+          </FormField>
+          <FormField label="電話番号">
+            <FormInput value={editPlantForm.tel} onChange={(e) => setEditPlantForm({ ...editPlantForm, tel: e.target.value })} />
+          </FormField>
+          <FormField label="会社" required>
+            <FormSelect value={editPlantForm.companyId} onChange={(e) => setEditPlantForm({ ...editPlantForm, companyId: e.target.value })} options={[
+              { value: "CFP", label: "CFP" }, { value: "RE", label: "RE" }, { value: "CTS", label: "CTS" },
+            ]} />
+          </FormField>
+        </div>
+      </Modal>
+
+      {/* 倉庫編集モーダル */}
+      <Modal
+        isOpen={showEditWarehouse}
+        onClose={() => setShowEditWarehouse(false)}
+        title="倉庫 編集"
+        footer={
+          <>
+            <button onClick={() => setShowEditWarehouse(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
+            <button onClick={handleUpdateWarehouse} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">更新する</button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <FormField label="倉庫名" required>
+            <FormInput value={editWhForm.name} onChange={(e) => setEditWhForm({ ...editWhForm, name: e.target.value })} />
+          </FormField>
+          <FormField label="所属工場">
+            <FormSelect placeholder="選択（外部の場合は空）" value={editWhForm.plantId} onChange={(e) => setEditWhForm({ ...editWhForm, plantId: e.target.value })}
+              options={plants?.map((p) => ({ value: p.id, label: p.name })) ?? []} />
+          </FormField>
+          <FormField label="区分" required>
+            <FormSelect value={editWhForm.type} onChange={(e) => setEditWhForm({ ...editWhForm, type: e.target.value })} options={[
+              { value: "INTERNAL", label: "自社" }, { value: "EXTERNAL", label: "外部" },
+            ]} />
+          </FormField>
+        </div>
+      </Modal>
+
       {/* 工場詳細モーダル */}
       <Modal
         isOpen={!!showPlantDetail}
@@ -283,7 +447,8 @@ export default function PlantsPage() {
         title={selectedPlant ? `工場詳細: ${selectedPlant.name}` : ""}
         footer={
           <>
-            <button onClick={() => { showToast("編集画面（開発中）", "info"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">編集</button>
+            <button onClick={() => selectedPlant && handleDeletePlant(selectedPlant.id)} className="px-4 py-2 text-sm border border-danger text-danger rounded-lg hover:bg-red-50 transition-colors">削除</button>
+            <button onClick={() => selectedPlant && openEditPlant(selectedPlant)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">編集</button>
             <button onClick={() => setShowPlantDetail(null)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">閉じる</button>
           </>
         }

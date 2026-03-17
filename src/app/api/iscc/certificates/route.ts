@@ -24,3 +24,26 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(data);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const record = await prisma.isccCertificate.create({
+    data: {
+      certNumber: body.certNumber,
+      partnerId: body.partnerId || undefined,
+      holderName: body.holderName,
+      scope: body.scope,
+      issueDate: new Date(body.issueDate),
+      expiryDate: new Date(body.expiryDate),
+      status: body.status ?? "ACTIVE",
+      pdfPath: body.pdfPath,
+    },
+    include: {
+      partner: { select: { id: true, name: true } },
+      _count: { select: { massBalances: true } },
+    },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}

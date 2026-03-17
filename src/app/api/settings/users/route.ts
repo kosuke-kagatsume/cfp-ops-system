@@ -34,3 +34,24 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(users);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const record = await prisma.user.create({
+    data: {
+      email: body.email,
+      name: body.name,
+      nameKana: body.nameKana,
+      department: body.department,
+      position: body.position,
+      isActive: body.isActive ?? true,
+      roleId: body.roleId || undefined,
+    },
+    include: {
+      role: { select: { id: true, name: true, description: true } },
+    },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}

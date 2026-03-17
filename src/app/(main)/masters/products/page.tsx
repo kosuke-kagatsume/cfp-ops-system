@@ -1,7 +1,7 @@
 "use client";
 
 import { Header } from "@/components/header";
-import { Modal, FormField, FormSelect } from "@/components/modal";
+import { Modal, FormField, FormSelect, FormInput } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Search, MoreHorizontal, CheckCircle, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -24,6 +24,7 @@ type Product = {
 export default function ProductsPage() {
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
@@ -41,6 +42,10 @@ export default function ProductsPage() {
   const { data: productGrades } = useSWR<AxisItem[]>("/api/masters/product-grades", fetcher);
 
   const selectedProduct = products?.find((p) => p.id === showDetailModal);
+
+  // 編集用
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ isIsccEligible: false, displayName: "" });
 
   // 新規登録フォーム
   const [newForm, setNewForm] = useState({
@@ -82,6 +87,36 @@ export default function ProductsPage() {
     }
     setMenuOpen(null);
   };
+
+  const openEdit = (product: Product) => {
+    setEditId(product.id);
+    setEditForm({
+      isIsccEligible: product.isIsccEligible,
+      displayName: "",
+    });
+    setShowEditModal(true);
+    setMenuOpen(null);
+  };
+
+  const handleUpdate = async () => {
+    if (!editId) return;
+    try {
+      const res = await fetch(`/api/masters/products/${editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editForm),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setShowEditModal(false);
+      setEditId(null);
+      mutate();
+      showToast("品目を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const editingProduct = products?.find((p) => p.id === editId);
 
   // 生成コードプレビュー
   const previewCode = [
@@ -184,7 +219,7 @@ export default function ProductsPage() {
                             <button onClick={() => { setShowDetailModal(product.id); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary">
                               <Eye className="w-4 h-4" /> 詳細
                             </button>
-                            <button onClick={() => { showToast("編集画面を開きます（開発中）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary">
+                            <button onClick={() => openEdit(product)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary">
                               <Edit className="w-4 h-4" /> 編集
                             </button>
                             <button onClick={() => handleDelete(product.id)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-danger hover:bg-surface-tertiary">
@@ -274,6 +309,45 @@ export default function ProductsPage() {
             <label htmlFor="iscc-product" className="text-sm text-text">ISCC PLUS対象品目</label>
           </div>
         </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title={editingProduct ? `品目 編集: ${editingProduct.code}` : "品目 編集"}
+        footer={
+          <>
+            <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
+              キャンセル
+            </button>
+            <button onClick={handleUpdate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
+              更新する
+            </button>
+          </>
+        }
+      >
+        {editingProduct && (
+          <div className="space-y-4">
+            <div className="p-3 bg-surface-tertiary rounded-lg">
+              <p className="text-xs text-text-tertiary">品目コード（変更不可）</p>
+              <p className="text-sm font-mono font-bold text-primary-700 mt-1">{editingProduct.code}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div><p className="text-xs text-text-tertiary">品名</p><p className="text-sm text-text">{editingProduct.name.name}</p></div>
+              <div><p className="text-xs text-text-tertiary">形状</p><p className="text-sm text-text">{editingProduct.shape.name}</p></div>
+              <div><p className="text-xs text-text-tertiary">色</p><p className="text-sm text-text">{editingProduct.color.name}</p></div>
+              <div><p className="text-xs text-text-tertiary">グレード</p><p className="text-sm text-text">{editingProduct.grade.name}</p></div>
+            </div>
+            <FormField label="表示名（任意）">
+              <FormInput placeholder="例: PP白ペレット素材品" value={editForm.displayName} onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })} />
+            </FormField>
+            <div className="flex items-center gap-2">
+              <input type="checkbox" id="edit-iscc-product" className="rounded border-border" checked={editForm.isIsccEligible} onChange={(e) => setEditForm({ ...editForm, isIsccEligible: e.target.checked })} />
+              <label htmlFor="edit-iscc-product" className="text-sm text-text">ISCC PLUS対象品目</label>
+            </div>
+          </div>
+        )}
       </Modal>
 
       {/* 詳細モーダル */}

@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { ChevronLeft, ChevronRight, Plus, Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -42,7 +42,7 @@ export default function ProductionCalendarPage() {
   const { showToast } = useToast();
 
   const apiMonth = currentMonth + 1; // API uses 1-indexed
-  const { data: entries, isLoading } = useSWR<ProductionCalendarEntry[]>(
+  const { data: entries, isLoading, mutate } = useSWR<ProductionCalendarEntry[]>(
     `/api/production-calendar?year=${currentYear}&month=${apiMonth}`,
     fetcher
   );
@@ -73,6 +73,47 @@ export default function ProductionCalendarPage() {
     } else {
       setCurrentMonth(currentMonth + 1);
     }
+  };
+
+  const [newForm, setNewForm] = useState({ date: new Date().toISOString().split("T")[0], type: "workday", holidayName: "", note: "" });
+
+  const handleCreate = async () => {
+    try {
+      const isHoliday = newForm.type === "holiday";
+      const res = await fetch("/api/production-calendar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: newForm.date, isWorkday: !isHoliday, isHoliday, holidayName: newForm.holidayName || undefined, note: newForm.note || undefined }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowNewModal(false);
+      setNewForm({ date: new Date().toISOString().split("T")[0], type: "workday", holidayName: "", note: "" });
+      mutate();
+      showToast("予定を追加しました", "success");
+    } catch { showToast("追加に失敗しました", "error"); }
+  };
+
+  const handleAddForDate = async (dateStr: string, type: string, holidayName?: string, note?: string) => {
+    try {
+      const isHoliday = type === "holiday";
+      const res = await fetch("/api/production-calendar", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date: dateStr, isWorkday: !isHoliday, isHoliday, holidayName, note }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      mutate();
+      showToast("予定を追加しました", "success");
+    } catch { showToast("追加に失敗しました", "error"); }
+  };
+
+  const handleDeleteEntry = async (id: string) => {
+    if (!confirm("この予定を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/production-calendar/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setSelectedDate(null);
+      mutate();
+      showToast("予定を削除しました", "success");
+    } catch { showToast("削除に失敗しました", "error"); }
   };
 
   if (isLoading) {
@@ -172,22 +213,22 @@ export default function ProductionCalendarPage() {
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="予定追加"
         footer={<>
           <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
-          <button onClick={() => { setShowNewModal(false); showToast("予定を追加しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">追加する</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">追加する</button>
         </>}>
         <div className="space-y-4">
-          <FormField label="日付" required><FormInput type="date" defaultValue="2026-03-12" /></FormField>
-          <FormField label="種別" required><FormSelect placeholder="選択" options={[
+          <FormField label="日付" required><FormInput type="date" value={newForm.date} onChange={(e) => setNewForm({ ...newForm, date: e.target.value })} /></FormField>
+          <FormField label="種別" required><FormSelect value={newForm.type} onChange={(e) => setNewForm({ ...newForm, type: e.target.value })} options={[
             { value: "workday", label: "稼働日" }, { value: "holiday", label: "休日" },
           ]} /></FormField>
-          <FormField label="休日名"><FormInput placeholder="例: 定休日" /></FormField>
-          <FormField label="備考"><FormInput placeholder="例: PP ルーダー稼働" /></FormField>
+          <FormField label="休日名"><FormInput placeholder="例: 定休日" value={newForm.holidayName} onChange={(e) => setNewForm({ ...newForm, holidayName: e.target.value })} /></FormField>
+          <FormField label="備考"><FormInput placeholder="例: PP ルーダー稼働" value={newForm.note} onChange={(e) => setNewForm({ ...newForm, note: e.target.value })} /></FormField>
         </div>
       </Modal>
 
       {/* 日付詳細モーダル */}
       <Modal isOpen={!!selectedDate} onClose={() => setSelectedDate(null)} title={selectedDate ?? ""}
         footer={<>
-          <button onClick={() => { showToast("この日に予定を追加（開発中）", "info"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">予定追加</button>
+          <button onClick={() => { if (selectedDate) handleAddForDate(selectedDate, "holiday", "休日"); }} className="px-4 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50">休日にする</button>
           <button onClick={() => setSelectedDate(null)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">閉じる</button>
         </>}>
         {selectedDate && (() => {
@@ -197,6 +238,7 @@ export default function ProductionCalendarPage() {
               <div className={`p-3 rounded-lg border ${entry.isHoliday ? eventColors.holiday : entry.isWorkday ? eventColors.workday : eventColors.note}`}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium">{entry.isHoliday ? "休日" : "稼働日"}</span>
+                  <button onClick={() => handleDeleteEntry(entry.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-3.5 h-3.5 text-red-400" /></button>
                 </div>
                 {entry.holidayName && <p className="text-sm font-medium">{entry.holidayName}</p>}
                 {entry.note && <p className="text-sm">{entry.note}</p>}

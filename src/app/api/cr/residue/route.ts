@@ -18,3 +18,20 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(residues);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const record = await prisma.residue.create({
+    data: {
+      disposalDate: new Date(body.disposalDate),
+      quantity: body.quantity,
+      disposalMethod: body.disposalMethod,
+      disposalCost: body.disposalCost,
+      contractor: body.contractor,
+      note: body.note,
+    },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}

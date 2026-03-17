@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Download, Search, Eye, Loader2 } from "lucide-react";
+import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -70,6 +70,8 @@ export default function OrdersPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTarget, setEditTarget] = useState<Order | null>(null);
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
@@ -85,7 +87,7 @@ export default function OrdersPage() {
   const { data: allOrders } = useSWR<Order[]>("/api/sales/orders", fetcher);
 
   const { data: partners } = useSWR<Partner[]>(
-    showNewModal ? "/api/masters/partners?type=customer" : null,
+    showNewModal || showEditModal ? "/api/masters/partners?type=customer" : null,
     fetcher
   );
 
@@ -95,6 +97,14 @@ export default function OrdersPage() {
     customerId: "",
     orderDate: "",
     deliveryDate: "",
+  });
+
+  const [editForm, setEditForm] = useState({
+    customerId: "",
+    orderDate: "",
+    deliveryDate: "",
+    status: "",
+    note: "",
   });
 
   const handleCreate = async () => {
@@ -118,6 +128,54 @@ export default function OrdersPage() {
     }
   };
 
+  const handleEdit = (order: Order) => {
+    setEditTarget(order);
+    setEditForm({
+      customerId: order.customer.id,
+      orderDate: order.orderDate.slice(0, 10),
+      deliveryDate: order.deliveryDate?.slice(0, 10) ?? "",
+      status: order.status,
+      note: order.note ?? "",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async () => {
+    if (!editTarget) return;
+    try {
+      const res = await fetch(`/api/sales/orders/${editTarget.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId: editForm.customerId,
+          orderDate: editForm.orderDate,
+          deliveryDate: editForm.deliveryDate || null,
+          status: editForm.status,
+          note: editForm.note || null,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      setShowEditModal(false);
+      setEditTarget(null);
+      mutate();
+      showToast("受注を更新しました", "success");
+    } catch {
+      showToast("更新に失敗しました", "error");
+    }
+  };
+
+  const handleDelete = async (order: Order) => {
+    if (!confirm(`受注 ${order.orderNumber} を削除しますか？`)) return;
+    try {
+      const res = await fetch(`/api/sales/orders/${order.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      mutate();
+      showToast("受注を削除しました", "success");
+    } catch {
+      showToast("削除に失敗しました", "error");
+    }
+  };
+
   const formatDate = (d: string | null) => {
     if (!d) return "-";
     return new Date(d).toLocaleDateString("ja-JP");
@@ -126,7 +184,7 @@ export default function OrdersPage() {
   const formatCurrency = (amount: number, currency: string) => {
     if (currency === "USD") return `$${amount.toLocaleString()}`;
     if (currency === "SGD") return `S$${amount.toLocaleString()}`;
-    return `¥${amount.toLocaleString()}`;
+    return `\u00a5${amount.toLocaleString()}`;
   };
 
   return (
@@ -185,7 +243,7 @@ export default function OrdersPage() {
                     <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">小計</th>
                     <th className="text-right px-4 py-3 text-xs font-medium text-text-secondary uppercase">合計</th>
                     <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">ステータス</th>
-                    <th className="w-10"></th>
+                    <th className="w-24"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -212,9 +270,17 @@ export default function OrdersPage() {
                           <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[o.status] ?? "bg-gray-50 text-gray-700"}`}>{statusLabels[o.status] ?? o.status}</span>
                         </td>
                         <td className="px-4 py-3">
-                          <button onClick={() => setShowDetail(o.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                            <Eye className="w-4 h-4 text-text-tertiary" />
-                          </button>
+                          <div className="flex items-center gap-1">
+                            <button onClick={() => setShowDetail(o.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                              <Eye className="w-4 h-4 text-text-tertiary" />
+                            </button>
+                            <button onClick={() => handleEdit(o)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                              <Pencil className="w-4 h-4 text-text-tertiary" />
+                            </button>
+                            <button onClick={() => handleDelete(o)} className="p-1 hover:bg-red-50 rounded transition-colors">
+                              <Trash2 className="w-4 h-4 text-red-400" />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -257,6 +323,40 @@ export default function OrdersPage() {
           </FormField>
           <FormField label="納品予定日">
             <FormInput type="date" value={newForm.deliveryDate} onChange={(e) => setNewForm({ ...newForm, deliveryDate: e.target.value })} />
+          </FormField>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title={`受注編集: ${editTarget?.orderNumber ?? ""}`}
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
+          <button onClick={handleUpdate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="顧客" required>
+            <FormSelect
+              placeholder="選択してください"
+              value={editForm.customerId}
+              onChange={(e) => setEditForm({ ...editForm, customerId: e.target.value })}
+              options={(partners ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))}
+            />
+          </FormField>
+          <FormField label="受注日" required>
+            <FormInput type="date" value={editForm.orderDate} onChange={(e) => setEditForm({ ...editForm, orderDate: e.target.value })} />
+          </FormField>
+          <FormField label="納品予定日">
+            <FormInput type="date" value={editForm.deliveryDate} onChange={(e) => setEditForm({ ...editForm, deliveryDate: e.target.value })} />
+          </FormField>
+          <FormField label="ステータス" required>
+            <FormSelect
+              value={editForm.status}
+              onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+              options={Object.entries(statusLabels).map(([v, l]) => ({ value: v, label: l }))}
+            />
+          </FormField>
+          <FormField label="備考">
+            <FormInput value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} placeholder="備考を入力..." />
           </FormField>
         </div>
       </Modal>

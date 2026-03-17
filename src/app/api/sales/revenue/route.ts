@@ -31,3 +31,39 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(revenues);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const seq = await prisma.numberSequence.update({
+    where: { prefix_year: { prefix: "REV", year: new Date().getFullYear() } },
+    data: { currentNumber: { increment: 1 } },
+  });
+  const revenueNumber = `REV-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+
+  const amount = (body.quantity ?? 0) * (body.unitPrice ?? 0);
+  const taxAmount = body.isExportExempt ? 0 : Math.floor(amount * (body.taxRate ?? 0.1));
+
+  const revenue = await prisma.revenue.create({
+    data: {
+      revenueNumber,
+      division: body.division ?? "MR",
+      salesCategory: body.salesCategory ?? "SALES",
+      revenueDate: new Date(body.revenueDate),
+      billingDate: body.billingDate ? new Date(body.billingDate) : null,
+      shipmentDate: body.shipmentDate ? new Date(body.shipmentDate) : null,
+      customerId: body.customerId || null,
+      productId: body.productId || null,
+      shipmentId: body.shipmentId || null,
+      quantity: body.quantity ?? null,
+      unitPrice: body.unitPrice ?? null,
+      amount: body.amount ?? amount,
+      taxRate: body.taxRate ?? 0.1,
+      taxAmount: body.taxAmount ?? taxAmount,
+      isExportExempt: body.isExportExempt ?? false,
+      note: body.note || null,
+    },
+  });
+
+  return NextResponse.json(revenue, { status: 201 });
+}

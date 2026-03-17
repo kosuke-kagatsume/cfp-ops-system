@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Eye, Globe, ArrowRightLeft, Plane, DollarSign, Loader2 } from "lucide-react";
+import { Plus, Eye, Pencil, Trash2, Globe, ArrowRightLeft, Plane, DollarSign, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -42,13 +42,15 @@ const typeList = ["PURCHASE", "SALE", "TRANSFER"];
 export default function CtsPage() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
   if (typeFilter !== "all") params.set("type", typeFilter);
 
-  const { data: transactions, isLoading } = useSWR<CtsTransaction[]>(
+  const { data: transactions, isLoading, mutate } = useSWR<CtsTransaction[]>(
     `/api/cts?${params.toString()}`,
     fetcher
   );
@@ -58,6 +60,58 @@ export default function CtsPage() {
 
   const totalAmount = allTransactions.reduce((s, t) => s + t.amount, 0);
   const totalJpy = allTransactions.reduce((s, t) => s + (t.jpyAmount ?? 0), 0);
+
+  const [newForm, setNewForm] = useState({ transactionType: "", fromCountry: "", toCountry: "", currency: "", amount: "", exchangeRate: "", transactionDate: new Date().toISOString().split("T")[0], note: "" });
+  const [editForm, setEditForm] = useState({ transactionType: "", fromCountry: "", toCountry: "", currency: "", amount: "", exchangeRate: "", transactionDate: "", note: "" });
+
+  const handleCreate = async () => {
+    try {
+      const amt = parseFloat(newForm.amount);
+      const rate = newForm.exchangeRate ? parseFloat(newForm.exchangeRate) : undefined;
+      const res = await fetch("/api/cts", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: "cts-singapore", transactionType: newForm.transactionType, fromCountry: newForm.fromCountry || undefined, toCountry: newForm.toCountry || undefined, currency: newForm.currency, amount: amt, exchangeRate: rate, jpyAmount: rate ? amt * rate : undefined, transactionDate: newForm.transactionDate, note: newForm.note || undefined }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowNewModal(false);
+      setNewForm({ transactionType: "", fromCountry: "", toCountry: "", currency: "", amount: "", exchangeRate: "", transactionDate: new Date().toISOString().split("T")[0], note: "" });
+      mutate();
+      showToast("取引を登録しました", "success");
+    } catch { showToast("登録に失敗しました", "error"); }
+  };
+
+  const openEdit = (t: CtsTransaction) => {
+    setEditingId(t.id);
+    setEditForm({ transactionType: t.transactionType, fromCountry: t.fromCountry ?? "", toCountry: t.toCountry ?? "", currency: t.currency, amount: String(t.amount), exchangeRate: t.exchangeRate != null ? String(t.exchangeRate) : "", transactionDate: t.transactionDate.split("T")[0], note: t.note ?? "" });
+    setShowDetail(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    try {
+      const amt = parseFloat(editForm.amount);
+      const rate = editForm.exchangeRate ? parseFloat(editForm.exchangeRate) : null;
+      const res = await fetch(`/api/cts/${editingId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transactionType: editForm.transactionType, fromCountry: editForm.fromCountry || null, toCountry: editForm.toCountry || null, currency: editForm.currency, amount: amt, exchangeRate: rate, jpyAmount: rate ? amt * rate : null, transactionDate: editForm.transactionDate, note: editForm.note || null }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowEditModal(false);
+      mutate();
+      showToast("取引を更新しました", "success");
+    } catch { showToast("更新に失敗しました", "error"); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この取引を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/cts/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast("取引を削除しました", "success");
+    } catch { showToast("削除に失敗しました", "error"); }
+  };
 
   return (
     <>
@@ -120,8 +174,7 @@ export default function CtsPage() {
         ) : (
           <div className="space-y-3">
             {allTransactions.map((t) => (
-              <button key={t.id} onClick={() => setShowDetail(t.id)}
-                className="w-full bg-surface rounded-xl border border-border p-5 hover:border-primary-300 transition-colors text-left">
+              <div key={t.id} className="bg-surface rounded-xl border border-border p-5">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${typeColors[t.transactionType] ?? "bg-gray-50 text-gray-700"}`}>
@@ -129,11 +182,15 @@ export default function CtsPage() {
                     </span>
                     <span className="text-xs text-text-tertiary">{t.currency}</span>
                   </div>
-                  <span className="text-sm text-text-secondary">{new Date(t.transactionDate).toLocaleDateString("ja-JP")}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-text-secondary">{new Date(t.transactionDate).toLocaleDateString("ja-JP")}</span>
+                    <button onClick={() => setShowDetail(t.id)} className="p-1 hover:bg-surface-tertiary rounded"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                    <button onClick={() => openEdit(t)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                    <button onClick={() => handleDelete(t.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                  </div>
                 </div>
 
                 <div className="flex items-center gap-4 mb-3">
-                  {/* ルート表示 */}
                   <div className="flex items-center gap-2 flex-1">
                     {t.fromCountry && (
                       <div className="p-2 bg-blue-50 rounded-lg text-center min-w-[100px]">
@@ -161,7 +218,7 @@ export default function CtsPage() {
                   <div><span className="text-xs text-text-tertiary">為替レート</span><p className="font-mono">{t.exchangeRate ?? "-"}</p></div>
                   <div><span className="text-xs text-text-tertiary">金額(JPY)</span><p className="font-medium text-text-secondary">{t.jpyAmount ? `¥${t.jpyAmount.toLocaleString()}` : "-"}</p></div>
                 </div>
-              </button>
+              </div>
             ))}
             {allTransactions.length === 0 && (
               <div className="text-center py-12 text-sm text-text-tertiary">取引データがありません</div>
@@ -174,33 +231,65 @@ export default function CtsPage() {
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="CTS取引登録"
         footer={<>
           <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
-          <button onClick={() => { setShowNewModal(false); showToast("取引を登録しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
         </>}>
         <div className="space-y-4">
-          <FormField label="取引種別" required><FormSelect placeholder="選択" options={[
+          <FormField label="取引種別" required><FormSelect placeholder="選択" value={newForm.transactionType} onChange={(e) => setNewForm({ ...newForm, transactionType: e.target.value })} options={[
             { value: "PURCHASE", label: "仕入" }, { value: "SALE", label: "販売" }, { value: "TRANSFER", label: "移転" },
           ]} /></FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="出荷元国" required><FormInput placeholder="例: 日本" /></FormField>
-            <FormField label="仕向地国" required><FormInput placeholder="例: インドネシア" /></FormField>
+            <FormField label="出荷元国"><FormInput placeholder="例: 日本" value={newForm.fromCountry} onChange={(e) => setNewForm({ ...newForm, fromCountry: e.target.value })} /></FormField>
+            <FormField label="仕向地国"><FormInput placeholder="例: インドネシア" value={newForm.toCountry} onChange={(e) => setNewForm({ ...newForm, toCountry: e.target.value })} /></FormField>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="通貨" required><FormSelect placeholder="選択" options={[
+            <FormField label="通貨" required><FormSelect placeholder="選択" value={newForm.currency} onChange={(e) => setNewForm({ ...newForm, currency: e.target.value })} options={[
               { value: "USD", label: "USD" }, { value: "SGD", label: "SGD" }, { value: "JPY", label: "JPY" },
             ]} /></FormField>
-            <FormField label="金額" required><FormInput type="number" placeholder="例: 34000" /></FormField>
+            <FormField label="金額" required><FormInput type="number" placeholder="例: 34000" value={newForm.amount} onChange={(e) => setNewForm({ ...newForm, amount: e.target.value })} /></FormField>
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="為替レート"><FormInput type="number" placeholder="例: 150.25" /></FormField>
-            <FormField label="取引日" required><FormInput type="date" defaultValue="2026-03-12" /></FormField>
+            <FormField label="為替レート"><FormInput type="number" placeholder="例: 150.25" value={newForm.exchangeRate} onChange={(e) => setNewForm({ ...newForm, exchangeRate: e.target.value })} /></FormField>
+            <FormField label="取引日" required><FormInput type="date" value={newForm.transactionDate} onChange={(e) => setNewForm({ ...newForm, transactionDate: e.target.value })} /></FormField>
           </div>
-          <FormField label="備考"><FormInput placeholder="例: PT. INDO PLASTICS PP Pellet" /></FormField>
+          <FormField label="備考"><FormInput placeholder="例: PT. INDO PLASTICS PP Pellet" value={newForm.note} onChange={(e) => setNewForm({ ...newForm, note: e.target.value })} /></FormField>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="CTS取引 編集"
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="取引種別" required><FormSelect value={editForm.transactionType} onChange={(e) => setEditForm({ ...editForm, transactionType: e.target.value })} options={[
+            { value: "PURCHASE", label: "仕入" }, { value: "SALE", label: "販売" }, { value: "TRANSFER", label: "移転" },
+          ]} /></FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="出荷元国"><FormInput value={editForm.fromCountry} onChange={(e) => setEditForm({ ...editForm, fromCountry: e.target.value })} /></FormField>
+            <FormField label="仕向地国"><FormInput value={editForm.toCountry} onChange={(e) => setEditForm({ ...editForm, toCountry: e.target.value })} /></FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="通貨" required><FormSelect value={editForm.currency} onChange={(e) => setEditForm({ ...editForm, currency: e.target.value })} options={[
+              { value: "USD", label: "USD" }, { value: "SGD", label: "SGD" }, { value: "JPY", label: "JPY" },
+            ]} /></FormField>
+            <FormField label="金額" required><FormInput type="number" value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })} /></FormField>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="為替レート"><FormInput type="number" value={editForm.exchangeRate} onChange={(e) => setEditForm({ ...editForm, exchangeRate: e.target.value })} /></FormField>
+            <FormField label="取引日" required><FormInput type="date" value={editForm.transactionDate} onChange={(e) => setEditForm({ ...editForm, transactionDate: e.target.value })} /></FormField>
+          </div>
+          <FormField label="備考"><FormInput value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} /></FormField>
         </div>
       </Modal>
 
       {/* 詳細モーダル */}
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `CTS取引詳細` : ""}
-        footer={<button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>}>
+        footer={<>
+          <button onClick={() => selected && openEdit(selected)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">編集</button>
+          <button onClick={() => selected && handleDelete(selected.id)} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">削除</button>
+          <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
+        </>}>
         {selected && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">

@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Search, Eye, AlertTriangle, FileText, Calendar, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Search, Eye, AlertTriangle, FileText, Pencil, Trash2, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -40,21 +40,33 @@ type ContractData = {
   partner: { id: string; code: string; name: string };
 };
 
+type PartnerOption = { id: string; code: string; name: string };
+
+const contractTypeOptions = [
+  { value: "販売契約", label: "販売契約" }, { value: "仕入契約", label: "仕入契約" }, { value: "運送契約", label: "運送契約" },
+  { value: "加工委託", label: "加工委託" }, { value: "処理委託", label: "処理委託" }, { value: "販売契約（海外）", label: "販売契約（海外）" },
+];
+
 export default function ContractsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: contracts, isLoading } = useSWR<ContractData[]>(
+  const { data: contracts, isLoading, mutate } = useSWR<ContractData[]>(
     `/api/contracts?${params.toString()}`,
     fetcher
   );
+
+  const needMasters = showNewModal || showEditModal;
+  const { data: partners } = useSWR<PartnerOption[]>(needMasters ? "/api/masters/partners" : null, fetcher);
 
   const allContracts = contracts ?? [];
   const selected = allContracts.find((c) => c.id === showDetail);
@@ -64,6 +76,54 @@ export default function ContractsPage() {
   const all = allContractsData ?? [];
   const expiringSoon = all.filter((c) => c.status === "EXPIRING_SOON").length;
   const expired = all.filter((c) => c.status === "EXPIRED").length;
+
+  const [newForm, setNewForm] = useState({ partnerId: "", title: "", contractType: "", startDate: "", endDate: "", autoRenewal: false, note: "" });
+  const [editForm, setEditForm] = useState({ partnerId: "", title: "", contractType: "", startDate: "", endDate: "", autoRenewal: false, status: "" as string, note: "" });
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/contracts", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partnerId: newForm.partnerId, title: newForm.title, contractType: newForm.contractType || undefined, startDate: newForm.startDate, endDate: newForm.endDate || undefined, autoRenewal: newForm.autoRenewal, note: newForm.note || undefined }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowNewModal(false);
+      setNewForm({ partnerId: "", title: "", contractType: "", startDate: "", endDate: "", autoRenewal: false, note: "" });
+      mutate();
+      showToast("契約を登録しました", "success");
+    } catch { showToast("登録に失敗しました", "error"); }
+  };
+
+  const openEdit = (c: ContractData) => {
+    setEditingId(c.id);
+    setEditForm({ partnerId: c.partner.id, title: c.title, contractType: c.contractType ?? "", startDate: c.startDate.split("T")[0], endDate: c.endDate?.split("T")[0] ?? "", autoRenewal: c.autoRenewal, status: c.status, note: c.note ?? "" });
+    setShowDetail(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    try {
+      const res = await fetch(`/api/contracts/${editingId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ partnerId: editForm.partnerId, title: editForm.title, contractType: editForm.contractType || null, startDate: editForm.startDate, endDate: editForm.endDate || null, autoRenewal: editForm.autoRenewal, status: editForm.status, note: editForm.note || null }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowEditModal(false);
+      mutate();
+      showToast("契約を更新しました", "success");
+    } catch { showToast("更新に失敗しました", "error"); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("この契約を削除しますか？")) return;
+    try {
+      const res = await fetch(`/api/contracts/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed");
+      setShowDetail(null);
+      mutate();
+      showToast("契約を削除しました", "success");
+    } catch { showToast("削除に失敗しました", "error"); }
+  };
 
   if (isLoading) {
     return (
@@ -132,7 +192,7 @@ export default function ContractsPage() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">有効期間</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">自動更新</th>
                 <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">状態</th>
-                <th className="w-10"></th>
+                <th className="w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -150,7 +210,11 @@ export default function ContractsPage() {
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded-full ${statusColors[c.status]}`}>{statusLabel[c.status]}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => setShowDetail(c.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => setShowDetail(c.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors"><Eye className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => openEdit(c)} className="p-1 hover:bg-surface-tertiary rounded"><Pencil className="w-4 h-4 text-text-tertiary" /></button>
+                      <button onClick={() => handleDelete(c.id)} className="p-1 hover:bg-red-50 rounded"><Trash2 className="w-4 h-4 text-red-400" /></button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -163,36 +227,47 @@ export default function ContractsPage() {
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="契約登録"
         footer={<>
           <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
-          <button onClick={() => { setShowNewModal(false); showToast("契約を登録しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">登録する</button>
         </>}>
         <div className="space-y-4">
-          <FormField label="件名" required><FormInput placeholder="例: PP再生ペレット販売基本契約" /></FormField>
-          <FormField label="取引先" required><FormSelect placeholder="選択" options={[
-            { value: "1", label: "東洋プラスチック株式会社" }, { value: "2", label: "九州リサイクル株式会社" },
-            { value: "3", label: "関西化学工業株式会社" }, { value: "4", label: "中国運輸株式会社" },
-          ]} /></FormField>
-          <FormField label="種別" required><FormSelect placeholder="選択" options={[
-            { value: "1", label: "販売契約" }, { value: "2", label: "仕入契約" }, { value: "3", label: "運送契約" },
-            { value: "4", label: "加工委託" }, { value: "5", label: "処理委託" }, { value: "6", label: "販売契約（海外）" },
-          ]} /></FormField>
+          <FormField label="件名" required><FormInput placeholder="例: PP再生ペレット販売基本契約" value={newForm.title} onChange={(e) => setNewForm({ ...newForm, title: e.target.value })} /></FormField>
+          <FormField label="取引先" required><FormSelect placeholder="選択" value={newForm.partnerId} onChange={(e) => setNewForm({ ...newForm, partnerId: e.target.value })} options={(partners ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))} /></FormField>
+          <FormField label="種別"><FormSelect placeholder="選択" value={newForm.contractType} onChange={(e) => setNewForm({ ...newForm, contractType: e.target.value })} options={contractTypeOptions} /></FormField>
           <div className="grid grid-cols-2 gap-4">
-            <FormField label="開始日" required><FormInput type="date" /></FormField>
-            <FormField label="終了日" required><FormInput type="date" /></FormField>
+            <FormField label="開始日" required><FormInput type="date" value={newForm.startDate} onChange={(e) => setNewForm({ ...newForm, startDate: e.target.value })} /></FormField>
+            <FormField label="終了日"><FormInput type="date" value={newForm.endDate} onChange={(e) => setNewForm({ ...newForm, endDate: e.target.value })} /></FormField>
           </div>
-          <FormField label="備考"><FormInput placeholder="例: 自動更新条項あり" /></FormField>
-          <div className="border-t border-border pt-4">
-            <button onClick={() => showToast("契約書PDF添付（開発中）", "info")} className="flex items-center gap-2 px-4 py-2 text-sm border border-dashed border-border rounded-lg text-text-secondary hover:bg-surface-tertiary w-full justify-center">
-              <FileText className="w-4 h-4" />契約書PDFを添付
-            </button>
+          <FormField label="備考"><FormInput placeholder="例: 自動更新条項あり" value={newForm.note} onChange={(e) => setNewForm({ ...newForm, note: e.target.value })} /></FormField>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="契約 編集"
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="件名" required><FormInput value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></FormField>
+          <FormField label="取引先" required><FormSelect value={editForm.partnerId} onChange={(e) => setEditForm({ ...editForm, partnerId: e.target.value })} options={(partners ?? []).map((p) => ({ value: p.id, label: `${p.code} ${p.name}` }))} /></FormField>
+          <FormField label="種別"><FormSelect value={editForm.contractType} onChange={(e) => setEditForm({ ...editForm, contractType: e.target.value })} options={contractTypeOptions} /></FormField>
+          <div className="grid grid-cols-2 gap-4">
+            <FormField label="開始日" required><FormInput type="date" value={editForm.startDate} onChange={(e) => setEditForm({ ...editForm, startDate: e.target.value })} /></FormField>
+            <FormField label="終了日"><FormInput type="date" value={editForm.endDate} onChange={(e) => setEditForm({ ...editForm, endDate: e.target.value })} /></FormField>
           </div>
+          <FormField label="ステータス"><FormSelect value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} options={[
+            { value: "ACTIVE", label: "有効" }, { value: "EXPIRING_SOON", label: "期限間近" }, { value: "EXPIRED", label: "期限切れ" }, { value: "DRAFT", label: "下書き" },
+          ]} /></FormField>
+          <FormField label="備考"><FormInput value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} /></FormField>
         </div>
       </Modal>
 
       {/* 詳細モーダル */}
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `契約: ${selected.contractNumber}` : ""}
         footer={<>
-          <button onClick={() => showToast("契約書PDF表示（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><FileText className="w-4 h-4" />PDF表示</button>
-          <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">閉じる</button>
+          <button onClick={() => selected && openEdit(selected)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">編集</button>
+          <button onClick={() => selected && handleDelete(selected.id)} className="px-4 py-2 text-sm bg-red-500 text-white rounded-lg font-medium hover:bg-red-600">削除</button>
+          <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (
           <div className="space-y-4">

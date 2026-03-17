@@ -9,6 +9,8 @@ import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+type RoleOption = { id: string; name: string; description: string | null };
+
 type UserEntry = {
   id: string;
   email: string;
@@ -58,21 +60,74 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (roleFilter !== "all") params.set("role", roleFilter);
 
-  const { data: users, isLoading } = useSWR<UserEntry[]>(
+  const { data: users, isLoading, mutate } = useSWR<UserEntry[]>(
     `/api/settings/users?${params.toString()}`,
     fetcher
   );
 
   const allUsers = users ?? [];
   const selectedUser = allUsers.find((u) => u.id === showDetailModal);
+
+  const [newForm, setNewForm] = useState({ email: "", name: "", roleId: "" });
+  const [editForm, setEditForm] = useState({ name: "", email: "", department: "", position: "", roleId: "", isActive: true });
+
+  const handleCreate = async () => {
+    try {
+      const res = await fetch("/api/settings/users", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newForm.email, name: newForm.name, roleId: newForm.roleId || undefined }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowNewModal(false);
+      setNewForm({ email: "", name: "", roleId: "" });
+      mutate();
+      showToast("ユーザーを追加しました", "success");
+    } catch { showToast("追加に失敗しました", "error"); }
+  };
+
+  const openEdit = (user: UserEntry) => {
+    setEditingId(user.id);
+    setEditForm({ name: user.name, email: user.email, department: user.department ?? "", position: user.position ?? "", roleId: user.roleId ?? "", isActive: user.isActive });
+    setShowDetailModal(null);
+    setMenuOpen(null);
+    setShowEditModal(true);
+  };
+
+  const handleEdit = async () => {
+    try {
+      const res = await fetch(`/api/settings/users/${editingId}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: editForm.name, email: editForm.email, department: editForm.department || null, position: editForm.position || null, roleId: editForm.roleId || null, isActive: editForm.isActive }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setShowEditModal(false);
+      mutate();
+      showToast("ユーザー情報を更新しました", "success");
+    } catch { showToast("更新に失敗しました", "error"); }
+  };
+
+  const toggleActive = async (user: UserEntry) => {
+    try {
+      const res = await fetch(`/api/settings/users/${user.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: !user.isActive }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      setMenuOpen(null);
+      mutate();
+      showToast(user.isActive ? "ユーザーを無効化しました" : "ユーザーを有効化しました", user.isActive ? "warning" : "success");
+    } catch { showToast("更新に失敗しました", "error"); }
+  };
 
   return (
     <>
@@ -154,8 +209,8 @@ export default function UsersPage() {
                         {menuOpen === user.id && (
                           <div className="absolute right-4 top-12 bg-surface rounded-lg border border-border shadow-lg py-1 z-10 w-40">
                             <button onClick={() => { setShowDetailModal(user.id); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Eye className="w-4 h-4" /> 詳細</button>
-                            <button onClick={() => { showToast("ロール変更（開発中）", "info"); setMenuOpen(null); }} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Edit className="w-4 h-4" /> ロール変更</button>
-                            <button onClick={() => { showToast(user.isActive ? "ユーザーを無効化しました（モック）" : "ユーザーを有効化しました（モック）", user.isActive ? "warning" : "success"); setMenuOpen(null); }}
+                            <button onClick={() => openEdit(user)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary"><Edit className="w-4 h-4" /> 編集</button>
+                            <button onClick={() => toggleActive(user)}
                               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-text-secondary hover:bg-surface-tertiary">
                               {user.isActive ? <><UserX className="w-4 h-4" /> 無効化</> : <><UserCheck className="w-4 h-4" /> 有効化</>}
                             </button>
@@ -175,16 +230,39 @@ export default function UsersPage() {
       <Modal isOpen={showNewModal} onClose={() => setShowNewModal(false)} title="ユーザー追加"
         footer={<>
           <button onClick={() => setShowNewModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">キャンセル</button>
-          <button onClick={() => { setShowNewModal(false); showToast("ユーザーを追加しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">追加する</button>
+          <button onClick={handleCreate} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">追加する</button>
         </>}
       >
         <div className="space-y-4">
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-xs text-blue-700">Microsoft 365のメールアドレスを入力してください。Azure ADからユーザー情報が自動取得されます。</p>
           </div>
-          <FormField label="メールアドレス" required><FormInput type="email" placeholder="例: tanaka@cfp-corp.co.jp" /></FormField>
+          <FormField label="名前" required><FormInput placeholder="例: 田中太郎" value={newForm.name} onChange={(e) => setNewForm({ ...newForm, name: e.target.value })} /></FormField>
+          <FormField label="メールアドレス" required><FormInput type="email" placeholder="例: tanaka@cfp-corp.co.jp" value={newForm.email} onChange={(e) => setNewForm({ ...newForm, email: e.target.value })} /></FormField>
           <FormField label="ロール" required>
-            <FormSelect placeholder="選択" options={Object.entries(roleLabels).map(([v, l]) => ({ value: v, label: l }))} />
+            <FormSelect placeholder="選択" value={newForm.roleId} onChange={(e) => setNewForm({ ...newForm, roleId: e.target.value })} options={Object.entries(roleLabels).map(([v, l]) => ({ value: v, label: l }))} />
+          </FormField>
+        </div>
+      </Modal>
+
+      {/* 編集モーダル */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)} title="ユーザー編集"
+        footer={<>
+          <button onClick={() => setShowEditModal(false)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">キャンセル</button>
+          <button onClick={handleEdit} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">更新する</button>
+        </>}>
+        <div className="space-y-4">
+          <FormField label="名前" required><FormInput value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} /></FormField>
+          <FormField label="メールアドレス" required><FormInput type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></FormField>
+          <FormField label="部署"><FormInput value={editForm.department} onChange={(e) => setEditForm({ ...editForm, department: e.target.value })} /></FormField>
+          <FormField label="役職"><FormInput value={editForm.position} onChange={(e) => setEditForm({ ...editForm, position: e.target.value })} /></FormField>
+          <FormField label="ロール">
+            <FormSelect value={editForm.roleId} onChange={(e) => setEditForm({ ...editForm, roleId: e.target.value })} options={Object.entries(roleLabels).map(([v, l]) => ({ value: v, label: l }))} />
+          </FormField>
+          <FormField label="ステータス">
+            <FormSelect value={editForm.isActive ? "true" : "false"} onChange={(e) => setEditForm({ ...editForm, isActive: e.target.value === "true" })} options={[
+              { value: "true", label: "有効" }, { value: "false", label: "無効" },
+            ]} />
           </FormField>
         </div>
       </Modal>
@@ -192,7 +270,10 @@ export default function UsersPage() {
       {/* 詳細モーダル */}
       <Modal isOpen={!!showDetailModal} onClose={() => setShowDetailModal(null)}
         title={selectedUser ? `ユーザー詳細: ${selectedUser.name}` : ""}
-        footer={<button onClick={() => setShowDetailModal(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">閉じる</button>}
+        footer={<>
+          <button onClick={() => selectedUser && openEdit(selectedUser)} className="px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600">編集</button>
+          <button onClick={() => setShowDetailModal(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">閉じる</button>
+        </>}
       >
         {selectedUser && (
           <div className="space-y-4">

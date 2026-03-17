@@ -1,0 +1,64 @@
+import { prisma } from "@/lib/db";
+import { NextRequest, NextResponse } from "next/server";
+
+// GET /api/masters/prices/[id]
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const price = await prisma.customerPrice.findUnique({
+    where: { id },
+    include: {
+      partner: { select: { id: true, code: true, name: true } },
+      product: {
+        select: { id: true, code: true },
+        include: { name: true, shape: true, color: true, grade: true },
+      },
+    },
+  });
+
+  if (!price) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json(price);
+}
+
+// PUT /api/masters/prices/[id]
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const body = await request.json();
+
+  const price = await prisma.customerPrice.update({
+    where: { id },
+    data: {
+      partnerId: body.partnerId,
+      productId: body.productId,
+      unitPrice: body.unitPrice,
+      currency: body.currency,
+      validFrom: new Date(body.validFrom),
+      validTo: body.validTo ? new Date(body.validTo) : null,
+      note: body.note,
+    },
+    include: {
+      partner: { select: { id: true, code: true, name: true } },
+      product: { include: { name: true, shape: true, color: true, grade: true } },
+    },
+  });
+
+  return NextResponse.json(price);
+}
+
+// DELETE /api/masters/prices/[id]
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  await prisma.customerPrice.delete({ where: { id } });
+  return NextResponse.json({ success: true });
+}

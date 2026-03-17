@@ -23,3 +23,52 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(entries);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  // Support bulk creation for a month
+  if (Array.isArray(body)) {
+    const records = await prisma.$transaction(
+      body.map((entry: { date: string; isWorkday?: boolean; isHoliday?: boolean; holidayName?: string; note?: string }) =>
+        prisma.productionCalendar.upsert({
+          where: { date: new Date(entry.date) },
+          update: {
+            isWorkday: entry.isWorkday ?? true,
+            isHoliday: entry.isHoliday ?? false,
+            holidayName: entry.holidayName,
+            note: entry.note,
+          },
+          create: {
+            date: new Date(entry.date),
+            isWorkday: entry.isWorkday ?? true,
+            isHoliday: entry.isHoliday ?? false,
+            holidayName: entry.holidayName,
+            note: entry.note,
+          },
+        })
+      )
+    );
+    return NextResponse.json(records, { status: 201 });
+  }
+
+  // Single entry
+  const record = await prisma.productionCalendar.upsert({
+    where: { date: new Date(body.date) },
+    update: {
+      isWorkday: body.isWorkday ?? true,
+      isHoliday: body.isHoliday ?? false,
+      holidayName: body.holidayName,
+      note: body.note,
+    },
+    create: {
+      date: new Date(body.date),
+      isWorkday: body.isWorkday ?? true,
+      isHoliday: body.isHoliday ?? false,
+      holidayName: body.holidayName,
+      note: body.note,
+    },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}

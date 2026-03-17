@@ -26,3 +26,32 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json(shipments);
 }
+
+export async function POST(request: NextRequest) {
+  const body = await request.json();
+
+  const seq = await prisma.numberSequence.upsert({
+    where: { prefix_year: { prefix: "OIL", year: new Date().getFullYear() } },
+    update: { currentNumber: { increment: 1 } },
+    create: { prefix: "OIL", year: new Date().getFullYear(), currentNumber: 1 },
+  });
+  const shipmentNumber = `OIL-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+
+  const record = await prisma.oilShipment.create({
+    data: {
+      shipmentNumber,
+      customerId: body.customerId,
+      oilType: body.oilType,
+      quantity: body.quantity,
+      unitPrice: body.unitPrice,
+      amount: body.amount ?? (body.quantity && body.unitPrice ? body.quantity * body.unitPrice : undefined),
+      shipmentDate: new Date(body.shipmentDate),
+      note: body.note,
+    },
+    include: {
+      customer: { select: { id: true, name: true } },
+    },
+  });
+
+  return NextResponse.json(record, { status: 201 });
+}
