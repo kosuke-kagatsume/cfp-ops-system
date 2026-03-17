@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ProductionCalendarEntry = {
   id: string;
@@ -42,9 +43,8 @@ export default function ProductionCalendarPage() {
   const { showToast } = useToast();
 
   const apiMonth = currentMonth + 1; // API uses 1-indexed
-  const { data: entries, isLoading, mutate } = useSWR<ProductionCalendarEntry[]>(
-    `/api/production-calendar?year=${currentYear}&month=${apiMonth}`,
-    fetcher
+  const { items: entries, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ProductionCalendarEntry>(
+    `/api/production-calendar?year=${currentYear}&month=${apiMonth}`
   );
 
   const calendarEntries = entries ?? [];

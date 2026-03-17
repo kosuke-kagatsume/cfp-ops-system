@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Search, MoreHorizontal, Shield, Eye, Edit, UserX, UserCheck, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type RoleOption = { id: string; name: string; description: string | null };
 
@@ -70,9 +71,9 @@ export default function UsersPage() {
   if (search) params.set("search", search);
   if (roleFilter !== "all") params.set("role", roleFilter);
 
-  const { data: users, isLoading, mutate } = useSWR<UserEntry[]>(
-    `/api/settings/users?${params.toString()}`,
-    fetcher
+  const { items: users, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<UserEntry>(
+    `/api/settings/users?${params.toString(
+  )}`
   );
 
   const allUsers = users ?? [];
@@ -222,7 +223,11 @@ export default function UsersPage() {
                 })}
               </tbody>
             </table>
-          </div>
+          
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
         )}
       </div>
 

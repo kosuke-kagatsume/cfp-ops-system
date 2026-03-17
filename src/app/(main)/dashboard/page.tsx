@@ -60,7 +60,7 @@ function changeRate(current: number, prev: number) {
 
 export default function DashboardPage() {
   const { showToast } = useToast();
-  const { data, isLoading } = useSWR<DashboardData>("/api/dashboard", fetcher);
+  const { data, isLoading } = useSWR<DashboardData>("/api/dashboard");
 
   if (isLoading || !data) {
     return (

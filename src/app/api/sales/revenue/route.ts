@@ -6,6 +6,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const division = searchParams.get("division");
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
 
   const where: Record<string, unknown> = {};
 
@@ -20,7 +24,8 @@ export async function GET(request: NextRequest) {
     where.division = division;
   }
 
-  const revenues = await prisma.revenue.findMany({
+  const [revenues, total] = await Promise.all([
+    prisma.revenue.findMany({
     where,
     include: {
       product: { include: { name: true, shape: true, color: true, grade: true } },
@@ -28,9 +33,16 @@ export async function GET(request: NextRequest) {
       invoice: { select: { invoiceNumber: true } },
     },
     orderBy: { revenueDate: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.revenue.count({ where }),
+  ]);
 
-  return NextResponse.json(revenues);
+  if (pageParam) {
+    return NextResponse.json({ items: revenues, total, page, limit }, { headers: { "Cache-Control": "private, no-cache" } });
+  }
+  return NextResponse.json(revenues, { headers: { "Cache-Control": "private, no-cache" } });
 }
 
 export async function POST(request: NextRequest) {

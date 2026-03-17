@@ -5,6 +5,10 @@ import { NextRequest, NextResponse } from "next/server";
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
 
   const where: Record<string, unknown> = {};
 
@@ -12,7 +16,8 @@ export async function GET(request: NextRequest) {
     where.status = status;
   }
 
-  const orders = await prisma.processingOrder.findMany({
+  const [orders, total] = await Promise.all([
+    prisma.processingOrder.findMany({
     where,
     include: {
       plant: { select: { id: true, code: true, name: true } },
@@ -20,8 +25,15 @@ export async function GET(request: NextRequest) {
       outputProduct: { include: { name: true, shape: true, color: true, grade: true } },
     },
     orderBy: { orderDate: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.processingOrder.count({ where }),
+  ]);
 
+  if (pageParam) {
+    return NextResponse.json({ items: orders, total, page, limit });
+  }
   return NextResponse.json(orders);
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Download, Eye, FileText, ArrowRight, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Document = {
   id: string;
@@ -37,12 +38,11 @@ export default function DeliveryNotesPage() {
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const { data: documents, isLoading } = useSWR<Document[]>(
-    "/api/sales/delivery-notes",
-    fetcher
+  const { items: documents, total, page, limit, isLoading, onPageChange } = usePaginated<Document>(
+    "/api/sales/delivery-notes"
   );
 
-  const selected = documents?.find((d) => d.id === showDetail);
+  const selected = documents.find((d) => d.id === showDetail);
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("ja-JP");
 
@@ -104,7 +104,7 @@ export default function DeliveryNotesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {documents?.map((d) => (
+                  {documents.map((d) => (
                     <tr key={d.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-medium text-text">{d.title}</td>
                       <td className="px-4 py-3 text-sm font-mono text-text-secondary truncate max-w-[200px]">{d.filePath}</td>
@@ -135,7 +135,7 @@ export default function DeliveryNotesPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-                <p className="text-xs text-text-tertiary">{documents?.length ?? 0}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
               </div>
             </>
           )}

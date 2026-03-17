@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, ArrowRight, Flame, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type CrProductionMaterialRow = { id: string; quantity: number; crMaterial: { id: string; materialNumber: string; materialName: string; quantity: number } };
 type CrProductionOrderRow = {
@@ -32,9 +33,11 @@ export default function CrProductionOrdersPage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: allOrders, isLoading, mutate } = useSWR<CrProductionOrderRow[]>("/api/cr/production-orders", fetcher);
+  const { items: allOrders, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<CrProductionOrderRow>(
+    "/api/cr/production-orders"
+  );
   const needMasters = showNewModal || showEditModal;
-  const { data: plants } = useSWR<PlantOption[]>(needMasters ? "/api/masters/plants" : null, fetcher);
+  const { data: plants } = useSWR<PlantOption[]>(needMasters ? "/api/masters/plants" : null);
 
   const orders = allOrders ?? [];
   const filtered = orders.filter((o) => statusFilter === "all" || o.status === statusFilter);

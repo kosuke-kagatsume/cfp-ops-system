@@ -16,11 +16,24 @@ export async function GET(request: NextRequest) {
     where.date = { gte: start, lt: end };
   }
 
-  const entries = await prisma.productionCalendar.findMany({
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
+
+  const [entries, total] = await Promise.all([
+    prisma.productionCalendar.findMany({
     where,
     orderBy: { date: "asc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.productionCalendar.count({ where }),
+  ]);
 
+  if (pageParam) {
+    return NextResponse.json({ items: entries, total, page, limit });
+  }
   return NextResponse.json(entries);
 }
 

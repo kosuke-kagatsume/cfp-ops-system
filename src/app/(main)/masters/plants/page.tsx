@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Factory, Warehouse as WarehouseIcon, Droplets, Edit, Trash2, MoreHorizontal, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Plant = {
   id: string;
@@ -44,10 +45,12 @@ export default function PlantsPage() {
   const [whMenuOpen, setWhMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const { data: plants, isLoading: plantsLoading, mutate: mutatePlants } = useSWR<Plant[]>("/api/masters/plants", fetcher);
-  const { data: warehouses, isLoading: warehousesLoading, mutate: mutateWarehouses } = useSWR<Warehouse[]>("/api/masters/warehouses", fetcher);
+  const { items: plants, total, page, limit, isLoading: plantsLoading, mutate: mutatePlants, onPageChange } = usePaginated<Plant>(
+    "/api/masters/plants"
+  );
+  const { data: warehouses, isLoading: warehousesLoading, mutate: mutateWarehouses } = useSWR<Warehouse[]>("/api/masters/warehouses");
 
-  const selectedPlant = plants?.find((p) => p.id === showPlantDetail);
+  const selectedPlant = plants.find((p) => p.id === showPlantDetail);
 
   // 新規工場フォーム
   const [plantForm, setPlantForm] = useState({ code: "", name: "", address: "", companyId: "CFP" });
@@ -215,7 +218,7 @@ export default function PlantsPage() {
           </div>
         ) : tab === "plants" ? (
           <div className="grid grid-cols-3 gap-4">
-            {plants?.map((plant) => (
+            {plants.map((plant) => (
               <button
                 key={plant.id}
                 onClick={() => setShowPlantDetail(plant.id)}
@@ -316,7 +319,11 @@ export default function PlantsPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+            
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
           </>
         )}
       </div>
@@ -372,7 +379,7 @@ export default function PlantsPage() {
           </FormField>
           <FormField label="所属工場">
             <FormSelect placeholder="選択（外部の場合は空）" value={whForm.plantId} onChange={(e) => setWhForm({ ...whForm, plantId: e.target.value })}
-              options={plants?.map((p) => ({ value: p.id, label: p.name })) ?? []} />
+              options={plants.map((p) => ({ value: p.id, label: p.name })) ?? []} />
           </FormField>
           <FormField label="区分" required>
             <FormSelect value={whForm.type} onChange={(e) => setWhForm({ ...whForm, type: e.target.value })} options={[
@@ -430,7 +437,7 @@ export default function PlantsPage() {
           </FormField>
           <FormField label="所属工場">
             <FormSelect placeholder="選択（外部の場合は空）" value={editWhForm.plantId} onChange={(e) => setEditWhForm({ ...editWhForm, plantId: e.target.value })}
-              options={plants?.map((p) => ({ value: p.id, label: p.name })) ?? []} />
+              options={plants.map((p) => ({ value: p.id, label: p.name })) ?? []} />
           </FormField>
           <FormField label="区分" required>
             <FormSelect value={editWhForm.type} onChange={(e) => setEditWhForm({ ...editWhForm, type: e.target.value })} options={[

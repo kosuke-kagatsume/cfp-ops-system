@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, AlertTriangle, Droplets, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type TankRow = { id: string; code: string; name: string; tankType: string; capacity: number; currentLevel: number; plant: { id: string; code: string; name: string } };
 type PlantOption = { id: string; code: string; name: string };
@@ -26,9 +27,11 @@ export default function CrTanksPage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: allTanks, isLoading, mutate } = useSWR<TankRow[]>("/api/cr/tanks", fetcher);
+  const { items: allTanks, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<TankRow>(
+    "/api/cr/tanks"
+  );
   const needMasters = showNewModal || showEditModal;
-  const { data: plants } = useSWR<PlantOption[]>(needMasters ? "/api/masters/plants" : null, fetcher);
+  const { data: plants } = useSWR<PlantOption[]>(needMasters ? "/api/masters/plants" : null);
 
   const tanks = allTanks ?? [];
   const filtered = tanks.filter((t) => typeFilter === "all" || t.tankType === typeFilter);

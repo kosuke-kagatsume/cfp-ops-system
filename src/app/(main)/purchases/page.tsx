@@ -2,12 +2,12 @@
 
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { Pagination } from "@/components/pagination";
 import { useToast } from "@/components/toast";
+import { usePaginated } from "@/lib/use-paginated";
 import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Purchase = {
   id: string;
@@ -81,30 +81,26 @@ export default function PurchasesPage() {
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: purchases, isLoading, mutate } = useSWR<Purchase[]>(
-    `/api/mr/purchases?${params.toString()}`,
-    fetcher
+  const { items: purchases, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Purchase>(
+    `/api/mr/purchases?${params.toString()}`
   );
 
   // For counting by status (without filter)
-  const { data: allPurchases } = useSWR<Purchase[]>("/api/mr/purchases", fetcher);
+  const { data: allPurchases } = useSWR<Purchase[]>("/api/mr/purchases");
 
   // Master data for create/edit form
   const needMasters = showNewModal || showEditModal;
   const { data: suppliers } = useSWR<PartnerOption[]>(
-    needMasters ? "/api/masters/partners?type=supplier" : null,
-    fetcher
+    needMasters ? "/api/masters/partners?type=supplier" : null
   );
   const { data: products } = useSWR<ProductOption[]>(
-    needMasters ? "/api/masters/products" : null,
-    fetcher
+    needMasters ? "/api/masters/products" : null
   );
   const { data: warehouses } = useSWR<WarehouseOption[]>(
-    needMasters ? "/api/masters/warehouses" : null,
-    fetcher
+    needMasters ? "/api/masters/warehouses" : null
   );
 
-  const selected = purchases?.find((p) => p.id === showDetail);
+  const selected = purchases.find((p) => p.id === showDetail);
 
   const [newForm, setNewForm] = useState({
     supplierId: "",
@@ -300,7 +296,7 @@ export default function PurchasesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {purchases?.map((p) => (
+                  {purchases.map((p) => (
                     <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono text-primary-600">{p.purchaseNumber}</td>
                       <td className="px-4 py-3 text-sm text-text-secondary">{new Date(p.purchaseDate).toLocaleDateString("ja-JP")}</td>
@@ -334,7 +330,7 @@ export default function PurchasesPage() {
                       </td>
                     </tr>
                   ))}
-                  {purchases?.length === 0 && (
+                  {purchases.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         データがありません
@@ -343,9 +339,8 @@ export default function PurchasesPage() {
                   )}
                 </tbody>
               </table>
-              <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-                <p className="text-xs text-text-tertiary">{purchases?.length ?? 0}件</p>
-                <p className="text-xs text-text-secondary">合計: ¥{(purchases?.reduce((s, p) => s + p.amount, 0) ?? 0).toLocaleString()}</p>
+              <div className="px-4 py-3 border-t border-border bg-surface-secondary">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
               </div>
             </>
           )}

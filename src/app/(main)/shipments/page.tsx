@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Shipment = {
   id: string;
@@ -75,29 +76,26 @@ export default function ShipmentsPage() {
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: shipments, isLoading, mutate } = useSWR<Shipment[]>(
-    `/api/mr/shipments?${params.toString()}`,
-    fetcher
+  const { items: shipments, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Shipment>(
+    `/api/mr/shipments?${params.toString(
+  )}`
   );
 
-  const { data: allShipments } = useSWR<Shipment[]>("/api/mr/shipments", fetcher);
+  const { data: allShipments } = useSWR<Shipment[]>("/api/mr/shipments");
 
   // Master data for create/edit form
   const needMasters = showNewModal || showEditModal;
   const { data: customers } = useSWR<PartnerOption[]>(
-    needMasters ? "/api/masters/partners?type=customer" : null,
-    fetcher
+    needMasters ? "/api/masters/partners?type=customer" : null
   );
   const { data: products } = useSWR<ProductOption[]>(
-    needMasters ? "/api/masters/products" : null,
-    fetcher
+    needMasters ? "/api/masters/products" : null
   );
   const { data: warehouses } = useSWR<WarehouseOption[]>(
-    needMasters ? "/api/masters/warehouses" : null,
-    fetcher
+    needMasters ? "/api/masters/warehouses" : null
   );
 
-  const selected = shipments?.find((s) => s.id === showDetail);
+  const selected = shipments.find((s) => s.id === showDetail);
 
   const [newForm, setNewForm] = useState({
     customerId: "",
@@ -273,7 +271,7 @@ export default function ShipmentsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {shipments?.map((s) => (
+                  {shipments.map((s) => (
                     <tr key={s.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3">
                         <p className="text-sm font-mono text-primary-600">{s.shipmentNumber}</p>
@@ -309,7 +307,7 @@ export default function ShipmentsPage() {
                       </td>
                     </tr>
                   ))}
-                  {shipments?.length === 0 && (
+                  {shipments.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         データがありません
@@ -319,7 +317,7 @@ export default function ShipmentsPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-                <p className="text-xs text-text-tertiary">{shipments?.length ?? 0}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
               </div>
             </>
           )}

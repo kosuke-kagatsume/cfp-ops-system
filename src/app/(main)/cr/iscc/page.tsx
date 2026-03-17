@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Shield, Eye, Download, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Tab = "certificates" | "massBalance" | "sdDocuments";
 
@@ -60,17 +61,14 @@ export default function IsccPage() {
   const [showNewSdModal, setShowNewSdModal] = useState(false);
   const { showToast } = useToast();
 
-  const { data: certificates, isLoading: loadingCerts, mutate: mutateCerts } = useSWR<IsccCertificateItem[]>(
-    "/api/iscc/certificates",
-    fetcher
+  const { items: certificates, total, page, limit, isLoading: loadingCerts, mutate: mutateCerts, onPageChange } = usePaginated<IsccCertificateItem>(
+    "/api/iscc/certificates"
   );
   const { data: massBalances, isLoading: loadingMb } = useSWR<MassBalanceItem[]>(
-    "/api/iscc/mass-balance",
-    fetcher
+    "/api/iscc/mass-balance"
   );
   const { data: sdDocuments, isLoading: loadingSd, mutate: mutateSd } = useSWR<SdDocumentItem[]>(
-    "/api/iscc/sd",
-    fetcher
+    "/api/iscc/sd"
   );
 
   const selectedSd = sdDocuments?.find((d) => d.id === showSdDetail);
@@ -140,7 +138,7 @@ export default function IsccPage() {
           </div>
           <div className="text-right">
             <p className="text-xs text-emerald-600">認証サイト</p>
-            <p className="text-sm font-medium text-emerald-800">{certificates?.length ?? 0}拠点</p>
+            <p className="text-sm font-medium text-emerald-800">{certificates.length ?? 0}拠点</p>
           </div>
         </div>
 
@@ -291,7 +289,11 @@ export default function IsccPage() {
                     ))}
                   </tbody>
                 </table>
+              
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
               </div>
+</div>
             ) : (
               <div className="text-center py-12">
                 <p className="text-sm text-text-tertiary">SD文書がありません</p>

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Search, Eye, AlertTriangle, FileText, Pencil, Trash2, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ContractStatusEnum = "ACTIVE" | "EXPIRING_SOON" | "EXPIRED" | "DRAFT";
 
@@ -60,19 +61,19 @@ export default function ContractsPage() {
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: contracts, isLoading, mutate } = useSWR<ContractData[]>(
-    `/api/contracts?${params.toString()}`,
-    fetcher
+  const { items: contracts, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ContractData>(
+    `/api/contracts?${params.toString(
+  )}`
   );
 
   const needMasters = showNewModal || showEditModal;
-  const { data: partners } = useSWR<PartnerOption[]>(needMasters ? "/api/masters/partners" : null, fetcher);
+  const { data: partners } = useSWR<PartnerOption[]>(needMasters ? "/api/masters/partners" : null);
 
   const allContracts = contracts ?? [];
   const selected = allContracts.find((c) => c.id === showDetail);
 
   // For summary counts, we need all contracts (not filtered)
-  const { data: allContractsData } = useSWR<ContractData[]>("/api/contracts", fetcher);
+  const { data: allContractsData } = useSWR<ContractData[]>("/api/contracts");
   const all = allContractsData ?? [];
   const expiringSoon = all.filter((c) => c.status === "EXPIRING_SOON").length;
   const expired = all.filter((c) => c.status === "EXPIRED").length;
@@ -220,7 +221,11 @@ export default function ContractsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
       </div>
 
       {/* 登録モーダル */}

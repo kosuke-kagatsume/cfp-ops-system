@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Search, Download, Eye, BarChart3, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type InventoryItem = {
   id: string;
@@ -47,14 +48,14 @@ export default function InventoryPage() {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
 
-  const { data: inventoryItems, isLoading } = useSWR<InventoryItem[]>(
-    `/api/mr/inventory?${params.toString()}`,
-    fetcher
+  const { items: inventoryItems, total, page, limit, isLoading, onPageChange } = usePaginated<InventoryItem>(
+    `/api/mr/inventory?${params.toString(
+  )}`
   );
 
-  const totalQuantity = inventoryItems?.reduce((s, i) => s + i.quantity, 0) ?? 0;
-  const totalCost = inventoryItems?.reduce((s, i) => s + i.quantity * i.movingAvgCost, 0) ?? 0;
-  const selected = inventoryItems?.find((i) => i.id === showDetail);
+  const totalQuantity = inventoryItems.reduce((s, i) => s + i.quantity, 0) ?? 0;
+  const totalCost = inventoryItems.reduce((s, i) => s + i.quantity * i.movingAvgCost, 0) ?? 0;
+  const selected = inventoryItems.find((i) => i.id === showDetail);
 
   return (
     <>
@@ -70,7 +71,7 @@ export default function InventoryPage() {
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary">在庫品目数</p>
-            <p className="text-2xl font-bold text-text">{inventoryItems?.length ?? 0}</p>
+            <p className="text-2xl font-bold text-text">{inventoryItems.length ?? 0}</p>
           </div>
           <div className="bg-surface rounded-xl border border-border p-4">
             <p className="text-xs text-text-tertiary">総在庫量</p>
@@ -136,7 +137,7 @@ export default function InventoryPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {inventoryItems?.map((item) => (
+                  {inventoryItems.map((item) => (
                     <tr key={item.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3">
                         <p className="text-sm text-text">{item.warehouse.name}</p>
@@ -158,7 +159,7 @@ export default function InventoryPage() {
                       </td>
                     </tr>
                   ))}
-                  {inventoryItems?.length === 0 && (
+                  {inventoryItems.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         データがありません
@@ -168,7 +169,7 @@ export default function InventoryPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-                <p className="text-xs text-text-tertiary">{inventoryItems?.length ?? 0}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
                 <div className="flex items-center gap-6">
                   <p className="text-xs text-text-secondary">合計: <span className="font-medium">{totalQuantity.toLocaleString()} kg</span></p>
                   <p className="text-xs text-text-secondary">評価額: <span className="font-bold text-primary-700">¥{Math.round(totalCost).toLocaleString()}</span></p>

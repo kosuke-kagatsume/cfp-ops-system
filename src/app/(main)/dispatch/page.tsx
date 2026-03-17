@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, MapPin, Truck as TruckIcon, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type DispatchItem = {
   id: string;
@@ -40,23 +41,20 @@ export default function DispatchPage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: dispatches, isLoading, mutate } = useSWR<DispatchItem[]>(
-    "/api/mr/dispatch",
-    fetcher
+  const { items: dispatches, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<DispatchItem>(
+    "/api/mr/dispatch"
   );
 
   // Master data for create/edit form
   const needMasters = showNewModal || showEditModal;
   const { data: carriers } = useSWR<PartnerOption[]>(
-    needMasters ? "/api/masters/partners?type=carrier" : null,
-    fetcher
+    needMasters ? "/api/masters/partners?type=carrier" : null
   );
   const { data: shipments } = useSWR<ShipmentOption[]>(
-    needMasters ? "/api/mr/shipments" : null,
-    fetcher
+    needMasters ? "/api/mr/shipments" : null
   );
 
-  const selected = dispatches?.find((d) => d.id === showDetail);
+  const selected = dispatches.find((d) => d.id === showDetail);
 
   const [newForm, setNewForm] = useState({
     shipmentId: "",
@@ -167,7 +165,7 @@ export default function DispatchPage() {
       <Header title="配車管理" />
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-text-secondary">{dispatches?.length ?? 0}件の配車</p>
+          <p className="text-sm text-text-secondary">{total}件の配車</p>
           <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
             <Plus className="w-4 h-4" />配車登録
           </button>
@@ -179,13 +177,13 @@ export default function DispatchPage() {
             <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
             <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
-        ) : dispatches?.length === 0 ? (
+        ) : dispatches.length === 0 ? (
           <div className="bg-surface rounded-xl border border-border p-12 text-center">
             <p className="text-sm text-text-tertiary">データがありません</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {dispatches?.map((d) => (
+            {dispatches.map((d) => (
               <div key={d.id} className="w-full bg-surface rounded-xl border border-border p-5 hover:border-primary-300 transition-colors text-left">
                 <div className="flex items-center justify-between mb-4">
                   <button onClick={() => setShowDetail(d.id)} className="flex items-center gap-3">

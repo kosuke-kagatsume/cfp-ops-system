@@ -5,9 +5,8 @@ import { useToast } from "@/components/toast";
 import { Search, Download, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Modal } from "@/components/modal";
-import useSWR from "swr";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 
 type AuditLogEntry = {
   id: string;
@@ -60,12 +59,10 @@ export default function AuditPage() {
   if (search) params.set("search", search);
   if (actionFilter !== "all") params.set("action", actionFilter);
 
-  const { data: auditLogs, isLoading } = useSWR<AuditLogEntry[]>(
-    `/api/audit?${params.toString()}`,
-    fetcher
+  const { items: logs, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<AuditLogEntry>(
+    `/api/audit?${params.toString()}`
   );
 
-  const logs = auditLogs ?? [];
   const selectedLog = logs.find((l) => l.id === showDetail);
 
   return (
@@ -139,9 +136,7 @@ export default function AuditPage() {
                 ))}
               </tbody>
             </table>
-            <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-              <p className="text-xs text-text-tertiary">{logs.length}件表示</p>
-            </div>
+            <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
           </div>
         )}
       </div>

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { FileText, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Document = {
   id: string;
@@ -40,9 +41,8 @@ export default function ExportDocsPage() {
   const selectedDoc = docTypes.find((d) => d.id === showPreview);
 
   // Fetch actual export documents from DB
-  const { data: documents, isLoading } = useSWR<Document[]>(
-    "/api/sales/export-docs",
-    fetcher
+  const { items: documents, total, page, limit, isLoading, onPageChange } = usePaginated<Document>(
+    "/api/sales/export-docs"
   );
 
   const docCount = (dbType: string | null) => {
@@ -128,7 +128,11 @@ export default function ExportDocsPage() {
                     </tr>
                   </tfoot>
                 </table>
+              
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
               </div>
+</div>
               <div className="border-t border-gray-200 mt-3 pt-3 text-gray-500">
                 <p>Terms: FOB Takamatsu Port</p>
                 <p>Payment: T/T 30 days after B/L date</p>

@@ -7,6 +7,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status");
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
 
   const where: Record<string, unknown> = {};
 
@@ -22,7 +26,8 @@ export async function GET(request: NextRequest) {
     where.status = status;
   }
 
-  const purchases = await prisma.purchase.findMany({
+  const [purchases, total] = await Promise.all([
+    prisma.purchase.findMany({
     where,
     include: {
       supplier: { select: { id: true, code: true, name: true } },
@@ -31,9 +36,16 @@ export async function GET(request: NextRequest) {
       warehouse: { select: { id: true, code: true, name: true } },
     },
     orderBy: { purchaseDate: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.purchase.count({ where }),
+  ]);
 
-  return NextResponse.json(purchases);
+  if (pageParam) {
+    return NextResponse.json({ items: purchases, total, page, limit }, { headers: { "Cache-Control": "private, no-cache" } });
+  }
+  return NextResponse.json(purchases, { headers: { "Cache-Control": "private, no-cache" } });
 }
 
 export async function POST(request: NextRequest) {

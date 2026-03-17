@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Dispatch = {
   id: string;
@@ -35,14 +36,14 @@ export default function FreightPage() {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
 
-  const { data: dispatches, isLoading, mutate } = useSWR<Dispatch[]>(
-    `/api/sales/freight?${params.toString()}`,
-    fetcher
+  const { items: dispatches, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Dispatch>(
+    `/api/sales/freight?${params.toString(
+  )}`
   );
 
-  const selected = dispatches?.find((f) => f.id === showDetail);
-  const totalFreight = dispatches?.reduce((s, f) => s + (f.freightCost ?? 0), 0) ?? 0;
-  const withCostCount = dispatches?.filter((f) => f.freightCost && f.freightCost > 0).length ?? 0;
+  const selected = dispatches.find((f) => f.id === showDetail);
+  const totalFreight = dispatches.reduce((s, f) => s + (f.freightCost ?? 0), 0) ?? 0;
+  const withCostCount = dispatches.filter((f) => f.freightCost && f.freightCost > 0).length ?? 0;
 
   const [editForm, setEditForm] = useState({
     vehicleNumber: "",
@@ -113,11 +114,11 @@ export default function FreightPage() {
             <p className="text-xs text-text-secondary">運賃合計</p>
           </div>
           <div className="p-3 rounded-xl border border-border bg-surface text-center">
-            <p className="text-lg font-bold text-text">{dispatches?.length ?? 0}</p>
+            <p className="text-lg font-bold text-text">{dispatches.length ?? 0}</p>
             <p className="text-xs text-text-secondary">運賃件数</p>
           </div>
           <div className="p-3 rounded-xl border border-border bg-surface text-center">
-            <p className="text-lg font-bold text-emerald-600">{withCostCount} / {dispatches?.length ?? 0}</p>
+            <p className="text-lg font-bold text-emerald-600">{withCostCount} / {dispatches.length ?? 0}</p>
             <p className="text-xs text-text-secondary">運賃確定済</p>
           </div>
         </div>
@@ -151,7 +152,7 @@ export default function FreightPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {dispatches?.map((f) => (
+                  {dispatches.map((f) => (
                     <tr key={f.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono text-primary-600">{f.shipment.shipmentNumber}</td>
                       <td className="px-4 py-3 text-sm text-text">{f.carrier?.name ?? "-"}</td>
@@ -181,7 +182,7 @@ export default function FreightPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-                <p className="text-xs text-text-tertiary">{dispatches?.length ?? 0}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
                 <p className="text-xs text-text-secondary">合計: {"\u00a5"}{totalFreight.toLocaleString()}</p>
               </div>
             </>

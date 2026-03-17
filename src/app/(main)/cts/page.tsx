@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Eye, Pencil, Trash2, Globe, ArrowRightLeft, Plane, DollarSign, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type CtsTransaction = {
   id: string;
@@ -50,9 +51,9 @@ export default function CtsPage() {
   const params = new URLSearchParams();
   if (typeFilter !== "all") params.set("type", typeFilter);
 
-  const { data: transactions, isLoading, mutate } = useSWR<CtsTransaction[]>(
-    `/api/cts?${params.toString()}`,
-    fetcher
+  const { items: transactions, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<CtsTransaction>(
+    `/api/cts?${params.toString(
+  )}`
   );
 
   const allTransactions = transactions ?? [];

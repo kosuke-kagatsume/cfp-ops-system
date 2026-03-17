@@ -2,8 +2,13 @@
 // CFP Ops System - Excel Export Generator (exceljs)
 // =============================================================================
 
-import ExcelJS from "exceljs";
+import type ExcelJS from "exceljs";
 import { prisma } from "@/lib/db";
+
+async function loadExcelJS() {
+  const mod = await import("exceljs");
+  return mod.default;
+}
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -69,7 +74,8 @@ export async function generateRevenueExcel(from: Date, to: Date): Promise<Uint8A
     orderBy: { revenueDate: "asc" },
   });
 
-  const wb = new ExcelJS.Workbook();
+  const ExcelJSLib = await loadExcelJS();
+  const wb = new ExcelJSLib.Workbook();
   wb.creator = "CFP Ops System";
   const ws = wb.addWorksheet("売上一覧");
 
@@ -136,7 +142,8 @@ export async function generateInvoiceExcel(from: Date, to: Date): Promise<Uint8A
     orderBy: { billingDate: "asc" },
   });
 
-  const wb = new ExcelJS.Workbook();
+  const ExcelJSLib = await loadExcelJS();
+  const wb = new ExcelJSLib.Workbook();
   wb.creator = "CFP Ops System";
   const ws = wb.addWorksheet("請求一覧");
 
@@ -206,7 +213,8 @@ export async function generatePurchaseExcel(from: Date, to: Date): Promise<Uint8
     orderBy: { purchaseDate: "asc" },
   });
 
-  const wb = new ExcelJS.Workbook();
+  const ExcelJSLib = await loadExcelJS();
+  const wb = new ExcelJSLib.Workbook();
   wb.creator = "CFP Ops System";
   const ws = wb.addWorksheet("仕入一覧");
 
@@ -282,7 +290,8 @@ export async function generateInventoryExcel(): Promise<Uint8Array> {
     orderBy: [{ warehouse: { code: "asc" } }, { product: { code: "asc" } }],
   });
 
-  const wb = new ExcelJS.Workbook();
+  const ExcelJSLib = await loadExcelJS();
+  const wb = new ExcelJSLib.Workbook();
   wb.creator = "CFP Ops System";
   const ws = wb.addWorksheet("在庫一覧");
 
@@ -337,7 +346,8 @@ export async function generatePartnerExcel(): Promise<Uint8Array> {
     orderBy: { code: "asc" },
   });
 
-  const wb = new ExcelJS.Workbook();
+  const ExcelJSLib = await loadExcelJS();
+  const wb = new ExcelJSLib.Workbook();
   wb.creator = "CFP Ops System";
   const ws = wb.addWorksheet("取引先一覧");
 

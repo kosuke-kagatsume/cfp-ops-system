@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Eye, Pencil, Trash2, ArrowRight, CheckCircle, Search, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type PaymentPayable = {
   id: string;
@@ -48,17 +49,16 @@ export default function PaymentsPayablePage() {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
 
-  const { data: payments, isLoading, mutate } = useSWR<PaymentPayable[]>(
-    `/api/sales/payments-payable?${params.toString()}`,
-    fetcher
+  const { items: payments, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<PaymentPayable>(
+    `/api/sales/payments-payable?${params.toString(
+  )}`
   );
 
   const { data: partners } = useSWR<Partner[]>(
-    showNewModal || showEditModal ? "/api/masters/partners?type=supplier" : null,
-    fetcher
+    showNewModal || showEditModal ? "/api/masters/partners?type=supplier" : null
   );
 
-  const selected = payments?.find((p) => p.id === showDetail);
+  const selected = payments.find((p) => p.id === showDetail);
 
   const [newForm, setNewForm] = useState({
     supplierId: "",
@@ -214,7 +214,7 @@ export default function PaymentsPayablePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {payments?.map((p) => (
+                  {payments.map((p) => (
                     <tr key={p.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono text-primary-600">{p.paymentNumber}</td>
                       <td className="px-4 py-3 text-sm text-text">{p.supplier.name}</td>
@@ -241,7 +241,7 @@ export default function PaymentsPayablePage() {
                       </td>
                     </tr>
                   ))}
-                  {payments?.length === 0 && (
+                  {payments.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         支払データがありません
@@ -251,8 +251,8 @@ export default function PaymentsPayablePage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-                <p className="text-xs text-text-tertiary">{payments?.length ?? 0}件</p>
-                <p className="text-xs text-text-secondary">合計: {"\u00a5"}{(payments?.reduce((s, p) => s + p.amount, 0) ?? 0).toLocaleString()}</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+                <p className="text-xs text-text-secondary">合計: {"\u00a5"}{(payments.reduce((s, p) => s + p.amount, 0) ?? 0).toLocaleString()}</p>
               </div>
             </>
           )}

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Search, Eye, AlertTriangle, Camera, Shield, Clock, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ExpenseStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED" | "PAID";
 
@@ -67,9 +68,9 @@ export default function ExpensesPage() {
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: expenses, isLoading, mutate } = useSWR<ExpenseData[]>(
-    `/api/expenses?${params.toString()}`,
-    fetcher
+  const { items: expenses, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ExpenseData>(
+    `/api/expenses?${params.toString(
+  )}`
   );
 
   const allExpenses = expenses ?? [];
@@ -351,7 +352,11 @@ export default function ExpensesPage() {
                   </tr>
                 </tbody>
               </table>
-            </div>
+            
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
             {/* 電帳法情報 */}
             <div className="p-3 bg-blue-50 rounded-lg flex items-center gap-2">
               <Clock className="w-4 h-4 text-blue-600 shrink-0" />

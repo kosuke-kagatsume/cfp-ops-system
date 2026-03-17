@@ -11,11 +11,24 @@ export async function GET(request: NextRequest) {
     where.contractor = { contains: search, mode: "insensitive" };
   }
 
-  const residues = await prisma.residue.findMany({
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
+
+  const [residues, total] = await Promise.all([
+    prisma.residue.findMany({
     where,
     orderBy: { disposalDate: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.residue.count({ where }),
+  ]);
 
+  if (pageParam) {
+    return NextResponse.json({ items: residues, total, page, limit });
+  }
   return NextResponse.json(residues);
 }
 

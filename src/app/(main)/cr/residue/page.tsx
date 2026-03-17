@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Trash2, Plus, TrendingUp, AlertTriangle, Pencil, FileText, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ResidueRow = { id: string; disposalDate: string; quantity: number; disposalMethod: string | null; disposalCost: number | null; contractor: string | null; note: string | null };
 
@@ -18,7 +19,9 @@ export default function CrResiduePage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: allResidues, isLoading, mutate } = useSWR<ResidueRow[]>("/api/cr/residue", fetcher);
+  const { items: allResidues, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ResidueRow>(
+    "/api/cr/residue"
+  );
   const residues = allResidues ?? [];
   const selected = residues.find((r) => r.id === showDetail);
   const totalQuantity = residues.reduce((sum, r) => sum + r.quantity, 0);
@@ -119,7 +122,7 @@ export default function CrResiduePage() {
                 ))}
               </tbody>
             </table>
-            <div className="px-4 py-3 border-t border-border bg-surface-secondary"><p className="text-xs text-text-tertiary">{residues.length}件</p></div>
+            <div className="px-4 py-3 border-t border-border bg-surface-secondary"><Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} /></div>
           </div>
         )}
       </div>

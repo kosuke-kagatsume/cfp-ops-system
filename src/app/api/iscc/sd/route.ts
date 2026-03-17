@@ -12,11 +12,24 @@ export async function GET(request: NextRequest) {
     ];
   }
 
-  const data = await prisma.sustainabilityDeclaration.findMany({
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
+
+  const [data, total] = await Promise.all([
+    prisma.sustainabilityDeclaration.findMany({
     where,
     orderBy: { issueDate: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.sustainabilityDeclaration.count({ where }),
+  ]);
 
+  if (pageParam) {
+    return NextResponse.json({ items: data, total, page, limit });
+  }
   return NextResponse.json(data);
 }
 

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type OrderItem = {
   id: string;
@@ -78,20 +79,19 @@ export default function OrdersPage() {
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: orders, isLoading, mutate } = useSWR<Order[]>(
-    `/api/sales/orders?${params.toString()}`,
-    fetcher
+  const { items: orders, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Order>(
+    `/api/sales/orders?${params.toString(
+  )}`
   );
 
   // Fetch all orders (no filter) for summary counts
-  const { data: allOrders } = useSWR<Order[]>("/api/sales/orders", fetcher);
+  const { data: allOrders } = useSWR<Order[]>("/api/sales/orders");
 
   const { data: partners } = useSWR<Partner[]>(
-    showNewModal || showEditModal ? "/api/masters/partners?type=customer" : null,
-    fetcher
+    showNewModal || showEditModal ? "/api/masters/partners?type=customer" : null
   );
 
-  const selected = orders?.find((o) => o.id === showDetail);
+  const selected = orders.find((o) => o.id === showDetail);
 
   const [newForm, setNewForm] = useState({
     customerId: "",
@@ -247,7 +247,7 @@ export default function OrdersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {orders?.map((o) => {
+                  {orders.map((o) => {
                     const firstItem = o.items[0];
                     return (
                       <tr key={o.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
@@ -285,7 +285,7 @@ export default function OrdersPage() {
                       </tr>
                     );
                   })}
-                  {orders?.length === 0 && (
+                  {orders.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         受注データがありません
@@ -295,8 +295,8 @@ export default function OrdersPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-                <p className="text-xs text-text-tertiary">{orders?.length ?? 0}件</p>
-                <p className="text-xs text-text-secondary">合計: {formatCurrency(orders?.reduce((s, o) => s + o.total, 0) ?? 0, "JPY")}</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+                <p className="text-xs text-text-secondary">合計: {formatCurrency(orders.reduce((s, o) => s + o.total, 0) ?? 0, "JPY")}</p>
               </div>
             </>
           )}

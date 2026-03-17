@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Search, Eye, Pencil, Trash2, Shield, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type OilShipmentRow = { id: string; shipmentNumber: string; oilType: string; quantity: number; unitPrice: number | null; amount: number | null; shipmentDate: string; note: string | null; customer: { id: string; name: string } };
 type PartnerOption = { id: string; code: string; name: string };
@@ -23,9 +24,11 @@ export default function OilShipmentsPage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: allShipments, isLoading, mutate } = useSWR<OilShipmentRow[]>("/api/cr/oil-shipments", fetcher);
+  const { items: allShipments, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<OilShipmentRow>(
+    "/api/cr/oil-shipments"
+  );
   const needMasters = showNewModal || showEditModal;
-  const { data: customers } = useSWR<PartnerOption[]>(needMasters ? "/api/masters/partners?type=customer" : null, fetcher);
+  const { data: customers } = useSWR<PartnerOption[]>(needMasters ? "/api/masters/partners?type=customer" : null);
 
   const shipments = allShipments ?? [];
   const filtered = shipments.filter((s) => {
@@ -139,7 +142,7 @@ export default function OilShipmentsPage() {
                 {filtered.length === 0 && <tr><td colSpan={7} className="px-4 py-12 text-center text-sm text-text-tertiary">データがありません</td></tr>}
               </tbody>
             </table>
-            <div className="px-4 py-3 border-t border-border bg-surface-secondary"><p className="text-xs text-text-tertiary">{filtered.length}件</p></div>
+            <div className="px-4 py-3 border-t border-border bg-surface-secondary"><Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} /></div>
           </div>
         )}
       </div>

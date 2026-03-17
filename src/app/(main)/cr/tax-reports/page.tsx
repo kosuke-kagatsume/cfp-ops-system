@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { FileText, Download, Calculator, AlertTriangle, CheckCircle, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type TaxReportStatus = "DRAFT" | "FILED" | "ACCEPTED";
 
@@ -44,13 +45,13 @@ export default function TaxReportsPage() {
   const params = new URLSearchParams();
   if (typeFilter !== "all") params.set("reportType", typeFilter);
 
-  const { data: taxReports, isLoading } = useSWR<TaxReportData[]>(
-    `/api/cr/tax-reports?${params.toString()}`,
-    fetcher
+  const { items: taxReports, total, page, limit, isLoading, onPageChange } = usePaginated<TaxReportData>(
+    `/api/cr/tax-reports?${params.toString(
+  )}`
   );
 
   // For summary, get all reports
-  const { data: allReports } = useSWR<TaxReportData[]>("/api/cr/tax-reports", fetcher);
+  const { data: allReports } = useSWR<TaxReportData[]>("/api/cr/tax-reports");
 
   const reports = taxReports ?? [];
   const all = allReports ?? [];
@@ -143,7 +144,11 @@ export default function TaxReportsPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
 
         {/* 換算説明 */}
         <div className="bg-surface-secondary rounded-xl p-4 text-xs text-text-tertiary">

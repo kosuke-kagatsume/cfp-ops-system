@@ -20,14 +20,27 @@ export async function GET(request: NextRequest) {
     where.status = status;
   }
 
-  const expenses = await prisma.expense.findMany({
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
+
+  const [expenses, total] = await Promise.all([
+    prisma.expense.findMany({
     where,
     include: {
       items: true,
     },
     orderBy: { expenseDate: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.expense.count({ where }),
+  ]);
 
+  if (pageParam) {
+    return NextResponse.json({ items: expenses, total, page, limit });
+  }
   return NextResponse.json(expenses);
 }
 

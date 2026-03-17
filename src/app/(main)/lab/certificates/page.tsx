@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Award, Download, Mail, Printer, Eye, Search, Loader2, CheckCircle, XCircle, Plus, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type SampleStatus = "RECEIVED" | "ANALYZING" | "JUDGED" | "REPORTED";
 
@@ -70,9 +71,11 @@ export default function LabCertificatesPage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: certificates, isLoading, mutate } = useSWR<CertificateItem[]>("/api/lab/certificates", fetcher);
+  const { items: certificates, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<CertificateItem>(
+    "/api/lab/certificates"
+  );
   const needMasters = showNewModal || showEditModal;
-  const { data: samples } = useSWR<SampleOption[]>(needMasters ? "/api/lab/samples" : null, fetcher);
+  const { data: samples } = useSWR<SampleOption[]>(needMasters ? "/api/lab/samples" : null);
 
   if (isLoading) {
     return (
@@ -261,7 +264,7 @@ export default function LabCertificatesPage() {
             </tbody>
           </table>
           <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-            <p className="text-xs text-text-tertiary">{filtered.length}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
           </div>
         </div>
       </div>

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, ArrowRight, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ProcessingOrder = {
   id: string;
@@ -95,25 +96,23 @@ export default function ProcessingPage() {
   const params = new URLSearchParams();
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: orders, isLoading, mutate } = useSWR<ProcessingOrder[]>(
-    `/api/mr/processing?${params.toString()}`,
-    fetcher
+  const { items: orders, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ProcessingOrder>(
+    `/api/mr/processing?${params.toString(
+  )}`
   );
 
-  const { data: allOrders } = useSWR<ProcessingOrder[]>("/api/mr/processing", fetcher);
+  const { data: allOrders } = useSWR<ProcessingOrder[]>("/api/mr/processing");
 
   // Master data for create/edit form
   const needMasters = showNewModal || showEditModal;
   const { data: plants } = useSWR<PlantOption[]>(
-    needMasters ? "/api/masters/plants" : null,
-    fetcher
+    needMasters ? "/api/masters/plants" : null
   );
   const { data: products } = useSWR<ProductOption[]>(
-    needMasters ? "/api/masters/products" : null,
-    fetcher
+    needMasters ? "/api/masters/products" : null
   );
 
-  const selected = orders?.find((o) => o.id === showDetail);
+  const selected = orders.find((o) => o.id === showDetail);
 
   const [newForm, setNewForm] = useState({
     processType: "",
@@ -266,13 +265,13 @@ export default function ProcessingPage() {
             <Loader2 className="w-6 h-6 animate-spin text-primary-500" />
             <span className="ml-2 text-sm text-text-secondary">読み込み中...</span>
           </div>
-        ) : orders?.length === 0 ? (
+        ) : orders.length === 0 ? (
           <div className="bg-surface rounded-xl border border-border p-12 text-center">
             <p className="text-sm text-text-tertiary">データがありません</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {orders?.map((order) => (
+            {orders.map((order) => (
               <div key={order.id} className="w-full bg-surface rounded-xl border border-border p-5 hover:border-primary-300 transition-colors text-left">
                 <div className="flex items-center justify-between mb-3">
                   <button onClick={() => setShowDetail(order.id)} className="flex items-center gap-3">

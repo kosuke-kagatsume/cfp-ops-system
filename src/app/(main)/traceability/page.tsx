@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Search, Shield, MapPin, Package, Flame, TestTube, Truck, Eye, Plus, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type TraceStageItem = {
   id: string;
@@ -64,12 +65,12 @@ export default function TraceabilityPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const { showToast } = useToast();
 
-  const { data: traceRecords, isLoading, mutate } = useSWR<TraceRecordItem[]>(
-    `/api/traceability${search ? `?search=${encodeURIComponent(search)}` : ""}`,
-    fetcher
+  const { items: traceRecords, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<TraceRecordItem>(
+    `/api/traceability${search ? `?search=${encodeURIComponent(search
+  )}` : ""}`
   );
 
-  const selected = traceRecords?.find((t) => t.id === showDetail);
+  const selected = traceRecords.find((t) => t.id === showDetail);
 
   const [newForm, setNewForm] = useState({ sourceType: "PURCHASE", sourceId: "", stageName: "", stageDate: new Date().toISOString().split("T")[0], location: "", quantity: "", note: "" });
 

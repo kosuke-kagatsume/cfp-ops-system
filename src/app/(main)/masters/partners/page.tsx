@@ -2,12 +2,11 @@
 
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { Pagination } from "@/components/pagination";
 import { useToast } from "@/components/toast";
+import { usePaginated } from "@/lib/use-paginated";
 import { Plus, Download, Search, MoreHorizontal, CheckCircle, Edit, Trash2, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
-import useSWR from "swr";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Partner = {
   id: string;
@@ -70,12 +69,11 @@ export default function PartnersPage() {
   if (typeFilter !== "all") params.set("type", typeFilter);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: partners, isLoading, mutate } = useSWR<Partner[]>(
-    `/api/masters/partners?${params.toString()}`,
-    fetcher
+  const { items: partners, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Partner>(
+    `/api/masters/partners?${params.toString()}`
   );
 
-  const selectedPartner = partners?.find((p) => p.id === showDetailModal);
+  const selectedPartner = partners.find((p) => p.id === showDetailModal);
 
   // 新規登録
   const [newForm, setNewForm] = useState({
@@ -262,7 +260,7 @@ export default function PartnersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {partners?.map((partner) => {
+                  {partners.map((partner) => {
                     const pType = getPartnerType(partner);
                     return (
                       <tr key={partner.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
@@ -334,7 +332,7 @@ export default function PartnersPage() {
                       </tr>
                     );
                   })}
-                  {partners?.length === 0 && (
+                  {partners.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         取引先が登録されていません
@@ -343,9 +341,7 @@ export default function PartnersPage() {
                   )}
                 </tbody>
               </table>
-              <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-                <p className="text-xs text-text-tertiary">{partners?.length ?? 0}件</p>
-              </div>
+              <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
             </>
           )}
         </div>

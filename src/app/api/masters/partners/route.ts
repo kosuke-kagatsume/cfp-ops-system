@@ -25,13 +25,26 @@ export async function GET(request: NextRequest) {
   if (status === "active") where.isActive = true;
   else if (status === "inactive") where.isActive = false;
 
-  const partners = await prisma.businessPartner.findMany({
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
+
+  const [partners, total] = await Promise.all([
+    prisma.businessPartner.findMany({
     where,
     include: { contacts: true },
     orderBy: { code: "asc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.businessPartner.count({ where }),
+  ]);
 
-  return NextResponse.json(partners);
+  if (pageParam) {
+    return NextResponse.json({ items: partners, total, page, limit }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  }
+  return NextResponse.json(partners, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
 }
 
 // POST /api/masters/partners - 取引先新規登録

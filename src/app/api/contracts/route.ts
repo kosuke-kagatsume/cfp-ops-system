@@ -6,6 +6,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status");
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
 
   const where: Record<string, unknown> = {};
 
@@ -21,14 +25,22 @@ export async function GET(request: NextRequest) {
     where.status = status;
   }
 
-  const contracts = await prisma.contract.findMany({
+  const [contracts, total] = await Promise.all([
+    prisma.contract.findMany({
     where,
     include: {
       partner: { select: { id: true, code: true, name: true } },
     },
     orderBy: { startDate: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.contract.count({ where }),
+  ]);
 
+  if (pageParam) {
+    return NextResponse.json({ items: contracts, total, page, limit });
+  }
   return NextResponse.json(contracts);
 }
 

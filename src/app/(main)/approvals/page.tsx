@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { CheckCircle, XCircle, ArrowLeft, Clock, ChevronRight, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ApprovalStatus = "PENDING" | "APPROVED" | "REJECTED" | "RETURNED";
 type ApprovalCategory = "ORDER" | "INVOICE" | "PAYMENT" | "EXPENSE" | "PRICE_CHANGE" | "OTHER_AC";
@@ -81,18 +82,17 @@ export default function ApprovalsPage() {
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const { data: approvalItems, isLoading, mutate } = useSWR<ApprovalRequestItem[]>(
-    "/api/approvals",
-    fetcher
+  const { items: approvalItems, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ApprovalRequestItem>(
+    "/api/approvals"
   );
 
-  const filtered = approvalItems?.filter((item) => {
+  const filtered = approvalItems.filter((item) => {
     if (activeTab === "all") return true;
     return item.status === activeTab;
   }) ?? [];
 
-  const pendingCount = approvalItems?.filter((i) => i.status === "PENDING").length ?? 0;
-  const selected = approvalItems?.find((i) => i.id === showDetail);
+  const pendingCount = approvalItems.filter((i) => i.status === "PENDING").length ?? 0;
+  const selected = approvalItems.find((i) => i.id === showDetail);
 
   const getTabCount = (filter: TabFilter) => {
     if (!approvalItems) return 0;

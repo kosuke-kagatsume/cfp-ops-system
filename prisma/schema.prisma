@@ -292,6 +292,8 @@ model ProductName {
   updatedAt        DateTime  @updatedAt
   deletedAt        DateTime?
   products         Product[]
+
+  @@index([deletedAt])
 }
 
 model ProductShape {
@@ -302,6 +304,8 @@ model ProductShape {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   products  Product[]
+
+  @@index([deletedAt])
 }
 
 model ProductColor {
@@ -312,6 +316,8 @@ model ProductColor {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   products  Product[]
+
+  @@index([deletedAt])
 }
 
 model ProductGrade {
@@ -322,6 +328,8 @@ model ProductGrade {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
   products  Product[]
+
+  @@index([deletedAt])
 }
 
 model Product {
@@ -359,6 +367,7 @@ model Product {
   massBalances        MassBalance[]
 
   @@unique([nameId, shapeId, colorId, gradeId])
+  @@index([deletedAt])
 }
 
 // 取引先マスタ ---
@@ -441,6 +450,8 @@ model BusinessPartner {
   isccCertificates       IsccCertificate[]
   oilShipmentsAsCustomer OilShipment[]    @relation("OilShipmentCustomer")
   crMaterialsAsSupplier  CrMaterial[]     @relation("CrMaterialSupplier")
+
+  @@index([deletedAt])
 }
 
 model PartnerContact {
@@ -458,6 +469,8 @@ model PartnerContact {
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
   deletedAt   DateTime?
+
+  @@index([deletedAt])
 }
 
 model PartnerDocumentSetting {
@@ -493,6 +506,8 @@ model Plant {
   processingOrders   ProcessingOrder[]
   crProductionOrders CrProductionOrder[]
   tanks              Tank[]
+
+  @@index([deletedAt])
 }
 
 model Warehouse {
@@ -511,6 +526,8 @@ model Warehouse {
   purchases     Purchase[]
   inventories   Inventory[]
   shipments     Shipment[]
+
+  @@index([deletedAt])
 }
 
 model BankAccount {
@@ -557,6 +574,7 @@ model CustomerPrice {
   updatedByUser User?         @relation("CustomerPriceUpdatedBy", fields: [updatedBy], references: [id])
 
   @@unique([partnerId, productId, validFrom])
+  @@index([deletedAt])
 }
 
 // =============================================================================
@@ -611,6 +629,10 @@ model Purchase {
   updatedByUser   User?           @relation("PurchaseUpdatedBy", fields: [updatedBy], references: [id])
 
   inventoryMovements InventoryMovement[]
+
+  @@index([deletedAt])
+  @@index([purchaseDate])
+  @@index([supplierId])
 }
 
 model Inventory {
@@ -638,6 +660,7 @@ model Inventory {
   stocktakeItems  StocktakeItem[]
 
   @@unique([productId, warehouseId, pickupPartnerId, packagingType])
+  @@index([productId, warehouseId])
 }
 
 model InventoryMovement {
@@ -730,6 +753,8 @@ model ProcessingOrder {
   updatedByUser   User?                @relation("ProcOrderUpdatedBy", fields: [updatedBy], references: [id])
 
   inventoryMovements InventoryMovement[]
+
+  @@index([deletedAt])
 }
 
 model Shipment {
@@ -776,6 +801,10 @@ model Shipment {
   inventoryMovements InventoryMovement[]
   dispatch           Dispatch?
   revenues           Revenue[]
+
+  @@index([deletedAt])
+  @@index([shipmentDate])
+  @@index([customerId])
 }
 
 model Dispatch {
@@ -800,6 +829,8 @@ model Dispatch {
   createdByUser   User?           @relation("DispatchCreatedBy", fields: [createdBy], references: [id])
   updatedBy       String?
   updatedByUser   User?           @relation("DispatchUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([deletedAt])
 }
 
 // =============================================================================
@@ -835,6 +866,8 @@ model CrMaterial {
   updatedByUser   User?              @relation("CrMaterialUpdatedBy", fields: [updatedBy], references: [id])
 
   productionMaterials CrProductionMaterial[]
+
+  @@index([deletedAt])
 }
 
 model CrProductionOrder {
@@ -866,6 +899,8 @@ model CrProductionOrder {
 
   materials       CrProductionMaterial[]
   tankMovements   TankMovement[]
+
+  @@index([deletedAt])
 }
 
 model CrProductionMaterial {
@@ -931,6 +966,8 @@ model OilShipment {
   updatedByUser   User?           @relation("OilShipmentUpdatedBy", fields: [updatedBy], references: [id])
 
   tankMovements   TankMovement[]
+
+  @@index([deletedAt])
 }
 
 model Residue {
@@ -969,6 +1006,8 @@ model LabSample {
   analysisResults       AnalysisResult[]
   analysisCertificates  AnalysisCertificate[]
   externalAnalyses      ExternalAnalysis[]
+
+  @@index([deletedAt])
 }
 
 model AnalysisResult {
@@ -1055,6 +1094,10 @@ model SalesOrder {
   updatedByUser   User?           @relation("SalesOrderUpdatedBy", fields: [updatedBy], references: [id])
 
   items           SalesOrderItem[]
+
+  @@index([deletedAt])
+  @@index([orderDate])
+  @@index([customerId])
 }
 
 model SalesOrderItem {
@@ -1111,6 +1154,10 @@ model Revenue {
 
   invoiceId       String?
   invoice         Invoice?        @relation(fields: [invoiceId], references: [id])
+
+  @@index([deletedAt])
+  @@index([revenueDate])
+  @@index([salesCategory])
 }
 
 model Invoice {
@@ -1147,6 +1194,10 @@ model Invoice {
   updatedByUser   User?           @relation("InvoiceUpdatedBy", fields: [updatedBy], references: [id])
 
   revenues        Revenue[]
+
+  @@index([deletedAt])
+  @@index([billingDate])
+  @@index([customerId])
 }
 
 model PaymentReceived {
@@ -1172,6 +1223,8 @@ model PaymentReceived {
   createdByUser   User?           @relation("PaymentReceivedCreatedBy", fields: [createdBy], references: [id])
   updatedBy       String?
   updatedByUser   User?           @relation("PaymentReceivedUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([deletedAt])
 }
 
 model PaymentPayable {
@@ -1196,6 +1249,8 @@ model PaymentPayable {
   createdByUser   User?           @relation("PaymentPayableCreatedBy", fields: [createdBy], references: [id])
   updatedBy       String?
   updatedByUser   User?           @relation("PaymentPayableUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([deletedAt])
 }
 
 model AccountsReceivable {
@@ -1279,6 +1334,8 @@ model Quotation {
   createdByUser   User?           @relation("QuotationCreatedBy", fields: [createdBy], references: [id])
   updatedBy       String?
   updatedByUser   User?           @relation("QuotationUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([deletedAt])
 }
 
 // =============================================================================
@@ -1307,6 +1364,8 @@ model IsccCertificate {
   updatedByUser   User?           @relation("IsccCertUpdatedBy", fields: [updatedBy], references: [id])
 
   massBalances    MassBalance[]
+
+  @@index([deletedAt])
 }
 
 model MassBalance {
@@ -1386,6 +1445,8 @@ model ApprovalRequest {
   createdByUser   User?            @relation("ApprovalRequestCreatedBy", fields: [createdBy], references: [id])
 
   steps           ApprovalStep[]
+
+  @@index([status])
 }
 
 model ApprovalStep {
@@ -1412,6 +1473,9 @@ model AuditLog {
   newData     Json?
   ipAddress   String?
   createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([tableName])
 }
 
 model NumberSequence {
@@ -1453,6 +1517,8 @@ model Contract {
   createdByUser   User?           @relation("ContractCreatedBy", fields: [createdBy], references: [id])
   updatedBy       String?
   updatedByUser   User?           @relation("ContractUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@index([deletedAt])
 }
 
 model Expense {
@@ -1475,6 +1541,8 @@ model Expense {
   updatedByUser   User?         @relation("ExpenseUpdatedBy", fields: [updatedBy], references: [id])
 
   items           ExpenseItem[]
+
+  @@index([deletedAt])
 }
 
 model ExpenseItem {

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Eye, Pencil, Trash2, FileText, Receipt, ChevronRight, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ExternalAnalysisItem = {
   id: string;
@@ -57,9 +58,11 @@ export default function ExternalAnalysisPage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: externals, isLoading, mutate } = useSWR<ExternalAnalysisItem[]>("/api/lab/external", fetcher);
+  const { items: externals, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ExternalAnalysisItem>(
+    "/api/lab/external"
+  );
   const needMasters = showNewModal || showEditModal;
-  const { data: samples } = useSWR<SampleOption[]>(needMasters ? "/api/lab/samples" : null, fetcher);
+  const { data: samples } = useSWR<SampleOption[]>(needMasters ? "/api/lab/samples" : null);
 
   if (isLoading) {
     return (
@@ -233,7 +236,11 @@ export default function ExternalAnalysisPage() {
               ))}
             </tbody>
           </table>
-        </div>
+        
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
       </div>
 
       {/* 依頼登録モーダル */}

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Search, MoreHorizontal, AlertTriangle, Edit, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type PriceRecord = {
   id: string;
@@ -39,12 +40,12 @@ export default function PricesPage() {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
 
-  const { data: prices, isLoading, mutate } = useSWR<PriceRecord[]>(
-    `/api/masters/prices?${params.toString()}`,
-    fetcher
+  const { items: prices, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<PriceRecord>(
+    `/api/masters/prices?${params.toString(
+  )}`
   );
-  const { data: partners } = useSWR<Partner[]>("/api/masters/partners", fetcher);
-  const { data: products } = useSWR<Product[]>("/api/masters/products", fetcher);
+  const { data: partners } = useSWR<Partner[]>("/api/masters/partners");
+  const { data: products } = useSWR<Product[]>("/api/masters/products");
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -187,7 +188,7 @@ export default function PricesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {prices?.map((price) => {
+                  {prices.map((price) => {
                     const validTo = price.validTo?.slice(0, 10) ?? "";
                     const validFrom = price.validFrom.slice(0, 10);
                     const isExpired = validTo && validTo < today;
@@ -229,7 +230,7 @@ export default function PricesPage() {
                       </tr>
                     );
                   })}
-                  {prices?.length === 0 && (
+                  {prices.length === 0 && (
                     <tr>
                       <td colSpan={8} className="px-4 py-12 text-center text-sm text-text-tertiary">単価が登録されていません</td>
                     </tr>
@@ -237,7 +238,7 @@ export default function PricesPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-                <p className="text-xs text-text-tertiary">{prices?.length ?? 0}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
               </div>
             </>
           )}

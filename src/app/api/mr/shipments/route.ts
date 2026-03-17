@@ -6,6 +6,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status");
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
 
   const where: Record<string, unknown> = {};
 
@@ -21,7 +25,8 @@ export async function GET(request: NextRequest) {
     where.status = status;
   }
 
-  const shipments = await prisma.shipment.findMany({
+  const [shipments, total] = await Promise.all([
+    prisma.shipment.findMany({
     where,
     include: {
       customer: { select: { id: true, code: true, name: true } },
@@ -31,9 +36,16 @@ export async function GET(request: NextRequest) {
       dispatch: { select: { id: true, carrierId: true, carrier: { select: { name: true } } } },
     },
     orderBy: { createdAt: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.shipment.count({ where }),
+  ]);
 
-  return NextResponse.json(shipments);
+  if (pageParam) {
+    return NextResponse.json({ items: shipments, total, page, limit }, { headers: { "Cache-Control": "private, no-cache" } });
+  }
+  return NextResponse.json(shipments, { headers: { "Cache-Control": "private, no-cache" } });
 }
 
 export async function POST(request: NextRequest) {

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Search, Eye, Pencil, Trash2, Shield, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type CrMaterialRow = {
   id: string;
@@ -52,15 +53,13 @@ export default function CrMaterialsPage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: allMaterials, isLoading, mutate } = useSWR<CrMaterialRow[]>(
-    "/api/cr/materials",
-    fetcher
+  const { items: allMaterials, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<CrMaterialRow>(
+    "/api/cr/materials"
   );
 
   const needMasters = showNewModal || showEditModal;
   const { data: suppliers } = useSWR<PartnerOption[]>(
-    needMasters ? "/api/masters/partners?type=supplier" : null,
-    fetcher
+    needMasters ? "/api/masters/partners?type=supplier" : null
   );
 
   const materials = allMaterials ?? [];
@@ -258,7 +257,7 @@ export default function CrMaterialsPage() {
               </tbody>
             </table>
             <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-              <p className="text-xs text-text-tertiary">{filtered.length}件 / {materials.length}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
             </div>
           </div>
         )}

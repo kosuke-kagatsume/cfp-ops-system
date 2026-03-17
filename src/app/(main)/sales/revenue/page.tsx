@@ -2,12 +2,12 @@
 
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { Pagination } from "@/components/pagination";
 import { useToast } from "@/components/toast";
+import { usePaginated } from "@/lib/use-paginated";
 import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Revenue = {
   id: string;
@@ -80,17 +80,16 @@ export default function RevenuePage() {
   if (search) params.set("search", search);
   if (divisionFilter !== "all") params.set("division", divisionFilter);
 
-  const { data: revenues, isLoading, mutate } = useSWR<Revenue[]>(
-    `/api/sales/revenue?${params.toString()}`,
-    fetcher
+  const { items: revenues, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Revenue>(
+    `/api/sales/revenue?${params.toString()}`
   );
 
   // Fetch all for summary
-  const { data: allRevenues } = useSWR<Revenue[]>("/api/sales/revenue", fetcher);
+  const { data: allRevenues } = useSWR<Revenue[]>("/api/sales/revenue");
 
-  const selected = revenues?.find((r) => r.id === showDetail);
-  const totalSales = revenues?.reduce((s, r) => s + r.amount, 0) ?? 0;
-  const totalTax = revenues?.reduce((s, r) => s + r.taxAmount, 0) ?? 0;
+  const selected = revenues.find((r) => r.id === showDetail);
+  const totalSales = revenues.reduce((s, r) => s + r.amount, 0) ?? 0;
+  const totalTax = revenues.reduce((s, r) => s + r.taxAmount, 0) ?? 0;
 
   const [newForm, setNewForm] = useState({
     division: "MR",
@@ -217,7 +216,7 @@ export default function RevenuePage() {
             <p className="text-xs text-text-secondary">消費税合計</p>
           </div>
           <div className="p-3 rounded-xl border border-border bg-surface text-center">
-            <p className="text-lg font-bold text-text">{revenues?.length ?? 0}</p>
+            <p className="text-lg font-bold text-text">{total}</p>
             <p className="text-xs text-text-secondary">売上件数</p>
           </div>
         </div>
@@ -270,7 +269,7 @@ export default function RevenuePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {revenues?.map((r) => (
+                  {revenues.map((r) => (
                     <tr key={r.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono text-primary-600">{r.revenueNumber}</td>
                       <td className="px-4 py-3 text-center">
@@ -311,7 +310,7 @@ export default function RevenuePage() {
                       </td>
                     </tr>
                   ))}
-                  {revenues?.length === 0 && (
+                  {revenues.length === 0 && (
                     <tr>
                       <td colSpan={10} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         売上データがありません
@@ -321,9 +320,10 @@ export default function RevenuePage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-                <p className="text-xs text-text-tertiary">{revenues?.length ?? 0}件</p>
+                <p className="text-xs text-text-tertiary">{total}件</p>
                 <p className="text-xs text-text-secondary">合計（税込）: {"\u00a5"}{(totalSales + totalTax).toLocaleString()}</p>
               </div>
+              <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
             </>
           )}
         </div>

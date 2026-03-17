@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -14,8 +15,23 @@ export async function GET() {
   const prevMonthStart = new Date(currentYear, currentMonth - 1, 1);
   const prevMonthEnd = new Date(currentYear, currentMonth, 1);
 
-  // --- Revenue aggregation ---
-  const [currentRevenue, prevRevenue] = await Promise.all([
+  // 6-month range for trend query
+  const trendStart = new Date(currentYear, currentMonth - 5, 1);
+
+  // --- All queries in parallel ---
+  const [
+    currentRevenue,
+    prevRevenue,
+    currentCost,
+    prevCost,
+    pendingApprovals,
+    inventoryAgg,
+    tanks,
+    revenueTrend,
+    costTrend,
+    inventoryValuation,
+  ] = await Promise.all([
+    // Revenue aggregation (current & previous month)
     prisma.revenue.aggregate({
       _sum: { amount: true },
       where: {
@@ -30,48 +46,71 @@ export async function GET() {
         salesCategory: "SALES",
       },
     }),
-  ]);
 
-  // --- Purchase (cost) aggregation ---
-  const [currentCost, prevCost] = await Promise.all([
+    // Purchase (cost) aggregation
     prisma.purchase.aggregate({
       _sum: { amount: true },
-      where: {
-        purchaseDate: { gte: monthStart, lt: monthEnd },
-      },
+      where: { purchaseDate: { gte: monthStart, lt: monthEnd } },
     }),
     prisma.purchase.aggregate({
       _sum: { amount: true },
-      where: {
-        purchaseDate: { gte: prevMonthStart, lt: prevMonthEnd },
-      },
+      where: { purchaseDate: { gte: prevMonthStart, lt: prevMonthEnd } },
     }),
+
+    // Pending approvals (top 10)
+    prisma.approvalRequest.findMany({
+      where: { status: "PENDING" },
+      include: { createdByUser: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+
+    // Inventory total quantity
+    prisma.inventory.aggregate({ _sum: { quantity: true } }),
+
+    // Tank utilization
+    prisma.tank.findMany({
+      include: { plant: { select: { name: true } } },
+      orderBy: { code: "asc" },
+    }),
+
+    // Monthly revenue trend (single query with GROUP BY)
+    prisma.$queryRaw<Array<{ month: string; total: number }>>`
+      SELECT to_char("revenueDate", 'YYYY-MM') as month,
+             COALESCE(SUM(amount), 0)::float as total
+      FROM "Revenue"
+      WHERE "revenueDate" >= ${trendStart}
+        AND "revenueDate" < ${monthEnd}
+        AND "salesCategory" = 'SALES'
+        AND "deletedAt" IS NULL
+      GROUP BY to_char("revenueDate", 'YYYY-MM')
+      ORDER BY month
+    `,
+
+    // Monthly cost trend (single query with GROUP BY)
+    prisma.$queryRaw<Array<{ month: string; total: number }>>`
+      SELECT to_char("purchaseDate", 'YYYY-MM') as month,
+             COALESCE(SUM(amount), 0)::float as total
+      FROM "Purchase"
+      WHERE "purchaseDate" >= ${trendStart}
+        AND "purchaseDate" < ${monthEnd}
+        AND "deletedAt" IS NULL
+      GROUP BY to_char("purchaseDate", 'YYYY-MM')
+      ORDER BY month
+    `,
+
+    // Inventory valuation via aggregate (avoid fetching all rows)
+    prisma.$queryRaw<[{ valuation: number }]>`
+      SELECT COALESCE(SUM(quantity * "movingAvgCost"), 0)::float as valuation
+      FROM "Inventory"
+      WHERE quantity > 0
+    `,
   ]);
 
-  // --- Pending approvals ---
-  const pendingApprovals = await prisma.approvalRequest.findMany({
-    where: { status: "PENDING" },
-    include: {
-      createdByUser: { select: { name: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
+  // Build monthly trend from raw query results
+  const revenueByMonth = new Map(revenueTrend.map((r) => [r.month, r.total]));
+  const costByMonth = new Map(costTrend.map((r) => [r.month, r.total]));
 
-  // --- Inventory summary ---
-  const inventoryAgg = await prisma.inventory.aggregate({
-    _sum: { quantity: true },
-  });
-
-  // --- Tank utilization ---
-  const tanks = await prisma.tank.findMany({
-    include: {
-      plant: { select: { name: true } },
-    },
-    orderBy: { code: "asc" },
-  });
-
-  // --- Monthly trend (last 6 months) ---
   const monthlyTrend: Array<{
     month: string;
     revenue: number;
@@ -81,32 +120,14 @@ export async function GET() {
 
   for (let i = 5; i >= 0; i--) {
     const mStart = new Date(currentYear, currentMonth - i, 1);
-    const mEnd = new Date(currentYear, currentMonth - i + 1, 1);
     const mKey = `${mStart.getFullYear()}-${String(mStart.getMonth() + 1).padStart(2, "0")}`;
-
-    const [rev, cost] = await Promise.all([
-      prisma.revenue.aggregate({
-        _sum: { amount: true },
-        where: {
-          revenueDate: { gte: mStart, lt: mEnd },
-          salesCategory: "SALES",
-        },
-      }),
-      prisma.purchase.aggregate({
-        _sum: { amount: true },
-        where: {
-          purchaseDate: { gte: mStart, lt: mEnd },
-        },
-      }),
-    ]);
-
-    const revTotal = rev._sum.amount ?? 0;
-    const costTotal = cost._sum.amount ?? 0;
+    const revenue = revenueByMonth.get(mKey) ?? 0;
+    const cost = costByMonth.get(mKey) ?? 0;
     monthlyTrend.push({
       month: mKey,
-      revenue: revTotal,
-      cost: costTotal,
-      profit: revTotal - costTotal,
+      revenue,
+      cost,
+      profit: revenue - cost,
     });
   }
 
@@ -119,19 +140,11 @@ export async function GET() {
   const grossProfitPrev = revenuePrev - costPrev;
   const margin = revenueTotal > 0 ? Math.round((grossProfit / revenueTotal) * 1000) / 10 : 0;
 
-  // Inventory valuation estimate (quantity * movingAvgCost)
-  const inventoryItems = await prisma.inventory.findMany({
-    where: { quantity: { gt: 0 } },
-    select: { quantity: true, movingAvgCost: true },
-  });
-  const inventoryValuation = inventoryItems.reduce(
-    (sum, item) => sum + item.quantity * item.movingAvgCost,
-    0
-  );
+  const inventoryVal = inventoryValuation[0]?.valuation ?? 0;
   const totalKg = inventoryAgg._sum.quantity ?? 0;
   const turnover =
-    costTotal > 0 && inventoryValuation > 0
-      ? Math.round((inventoryValuation / (costTotal || 1)) * 10) / 10
+    costTotal > 0 && inventoryVal > 0
+      ? Math.round((inventoryVal / (costTotal || 1)) * 10) / 10
       : 0;
 
   const tankUtilization = tanks.map((tank) => ({
@@ -153,7 +166,7 @@ export async function GET() {
     revenue: { total: revenueTotal, prevMonth: revenuePrev, target: revenueTarget },
     cost: { total: costTotal, prevMonth: costPrev },
     grossProfit: { total: grossProfit, prevMonth: grossProfitPrev, margin },
-    inventory: { totalKg, valuationJpy: Math.round(inventoryValuation), turnover },
+    inventory: { totalKg, valuationJpy: Math.round(inventoryVal), turnover },
     production: {
       mr: [] as Array<{ plant: string; produced: number; unit: string; yieldRate: number }>,
       cr: [] as Array<{

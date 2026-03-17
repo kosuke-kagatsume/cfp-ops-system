@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Search, Eye, Pencil, Trash2, TestTube, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 type SampleStatus = "RECEIVED" | "ANALYZING" | "JUDGED" | "REPORTED";
 const statusMap: Record<SampleStatus, string> = { RECEIVED: "受付済", ANALYZING: "分析中", JUDGED: "判定済", REPORTED: "報告済" };
 const statusColors: Record<SampleStatus, string> = { RECEIVED: "bg-gray-50 text-gray-700", ANALYZING: "bg-blue-50 text-blue-700", JUDGED: "bg-amber-50 text-amber-700", REPORTED: "bg-emerald-50 text-emerald-700" };
@@ -25,7 +26,9 @@ export default function LabSamplesPage() {
   const [editingId, setEditingId] = useState("");
   const { showToast } = useToast();
 
-  const { data: samples, isLoading, mutate } = useSWR<LabSampleItem[]>("/api/lab/samples", fetcher);
+  const { items: samples, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<LabSampleItem>(
+    "/api/lab/samples"
+  );
   const allSamples = samples ?? [];
   const filtered = allSamples.filter((s) => {
     if (statusFilter !== "all" && s.status !== statusFilter) return false;
@@ -106,7 +109,7 @@ export default function LabSamplesPage() {
                 </tr>
               ))}
             </tbody></table>
-            <div className="px-4 py-3 border-t border-border bg-surface-secondary"><p className="text-xs text-text-tertiary">{filtered.length}件 / {allSamples.length}件</p></div>
+            <div className="px-4 py-3 border-t border-border bg-surface-secondary"><Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} /></div>
           </div>
         )}
       </div>

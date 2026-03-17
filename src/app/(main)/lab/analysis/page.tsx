@@ -1,12 +1,13 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { useToast } from "@/components/toast";
 import { Beaker, CheckCircle, XCircle, Save, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type SampleStatus = "RECEIVED" | "ANALYZING" | "JUDGED" | "REPORTED";
 
@@ -62,7 +63,9 @@ export default function LabAnalysisPage() {
   const [selectedSample, setSelectedSample] = useState<string | null>(null);
   const { showToast } = useToast();
 
-  const { data: results, isLoading } = useSWR<AnalysisResultItem[]>("/api/lab/analysis", fetcher);
+  const { items: results, total, page, limit, isLoading, onPageChange } = usePaginated<AnalysisResultItem>(
+    "/api/lab/analysis"
+  );
   const { data: allSamples } = useSWR<Array<{
     id: string;
     sampleNumber: string;
@@ -70,7 +73,7 @@ export default function LabAnalysisPage() {
     status: SampleStatus;
     source: string | null;
     product: { displayName: string | null; name: { name: string } } | null;
-  }>>("/api/lab/samples", fetcher);
+  }>>("/api/lab/samples");
 
   if (isLoading) {
     return (
@@ -247,7 +250,11 @@ export default function LabAnalysisPage() {
                           ))}
                         </tbody>
                       </table>
-                    </div>
+                    
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
                   ) : (
                     <p className="text-xs text-text-tertiary">分析データなし</p>
                   )}

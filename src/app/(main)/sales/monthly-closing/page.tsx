@@ -23,8 +23,7 @@ export default function MonthlyClosingPage() {
   const { showToast } = useToast();
 
   const { data: closings, isLoading } = useSWR<MonthlyClosing[]>(
-    "/api/sales/monthly-closing",
-    fetcher
+    "/api/sales/monthly-closing"
   );
 
   const formatYearMonth = (year: number, month: number) =>

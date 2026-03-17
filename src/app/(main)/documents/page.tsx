@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Search, Download, Eye, Printer, Mail, Plus, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type DocumentTypeEnum =
   | "PURCHASE_RECEIPT"
@@ -95,12 +96,12 @@ export default function DocumentsPage() {
   if (search) params.set("search", search);
   if (typeFilter !== "all") params.set("documentType", typeFilter);
 
-  const { data: documents, isLoading, mutate } = useSWR<DocumentData[]>(
-    `/api/documents?${params.toString()}`,
-    fetcher
+  const { items: documents, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<DocumentData>(
+    `/api/documents?${params.toString(
+  )}`
   );
 
-  const { data: allDocuments } = useSWR<DocumentData[]>("/api/documents", fetcher);
+  const { data: allDocuments } = useSWR<DocumentData[]>("/api/documents");
 
   const allDocs = documents ?? [];
   const allDocsForCount = allDocuments ?? [];
@@ -216,7 +217,7 @@ export default function DocumentsPage() {
             </tbody>
           </table>
           <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-            <p className="text-xs text-text-tertiary">{allDocs.length}件 / {allDocsForCount.length}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
           </div>
         </div>
       </div>

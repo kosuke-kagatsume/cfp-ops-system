@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { RefreshCw, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type ExchangeRate = {
   id: string;
@@ -38,16 +39,15 @@ export default function ExchangeRatesPage() {
   const [editTarget, setEditTarget] = useState<ExchangeRate | null>(null);
   const { showToast } = useToast();
 
-  const { data: rates, isLoading, mutate } = useSWR<ExchangeRate[]>(
-    "/api/sales/exchange-rates",
-    fetcher
+  const { items: rates, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ExchangeRate>(
+    "/api/sales/exchange-rates"
   );
 
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  const currentRates = rates?.filter((r) => getYearMonth(r.effectiveDate) === currentMonth) ?? [];
-  const historicalRates = rates?.filter((r) => getYearMonth(r.effectiveDate) !== currentMonth) ?? [];
+  const currentRates = rates.filter((r) => getYearMonth(r.effectiveDate) === currentMonth) ?? [];
+  const historicalRates = rates.filter((r) => getYearMonth(r.effectiveDate) !== currentMonth) ?? [];
 
   const formatDate = (d: string) => new Date(d).toLocaleDateString("ja-JP");
 
@@ -230,7 +230,11 @@ export default function ExchangeRatesPage() {
                   )}
                 </tbody>
               </table>
-            </div>
+            
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
           </>
         )}
       </div>

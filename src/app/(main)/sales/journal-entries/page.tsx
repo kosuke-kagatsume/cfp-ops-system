@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Download, Upload, CheckCircle, AlertTriangle, Eye, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type JournalEntry = {
   id: string;
@@ -39,15 +40,15 @@ export default function JournalEntriesPage() {
   const params = new URLSearchParams();
   if (statusFilter !== "all") params.set("exported", statusFilter);
 
-  const { data: entries, isLoading } = useSWR<JournalEntry[]>(
-    `/api/sales/journal-entries?${params.toString()}`,
-    fetcher
+  const { items: entries, total, page, limit, isLoading, onPageChange } = usePaginated<JournalEntry>(
+    `/api/sales/journal-entries?${params.toString(
+  )}`
   );
 
   // Fetch all for summary
-  const { data: allEntries } = useSWR<JournalEntry[]>("/api/sales/journal-entries", fetcher);
+  const { data: allEntries } = useSWR<JournalEntry[]>("/api/sales/journal-entries");
 
-  const selected = entries?.find((j) => j.id === showDetail);
+  const selected = entries.find((j) => j.id === showDetail);
   const unlinked = allEntries?.filter((j) => !j.isExported).length ?? 0;
   const linked = allEntries?.filter((j) => j.isExported).length ?? 0;
 
@@ -131,7 +132,7 @@ export default function JournalEntriesPage() {
                 </tr>
               </thead>
               <tbody>
-                {entries?.map((j) => (
+                {entries.map((j) => (
                   <tr key={j.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50">
                     <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(j.entryDate)}</td>
                     <td className="px-4 py-3"><span className="inline-flex px-2 py-0.5 text-xs font-medium rounded-full bg-surface-tertiary text-text-secondary">{j.companyId}</span></td>
@@ -158,7 +159,11 @@ export default function JournalEntriesPage() {
               </tbody>
             </table>
           )}
-        </div>
+        
+              <div className="px-4 py-3 border-t border-border">
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
+              </div>
+</div>
 
         {/* 科目マッピング説明 */}
         <div className="bg-surface-secondary rounded-xl p-4 text-xs text-text-tertiary">

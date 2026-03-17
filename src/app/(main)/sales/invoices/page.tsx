@@ -2,12 +2,12 @@
 
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { Pagination } from "@/components/pagination";
 import { useToast } from "@/components/toast";
+import { usePaginated } from "@/lib/use-paginated";
 import { Plus, Download, Search, Eye, Pencil, Trash2, FileText, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Invoice = {
   id: string;
@@ -63,19 +63,17 @@ export default function InvoicesPage() {
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: invoices, isLoading, mutate } = useSWR<Invoice[]>(
-    `/api/sales/invoices?${params.toString()}`,
-    fetcher
+  const { items: invoices, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Invoice>(
+    `/api/sales/invoices?${params.toString()}`
   );
 
-  const { data: allInvoices } = useSWR<Invoice[]>("/api/sales/invoices", fetcher);
+  const { data: allInvoices } = useSWR<Invoice[]>("/api/sales/invoices");
 
   const { data: partners } = useSWR<Partner[]>(
-    showNewModal || showEditModal ? "/api/masters/partners?type=customer" : null,
-    fetcher
+    showNewModal || showEditModal ? "/api/masters/partners?type=customer" : null
   );
 
-  const selected = invoices?.find((inv) => inv.id === showDetail);
+  const selected = invoices.find((inv) => inv.id === showDetail);
 
   const [newForm, setNewForm] = useState({
     customerId: "",
@@ -267,7 +265,7 @@ export default function InvoicesPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {invoices?.map((inv) => (
+                  {invoices.map((inv) => (
                     <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono text-primary-600">{inv.invoiceNumber}</td>
                       <td className="px-4 py-3 text-sm text-text">{inv.customer.name}</td>
@@ -299,7 +297,7 @@ export default function InvoicesPage() {
                       </td>
                     </tr>
                   ))}
-                  {invoices?.length === 0 && (
+                  {invoices.length === 0 && (
                     <tr>
                       <td colSpan={11} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         請求データがありません
@@ -309,9 +307,10 @@ export default function InvoicesPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-                <p className="text-xs text-text-tertiary">{invoices?.length ?? 0}件</p>
-                <p className="text-xs text-text-secondary">請求合計: {"\u00a5"}{(invoices?.reduce((s, inv) => s + inv.total, 0) ?? 0).toLocaleString()}</p>
+                <p className="text-xs text-text-tertiary">{invoices.length}件</p>
+                <p className="text-xs text-text-secondary">請求合計: {"\u00a5"}{(invoices.reduce((s, inv) => s + inv.total, 0)).toLocaleString()}</p>
               </div>
+              <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
             </>
           )}
         </div>

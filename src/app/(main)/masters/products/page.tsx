@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormSelect, FormInput } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Search, MoreHorizontal, CheckCircle, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type AxisItem = { id: string; code: number; name: string };
 type Product = {
@@ -32,16 +33,16 @@ export default function ProductsPage() {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
 
-  const { data: products, isLoading, mutate } = useSWR<Product[]>(
-    `/api/masters/products?${params.toString()}`,
-    fetcher
+  const { items: products, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Product>(
+    `/api/masters/products?${params.toString(
+  )}`
   );
-  const { data: productNames } = useSWR<AxisItem[]>("/api/masters/product-names", fetcher);
-  const { data: productShapes } = useSWR<AxisItem[]>("/api/masters/product-shapes", fetcher);
-  const { data: productColors } = useSWR<AxisItem[]>("/api/masters/product-colors", fetcher);
-  const { data: productGrades } = useSWR<AxisItem[]>("/api/masters/product-grades", fetcher);
+  const { data: productNames } = useSWR<AxisItem[]>("/api/masters/product-names");
+  const { data: productShapes } = useSWR<AxisItem[]>("/api/masters/product-shapes");
+  const { data: productColors } = useSWR<AxisItem[]>("/api/masters/product-colors");
+  const { data: productGrades } = useSWR<AxisItem[]>("/api/masters/product-grades");
 
-  const selectedProduct = products?.find((p) => p.id === showDetailModal);
+  const selectedProduct = products.find((p) => p.id === showDetailModal);
 
   // 編集用
   const [editId, setEditId] = useState<string | null>(null);
@@ -116,7 +117,7 @@ export default function ProductsPage() {
     }
   };
 
-  const editingProduct = products?.find((p) => p.id === editId);
+  const editingProduct = products.find((p) => p.id === editId);
 
   // 生成コードプレビュー
   const previewCode = [
@@ -185,7 +186,7 @@ export default function ProductsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {products?.map((product) => (
+                  {products.map((product) => (
                     <tr key={product.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3">
                         <button onClick={() => setShowDetailModal(product.id)} className="text-sm font-mono font-medium text-text bg-surface-tertiary px-2 py-0.5 rounded hover:bg-primary-100 transition-colors">
@@ -230,7 +231,7 @@ export default function ProductsPage() {
                       </td>
                     </tr>
                   ))}
-                  {products?.length === 0 && (
+                  {products.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-12 text-center text-sm text-text-tertiary">品目が登録されていません</td>
                     </tr>
@@ -238,7 +239,7 @@ export default function ProductsPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary">
-                <p className="text-xs text-text-tertiary">{products?.length ?? 0}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
               </div>
             </>
           )}

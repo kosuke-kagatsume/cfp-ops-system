@@ -6,6 +6,10 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search") ?? "";
   const role = searchParams.get("role");
   const active = searchParams.get("active");
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
 
   const where: Record<string, unknown> = {};
 
@@ -24,14 +28,22 @@ export async function GET(request: NextRequest) {
     where.isActive = active === "true";
   }
 
-  const users = await prisma.user.findMany({
+  const [users, total] = await Promise.all([
+    prisma.user.findMany({
     where,
     include: {
       role: { select: { id: true, name: true, description: true } },
     },
     orderBy: { name: "asc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.user.count({ where }),
+  ]);
 
+  if (pageParam) {
+    return NextResponse.json({ items: users, total, page, limit });
+  }
   return NextResponse.json(users);
 }
 

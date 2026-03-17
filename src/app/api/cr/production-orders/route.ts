@@ -6,6 +6,10 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status");
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
 
   const where: Record<string, unknown> = {
     deletedAt: null,
@@ -21,7 +25,8 @@ export async function GET(request: NextRequest) {
     where.status = status;
   }
 
-  const orders = await prisma.crProductionOrder.findMany({
+  const [orders, total] = await Promise.all([
+    prisma.crProductionOrder.findMany({
     where,
     include: {
       plant: { select: { id: true, code: true, name: true } },
@@ -34,8 +39,15 @@ export async function GET(request: NextRequest) {
       },
     },
     orderBy: { orderDate: "desc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.crProductionOrder.count({ where }),
+  ]);
 
+  if (pageParam) {
+    return NextResponse.json({ items: orders, total, page, limit });
+  }
   return NextResponse.json(orders);
 }
 

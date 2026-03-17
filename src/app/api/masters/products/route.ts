@@ -18,7 +18,13 @@ export async function GET(request: NextRequest) {
     ];
   }
 
-  const products = await prisma.product.findMany({
+  const pageParam = searchParams.get("page");
+  const page = pageParam ? parseInt(pageParam) : 1;
+  const limit = pageParam ? Math.min(parseInt(searchParams.get("limit") ?? "50"), 200) : 10000;
+  const skip = pageParam ? (page - 1) * limit : 0;
+
+  const [products, total] = await Promise.all([
+    prisma.product.findMany({
     where,
     include: {
       name: true,
@@ -27,9 +33,16 @@ export async function GET(request: NextRequest) {
       grade: true,
     },
     orderBy: { code: "asc" },
-  });
+      skip,
+      take: limit,
+    }),
+    prisma.product.count({ where }),
+  ]);
 
-  return NextResponse.json(products);
+  if (pageParam) {
+    return NextResponse.json({ items: products, total, page, limit }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  }
+  return NextResponse.json(products, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
 }
 
 // POST /api/masters/products - 品目新規登録

@@ -1,13 +1,14 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { Pagination } from "@/components/pagination";
+import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type QuotationItem = {
   product: string;
@@ -70,20 +71,19 @@ export default function QuotationsPage() {
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
 
-  const { data: quotations, isLoading, mutate } = useSWR<Quotation[]>(
-    `/api/sales/quotations?${params.toString()}`,
-    fetcher
+  const { items: quotations, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Quotation>(
+    `/api/sales/quotations?${params.toString(
+  )}`
   );
 
   // Fetch all for summary counts
-  const { data: allQuotations } = useSWR<Quotation[]>("/api/sales/quotations", fetcher);
+  const { data: allQuotations } = useSWR<Quotation[]>("/api/sales/quotations");
 
   const { data: partners } = useSWR<Partner[]>(
-    showNewModal || showEditModal ? "/api/masters/partners?type=customer" : null,
-    fetcher
+    showNewModal || showEditModal ? "/api/masters/partners?type=customer" : null
   );
 
-  const selected = quotations?.find((q) => q.id === showDetail);
+  const selected = quotations.find((q) => q.id === showDetail);
 
   const [newForm, setNewForm] = useState({
     customerId: "",
@@ -270,7 +270,7 @@ export default function QuotationsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {quotations?.map((q) => (
+                  {quotations.map((q) => (
                     <tr key={q.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                       <td className="px-4 py-3 text-sm font-mono text-primary-600">{q.quotationNumber}</td>
                       <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(q.quotationDate)}</td>
@@ -303,7 +303,7 @@ export default function QuotationsPage() {
                 </tbody>
               </table>
               <div className="px-4 py-3 border-t border-border bg-surface-secondary flex items-center justify-between">
-                <p className="text-xs text-text-tertiary">{quotations?.length ?? 0}件 / {allQuotations?.length ?? 0}件</p>
+                <Pagination page={page} limit={limit} total={total} onPageChange={onPageChange} />
               </div>
             </>
           )}
