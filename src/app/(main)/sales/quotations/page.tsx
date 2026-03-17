@@ -287,6 +287,9 @@ export default function QuotationsPage() {
                           <button onClick={() => window.open(`/api/documents/quotation/${q.id}`, "_blank")} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="見積書印刷">
                             <Printer className="w-4 h-4 text-text-tertiary" />
                           </button>
+                          <a href={`/api/pdf/quotation?id=${q.id}`} download className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="PDFダウンロード">
+                            <Download className="w-4 h-4 text-text-tertiary" />
+                          </a>
                           <button onClick={() => setShowDetail(q.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>

@@ -48,6 +48,10 @@ import {
   FileSignature,
   BookOpen,
   Plane,
+  Landmark,
+  FolderOpen,
+  ScanLine,
+  HardDrive,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -115,6 +119,10 @@ const navigation = [
     children: [
       { name: "経費管理", href: "/expenses", icon: Coins },
       { name: "契約書管理", href: "/contracts", icon: FileSignature },
+      { name: "振込データ", href: "/mr/bank-transfer", icon: Landmark },
+      { name: "固定資産管理", href: "/assets", icon: HardDrive },
+      { name: "補助金書類", href: "/subsidies", icon: FolderOpen },
+      { name: "電子帳簿保存", href: "/electronic-documents", icon: ScanLine },
     ],
   },
   { name: "CTS管理", href: "/cts", icon: Plane },

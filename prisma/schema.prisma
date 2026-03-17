@@ -417,6 +417,15 @@ model BusinessPartner {
   isOverseas        Boolean    @default(false)
   countryCode       String?
 
+  // 銀行口座情報（振込用）
+  bankCode          String?              // 銀行コード（4桁）
+  bankName          String?              // 銀行名
+  branchCode        String?              // 支店コード（3桁）
+  branchName        String?              // 支店名
+  accountType       String?              // 1:普通 2:当座 4:貯蓄
+  accountNumber     String?              // 口座番号（7桁）
+  accountHolder     String?              // 口座名義（カナ）
+
   // 旧データ参照
   legacyKintoneId   String?
   legacyMysqlId     String?
@@ -1610,6 +1619,96 @@ model CtsTransaction {
   note            String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model AccountTitle {
+  id          String   @id @default(uuid())
+  code        String   @unique       // 勘定科目コード (e.g. "1131")
+  name        String                  // 勘定科目名 (e.g. "売掛金")
+  category    String                  // 資産/負債/純資産/収益/費用
+  yayoiCode   String?                // 弥生会計科目コード
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Asset {
+  id                String   @id @default(uuid())
+  assetNumber       String   @unique
+  companyId         Company  @default(CFP)
+  name              String
+  category          String                  // 建物/機械装置/車両/工具器具/ソフトウェア 等
+  acquisitionDate   DateTime
+  acquisitionCost   Float                   // 取得価額
+  residualValue     Float    @default(1)    // 残存価額（備忘価額1円）
+  usefulLife        Int                     // 耐用年数
+  depreciationMethod String  @default("STRAIGHT_LINE") // STRAIGHT_LINE / DECLINING_BALANCE
+  depreciationRate  Float?                  // 定率法の償却率
+  accumulatedDepreciation Float @default(0) // 減価償却累計額
+  bookValue         Float                   // 帳簿価額
+  location          String?
+  note              String?
+  isDisposed        Boolean  @default(false)
+  disposedAt        DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  depreciations     AssetDepreciation[]
+}
+
+model AssetDepreciation {
+  id                String   @id @default(uuid())
+  assetId           String
+  asset             Asset    @relation(fields: [assetId], references: [id])
+  fiscalYear        Int
+  fiscalMonth       Int?                    // null = 年次一括
+  depreciationAmount Float
+  accumulatedAmount Float                   // 当レコード時点の累計
+  bookValueAfter    Float                   // 当レコード時点の帳簿価額
+  createdAt         DateTime @default(now())
+
+  @@unique([assetId, fiscalYear, fiscalMonth])
+}
+
+model SubsidyDocument {
+  id                String   @id @default(uuid())
+  companyId         Company  @default(CFP)
+  subsidyName       String                  // 補助金名
+  documentType      String                  // 申請書/実績報告書/見積書/請求書/領収書 等
+  title             String
+  dueDate           DateTime?               // 提出期限
+  status            String   @default("DRAFT") // DRAFT/SUBMITTED/APPROVED/RETURNED/COMPLETED
+  filePath          String?                 // ファイルパス or URL
+  relatedInvoiceId  String?                 // 関連請求書ID
+  relatedQuotationId String?                // 関連見積書ID
+  note              String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model ElectronicDocument {
+  id                String   @id @default(uuid())
+  companyId         Company  @default(CFP)
+  transactionDate   DateTime               // 取引日付（検索要件1）
+  amount            Float                   // 金額（検索要件2）
+  partnerName       String                  // 取引先名（検索要件3）
+  documentType      String                  // 領収書/請求書/見積書/契約書/納品書 等
+  originalFileName  String                  // 原本ファイル名
+  filePath          String                  // 保存先パス（Vercel Blob URL等）
+  mimeType          String?                 // ファイルMIMEタイプ
+  fileSize          Int?                    // ファイルサイズ(bytes)
+  timestampedAt     DateTime @default(now())// タイムスタンプ（アップロード日時）
+  ocrData           Json?                   // OCR抽出データ
+  relatedTransactionType String?            // REVENUE/PURCHASE/EXPENSE
+  relatedTransactionId   String?            // 関連トランザクションID
+  note              String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([transactionDate])
+  @@index([amount])
+  @@index([partnerName])
 }
 
 model SensorData {

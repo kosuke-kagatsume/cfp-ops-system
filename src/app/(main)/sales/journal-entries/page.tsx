@@ -5,7 +5,7 @@ import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Download, Upload, CheckCircle, AlertTriangle, Eye, RefreshCw, Loader2 } from "lucide-react";
+import { Download, Upload, CheckCircle, AlertTriangle, Eye, RefreshCw, Loader2, Calendar } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -36,6 +36,13 @@ export default function JournalEntriesPage() {
   const [statusFilter, setStatusFilter] = useState<ExportedFilter>("all");
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const { showToast } = useToast();
+
+  // 期間フィルタ（デフォルト: 当月）
+  const now = new Date();
+  const defaultFrom = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const defaultTo = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, "0")}`;
+  const [dateFrom, setDateFrom] = useState(defaultFrom);
+  const [dateTo, setDateTo] = useState(defaultTo);
 
   const params = new URLSearchParams();
   if (statusFilter !== "all") params.set("exported", statusFilter);
@@ -92,7 +99,13 @@ export default function JournalEntriesPage() {
 
         {/* アクションバー */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <Calendar className="w-4 h-4 text-text-tertiary" />
+              <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="px-2 py-1 text-sm border border-border rounded-lg bg-surface" />
+              <span className="text-text-tertiary text-sm">〜</span>
+              <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="px-2 py-1 text-sm border border-border rounded-lg bg-surface" />
+            </div>
             {([["all", "すべて"], ["false", "未連携"], ["true", "連携済"]] as const).map(([val, label]) => (
               <button key={val} onClick={() => setStatusFilter(val as ExportedFilter)}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${statusFilter === val ? "bg-primary-100 text-primary-700 font-medium" : "text-text-secondary hover:bg-surface-tertiary"}`}>
@@ -104,9 +117,9 @@ export default function JournalEntriesPage() {
             <button onClick={() => showToast("仕訳データを再生成しました（モック）", "success")} className="flex items-center gap-1 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">
               <RefreshCw className="w-4 h-4" />再生成
             </button>
-            <button onClick={() => showToast("CSVをダウンロードしました（モック）", "success")} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
-              <Download className="w-4 h-4" />CSVエクスポート
-            </button>
+            <a href={`/api/sales/journal-entries/export?from=${dateFrom}&to=${dateTo}&format=yayoi`} download className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors no-underline">
+              <Download className="w-4 h-4" />弥生CSVエクスポート
+            </a>
           </div>
         </div>
 

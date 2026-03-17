@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getNextNumber } from "@/lib/auto-number";
 import { updateMovingAverage } from "@/lib/inventory";
+import { generatePurchaseJournal } from "@/lib/journal";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -91,6 +92,15 @@ export async function POST(request: NextRequest) {
       purchaseId: purchase.id,
     });
   }
+
+  // 仕訳自動生成
+  await generatePurchaseJournal({
+    id: purchase.id,
+    purchaseNumber: purchase.purchaseNumber,
+    purchaseDate: purchase.purchaseDate,
+    amount: purchase.amount,
+    freightCost: purchase.freightCost,
+  });
 
   return NextResponse.json(purchase, { status: 201 });
 }

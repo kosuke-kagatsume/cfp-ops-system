@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getNextNumber } from "@/lib/auto-number";
+import { generateExpenseJournal } from "@/lib/journal";
+import { createApprovalFlow } from "@/lib/approval";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -72,6 +74,34 @@ export async function POST(request: NextRequest) {
       },
     },
     include: { items: true },
+  });
+
+  // 承認フロー作成（ユーザーが存在する場合）
+  try {
+    await createApprovalFlow({
+      category: "EXPENSE",
+      targetType: "Expense",
+      targetId: record.id,
+      requesterId: body.createdBy ?? "system",
+      title: `経費申請 ${expenseNumber}`,
+      description: `${body.applicant}: ¥${totalAmount.toLocaleString()}`,
+      amount: totalAmount,
+    });
+  } catch {
+    // 承認フロー作成失敗（ユーザー未登録時など）は無視
+  }
+
+  // 仕訳自動生成
+  await generateExpenseJournal({
+    id: record.id,
+    expenseNumber: record.expenseNumber,
+    expenseDate: record.expenseDate,
+    totalAmount: record.totalAmount,
+    items: record.items.map((item) => ({
+      category: item.category,
+      amount: item.amount,
+      description: item.description,
+    })),
   });
 
   return NextResponse.json(record, { status: 201 });

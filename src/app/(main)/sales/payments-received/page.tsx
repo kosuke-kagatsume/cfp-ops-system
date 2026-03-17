@@ -5,7 +5,7 @@ import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Upload, Search, Eye, Pencil, Trash2, Zap, Loader2 } from "lucide-react";
+import { Plus, Upload, Search, Eye, Pencil, Trash2, Zap, Loader2, CheckCircle, AlertTriangle, Link } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -44,10 +44,14 @@ export default function PaymentsReceivedPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTarget, setEditTarget] = useState<PaymentReceived | null>(null);
+  const [reconcileFilter, setReconcileFilter] = useState<"all" | "true" | "false">("all");
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [reconcileResult, setReconcileResult] = useState<{ matched: number; unmatched: number } | null>(null);
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
   if (search) params.set("search", search);
+  if (reconcileFilter !== "all") params.set("reconciled", reconcileFilter);
 
   const { items: payments, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<PaymentReceived>(
     `/api/sales/payments-received?${params.toString(
@@ -166,15 +170,67 @@ export default function PaymentsReceivedPage() {
           </button>
         </div>
 
+        {/* 消込結果バナー */}
+        {reconcileResult && (
+          <div className="flex items-center gap-3 p-3 bg-surface rounded-xl border border-border">
+            <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0" />
+            <div className="flex-1">
+              <span className="text-sm text-text">
+                消込完了: <strong className="text-emerald-600">{reconcileResult.matched}件</strong>マッチ、
+                <strong className="text-amber-600">{reconcileResult.unmatched}件</strong>要確認
+              </span>
+            </div>
+            <button onClick={() => setReconcileResult(null)} className="text-xs text-text-tertiary hover:text-text-secondary">×</button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
             <input type="text" placeholder="入金番号、顧客名で検索..." value={search} onChange={(e) => setSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 w-80 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+              className="pl-10 pr-4 py-2 w-64 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500" />
+            </div>
+            <div className="flex items-center gap-1">
+              {([["all", "すべて"], ["false", "未消込"], ["true", "消込済"]] as const).map(([val, label]) => (
+                <button key={val} onClick={() => setReconcileFilter(val as "all" | "true" | "false")}
+                  className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${reconcileFilter === val ? "bg-primary-100 text-primary-700 font-medium" : "text-text-secondary hover:bg-surface-tertiary"}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => showToast("自動消込を実行しました（モック）", "success")} className="flex items-center gap-2 px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors">
-              <Zap className="w-4 h-4" />自動消込
+            <button
+              onClick={async () => {
+                setIsReconciling(true);
+                try {
+                  const res = await fetch("/api/sales/reconciliation", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ action: "auto" }),
+                  });
+                  const result = await res.json();
+                  setReconcileResult({
+                    matched: result.matched?.length ?? 0,
+                    unmatched: result.unmatched?.length ?? 0,
+                  });
+                  mutate();
+                  showToast(
+                    `自動消込完了: ${result.matched?.length ?? 0}件消込、${result.unmatched?.length ?? 0}件要確認`,
+                    result.matched?.length > 0 ? "success" : "info"
+                  );
+                } catch {
+                  showToast("自動消込に失敗しました", "error");
+                } finally {
+                  setIsReconciling(false);
+                }
+              }}
+              disabled={isReconciling}
+              className="flex items-center gap-2 px-4 py-2 text-sm bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors disabled:opacity-50"
+            >
+              {isReconciling ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+              自動消込
             </button>
             <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
               <Plus className="w-4 h-4" />入金登録

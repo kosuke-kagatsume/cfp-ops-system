@@ -284,6 +284,9 @@ export default function InvoicesPage() {
                           <button onClick={() => window.open(`/api/documents/invoice/${inv.id}`, "_blank")} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="PDF印刷">
                             <Printer className="w-4 h-4 text-text-tertiary" />
                           </button>
+                          <a href={`/api/pdf/invoice?id=${inv.id}`} download className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="PDFダウンロード">
+                            <Download className="w-4 h-4 text-text-tertiary" />
+                          </a>
                           <button onClick={() => setShowDetail(inv.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
@@ -403,6 +406,7 @@ export default function InvoicesPage() {
         footer={<>
           {selected?.status === "DRAFT" && <button onClick={() => { setShowDetail(null); showToast("請求書を発行しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">発行する</button>}
           <button onClick={() => { if (selected) window.open(`/api/documents/invoice/${selected.id}`, "_blank"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">PDF印刷</button>
+          {selected && <a href={`/api/pdf/invoice?id=${selected.id}`} download className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors flex items-center gap-1"><Download className="w-4 h-4" />PDFダウンロード</a>}
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">閉じる</button>
         </>}>
         {selected && (

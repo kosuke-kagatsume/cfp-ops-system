@@ -120,6 +120,9 @@ export default function DeliveryNotesPage() {
                           <button onClick={() => window.open(`/api/documents/delivery-note/${d.id}`, "_blank")} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="納品書印刷">
                             <Printer className="w-4 h-4 text-text-tertiary" />
                           </button>
+                          <a href={`/api/pdf/delivery-note?id=${d.id}`} download className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="PDFダウンロード">
+                            <Download className="w-4 h-4 text-text-tertiary" />
+                          </a>
                           <button onClick={() => setShowDetail(d.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
@@ -147,6 +150,7 @@ export default function DeliveryNotesPage() {
           {selected?.documentType === "DELIVERY_NOTE_TEMP" && <button onClick={() => { setShowDetail(null); showToast("本納品書に昇格しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">本納品書に昇格</button>}
           {selected?.documentType === "DELIVERY_NOTE_FINAL" && <button onClick={() => { setShowDetail(null); showToast("納品書を発行しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">発行する</button>}
           <button onClick={() => { if (selected) window.open(`/api/documents/delivery-note/${selected.id}`, "_blank"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">PDF印刷</button>
+          {selected && <a href={`/api/pdf/delivery-note?id=${selected.id}`} download className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary flex items-center gap-1"><Download className="w-4 h-4" />PDFダウンロード</a>}
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (

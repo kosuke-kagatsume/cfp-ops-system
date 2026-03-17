@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getNextNumber } from "@/lib/auto-number";
+import { generateRevenueJournal } from "@/lib/journal";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -72,6 +73,15 @@ export async function POST(request: NextRequest) {
       isExportExempt: body.isExportExempt ?? false,
       note: body.note || null,
     },
+  });
+
+  // 仕訳自動生成
+  await generateRevenueJournal({
+    id: revenue.id,
+    revenueNumber: revenue.revenueNumber,
+    revenueDate: revenue.revenueDate,
+    amount: revenue.amount,
+    taxAmount: revenue.taxAmount,
   });
 
   return NextResponse.json(revenue, { status: 201 });
