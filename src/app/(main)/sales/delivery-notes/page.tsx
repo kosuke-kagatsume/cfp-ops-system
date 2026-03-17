@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Download, Eye, FileText, ArrowRight, Loader2 } from "lucide-react";
+import { Download, Eye, FileText, ArrowRight, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -79,7 +79,7 @@ export default function DeliveryNotesPage() {
         </div>
 
         <div className="flex items-center justify-end">
-          <button onClick={() => showToast("一括PDF生成しました（モック）", "success")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
+          <button onClick={() => showToast("一括PDF生成は個別の印刷ボタンをご利用ください", "info")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
             <Download className="w-4 h-4" />PDF一括出力
           </button>
         </div>
@@ -116,9 +116,14 @@ export default function DeliveryNotesPage() {
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <button onClick={() => setShowDetail(d.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
-                          <Eye className="w-4 h-4 text-text-tertiary" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => window.open(`/api/documents/delivery-note/${d.id}`, "_blank")} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="納品書印刷">
+                            <Printer className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                          <button onClick={() => setShowDetail(d.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
+                            <Eye className="w-4 h-4 text-text-tertiary" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -141,7 +146,7 @@ export default function DeliveryNotesPage() {
         footer={<>
           {selected?.documentType === "DELIVERY_NOTE_TEMP" && <button onClick={() => { setShowDetail(null); showToast("本納品書に昇格しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700">本納品書に昇格</button>}
           {selected?.documentType === "DELIVERY_NOTE_FINAL" && <button onClick={() => { setShowDetail(null); showToast("納品書を発行しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700">発行する</button>}
-          <button onClick={() => { showToast("PDFプレビューを表示します（開発中）", "info"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">PDFプレビュー</button>
+          <button onClick={() => { if (selected) window.open(`/api/documents/delivery-note/${selected.id}`, "_blank"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">PDF印刷</button>
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
         </>}>
         {selected && (

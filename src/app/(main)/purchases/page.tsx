@@ -261,8 +261,16 @@ export default function PurchasesPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => showToast("CSVダウンロードしました", "success")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
-              <Download className="w-4 h-4" />CSV出力
+            <button onClick={() => {
+              fetch("/api/export/excel?type=purchases").then(r => r.blob()).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = "仕入一覧.xlsx"; a.click();
+                URL.revokeObjectURL(url);
+                showToast("Excelファイルをダウンロードしました", "success");
+              }).catch(() => showToast("ダウンロードに失敗しました", "error"));
+            }} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
+              <Download className="w-4 h-4" />Excel出力
             </button>
             <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
               <Plus className="w-4 h-4" />入荷登録

@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -232,8 +232,16 @@ export default function QuotationsPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => showToast("CSVダウンロードしました", "success")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
-              <Download className="w-4 h-4" />CSV出力
+            <button onClick={() => {
+              fetch("/api/export/excel?type=invoices").then(r => r.blob()).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = "見積一覧.xlsx"; a.click();
+                URL.revokeObjectURL(url);
+                showToast("Excelファイルをダウンロードしました", "success");
+              }).catch(() => showToast("ダウンロードに失敗しました", "error"));
+            }} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
+              <Download className="w-4 h-4" />Excel出力
             </button>
             <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
               <Plus className="w-4 h-4" />新規見積
@@ -276,6 +284,9 @@ export default function QuotationsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
+                          <button onClick={() => window.open(`/api/documents/quotation/${q.id}`, "_blank")} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="見積書印刷">
+                            <Printer className="w-4 h-4 text-text-tertiary" />
+                          </button>
                           <button onClick={() => setShowDetail(q.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>

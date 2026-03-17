@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { updateMovingAverage } from "@/lib/inventory";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -42,6 +43,15 @@ export async function PUT(
   if (body.status !== undefined) data.status = body.status;
   if (body.note !== undefined) data.note = body.note || null;
 
+  // Check if status is transitioning to RECEIVED or CONFIRMED
+  const existing = await prisma.purchase.findUnique({ where: { id } });
+  const isNewlyReceived =
+    existing &&
+    body.status &&
+    (body.status === "RECEIVED" || body.status === "CONFIRMED") &&
+    existing.status !== "RECEIVED" &&
+    existing.status !== "CONFIRMED";
+
   const record = await prisma.purchase.update({
     where: { id },
     data,
@@ -52,6 +62,17 @@ export async function PUT(
       warehouse: { select: { id: true, code: true, name: true } },
     },
   });
+
+  // Update inventory when purchase transitions to received/confirmed
+  if (isNewlyReceived && record.warehouseId && record.productId) {
+    await updateMovingAverage({
+      productId: record.productId,
+      warehouseId: record.warehouseId,
+      quantity: record.quantity,
+      unitPrice: record.unitPrice,
+      purchaseId: record.id,
+    });
+  }
 
   return NextResponse.json(record);
 }

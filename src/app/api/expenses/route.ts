@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getNextNumber } from "@/lib/auto-number";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -33,12 +34,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  const seq = await prisma.numberSequence.upsert({
-    where: { prefix_year: { prefix: "EXP", year: new Date().getFullYear() } },
-    update: { currentNumber: { increment: 1 } },
-    create: { prefix: "EXP", year: new Date().getFullYear(), currentNumber: 1 },
-  });
-  const expenseNumber = `EXP-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+  const expenseNumber = await getNextNumber("EXP");
 
   const items = body.items ?? [];
   const totalAmount = items.reduce((sum: number, item: { amount: number }) => sum + item.amount, 0);

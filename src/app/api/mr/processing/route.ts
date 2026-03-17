@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getNextNumber } from "@/lib/auto-number";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -27,11 +28,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  const seq = await prisma.numberSequence.update({
-    where: { prefix_year: { prefix: "PRC", year: new Date().getFullYear() } },
-    data: { currentNumber: { increment: 1 } },
-  });
-  const orderNumber = `PRC-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+  const orderNumber = await getNextNumber("PRC");
 
   const order = await prisma.processingOrder.create({
     data: {

@@ -3,7 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Download, Search, Eye, Pencil, Trash2, FileText, Loader2 } from "lucide-react";
+import { Plus, Download, Search, Eye, Pencil, Trash2, FileText, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -222,11 +222,19 @@ export default function InvoicesPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => showToast("一括PDF生成しました（モック）", "success")} className="flex items-center gap-2 px-3 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
-              <FileText className="w-4 h-4" />一括PDF生成
-            </button>
-            <button onClick={() => showToast("CSVダウンロードしました", "success")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
-              <Download className="w-4 h-4" />CSV出力
+            <button onClick={() => {
+              const res = fetch(`/api/export/excel?type=invoices`);
+              res.then(r => r.blob()).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "請求一覧.xlsx";
+                a.click();
+                URL.revokeObjectURL(url);
+                showToast("Excelファイルをダウンロードしました", "success");
+              }).catch(() => showToast("ダウンロードに失敗しました", "error"));
+            }} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
+              <Download className="w-4 h-4" />Excel出力
             </button>
             <button onClick={() => setShowNewModal(true)} className="flex items-center gap-2 px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">
               <Plus className="w-4 h-4" />請求書作成
@@ -275,6 +283,9 @@ export default function InvoicesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
+                          <button onClick={() => window.open(`/api/documents/invoice/${inv.id}`, "_blank")} className="p-1 hover:bg-surface-tertiary rounded transition-colors" title="PDF印刷">
+                            <Printer className="w-4 h-4 text-text-tertiary" />
+                          </button>
                           <button onClick={() => setShowDetail(inv.id)} className="p-1 hover:bg-surface-tertiary rounded transition-colors">
                             <Eye className="w-4 h-4 text-text-tertiary" />
                           </button>
@@ -392,7 +403,7 @@ export default function InvoicesPage() {
       <Modal isOpen={!!showDetail} onClose={() => setShowDetail(null)} title={selected ? `請求詳細: ${selected.invoiceNumber}` : ""}
         footer={<>
           {selected?.status === "DRAFT" && <button onClick={() => { setShowDetail(null); showToast("請求書を発行しました（モック）", "success"); }} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700 transition-colors">発行する</button>}
-          <button onClick={() => showToast("PDFプレビューを表示します（開発中）", "info")} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">PDFプレビュー</button>
+          <button onClick={() => { if (selected) window.open(`/api/documents/invoice/${selected.id}`, "_blank"); }} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">PDF印刷</button>
           <button onClick={() => setShowDetail(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">閉じる</button>
         </>}>
         {selected && (

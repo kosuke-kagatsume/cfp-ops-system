@@ -99,8 +99,16 @@ export default function InventoryPage() {
             <button onClick={() => showToast("棚卸画面（Phase 1で実装予定）", "info")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
               <BarChart3 className="w-4 h-4" />棚卸
             </button>
-            <button onClick={() => showToast("CSVダウンロードしました", "success")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
-              <Download className="w-4 h-4" />CSV出力
+            <button onClick={() => {
+              fetch("/api/export/excel?type=inventory").then(r => r.blob()).then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url; a.download = "在庫一覧.xlsx"; a.click();
+                URL.revokeObjectURL(url);
+                showToast("Excelファイルをダウンロードしました", "success");
+              }).catch(() => showToast("ダウンロードに失敗しました", "error"));
+            }} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
+              <Download className="w-4 h-4" />Excel出力
             </button>
           </div>
         </div>

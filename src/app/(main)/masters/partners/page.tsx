@@ -215,11 +215,19 @@ export default function PartnersPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => showToast("CSVファイルをダウンロードしました", "success")}
+              onClick={() => {
+                fetch("/api/export/excel?type=partners").then(r => r.blob()).then(blob => {
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = url; a.download = "取引先一覧.xlsx"; a.click();
+                  URL.revokeObjectURL(url);
+                  showToast("Excelファイルをダウンロードしました", "success");
+                }).catch(() => showToast("ダウンロードに失敗しました", "error"));
+              }}
               className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors"
             >
               <Download className="w-4 h-4" />
-              CSV出力
+              Excel出力
             </button>
             <button
               onClick={() => setShowNewModal(true)}

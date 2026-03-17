@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getNextNumber } from "@/lib/auto-number";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -37,12 +38,7 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
 
   // 採番
-  const seq = await prisma.numberSequence.upsert({
-    where: { prefix_year: { prefix: "CRM", year: new Date().getFullYear() } },
-    update: { currentNumber: { increment: 1 } },
-    create: { prefix: "CRM", year: new Date().getFullYear(), currentNumber: 1 },
-  });
-  const materialNumber = `CRM-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+  const materialNumber = await getNextNumber("CRM");
 
   const record = await prisma.crMaterial.create({
     data: {

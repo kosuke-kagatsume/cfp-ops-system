@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { getNextNumber } from "@/lib/auto-number";
+import { updateMovingAverage } from "@/lib/inventory";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -38,11 +40,9 @@ export async function POST(request: NextRequest) {
   const body = await request.json();
 
   // 採番
-  const seq = await prisma.numberSequence.update({
-    where: { prefix_year: { prefix: "PUR", year: new Date().getFullYear() } },
-    data: { currentNumber: { increment: 1 } },
-  });
-  const purchaseNumber = `PUR-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+  const purchaseNumber = await getNextNumber("PUR");
+
+  const initialStatus = body.status ?? "PLANNED";
 
   const purchase = await prisma.purchase.create({
     data: {
@@ -57,13 +57,28 @@ export async function POST(request: NextRequest) {
       amount: body.quantity * body.unitPrice,
       freightCost: body.freightCost,
       purchaseDate: new Date(body.purchaseDate),
-      status: "PLANNED",
+      status: initialStatus,
     },
     include: {
       supplier: { select: { id: true, code: true, name: true } },
       product: { include: { name: true, shape: true, color: true, grade: true } },
     },
   });
+
+  // Update inventory when purchase is received or confirmed
+  if (
+    (initialStatus === "RECEIVED" || initialStatus === "CONFIRMED") &&
+    body.warehouseId &&
+    body.productId
+  ) {
+    await updateMovingAverage({
+      productId: body.productId,
+      warehouseId: body.warehouseId,
+      quantity: body.quantity,
+      unitPrice: body.unitPrice,
+      purchaseId: purchase.id,
+    });
+  }
 
   return NextResponse.json(purchase, { status: 201 });
 }

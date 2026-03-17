@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { getNextNumber } from "@/lib/auto-number";
+import { getPreviousBalance } from "@/lib/invoice";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -34,13 +36,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const body = await request.json();
 
-  const seq = await prisma.numberSequence.update({
-    where: { prefix_year: { prefix: "INV", year: new Date().getFullYear() } },
-    data: { currentNumber: { increment: 1 } },
-  });
-  const invoiceNumber = `INV-${seq.year}-${String(seq.currentNumber).padStart(4, "0")}`;
+  const invoiceNumber = await getNextNumber("INV");
 
-  const prevBalance = body.prevBalance ?? 0;
+  // Auto-set prevBalance from previous invoice if not provided
+  const prevBalance = body.prevBalance ?? (body.customerId ? await getPreviousBalance(body.customerId) : 0);
   const paymentRcv = body.paymentReceived ?? 0;
   const subtotal = body.subtotal ?? 0;
   const taxAmount = body.taxAmount ?? 0;

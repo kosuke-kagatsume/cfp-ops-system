@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { calculateInvoiceBalance } from "@/lib/invoice";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -39,18 +40,19 @@ export async function PUT(
   if (body.subtotal !== undefined) data.subtotal = body.subtotal;
   if (body.taxAmount !== undefined) data.taxAmount = body.taxAmount;
 
-  // Server-side calculation
-  const existing = await prisma.invoice.findUnique({ where: { id } });
-  if (existing) {
-    const prevBalance = (data.prevBalance as number) ?? existing.prevBalance;
-    const paymentRcv = (data.paymentReceived as number) ?? existing.paymentReceived;
-    const subtotal = (data.subtotal as number) ?? existing.subtotal;
-    const taxAmount = (data.taxAmount as number) ?? existing.taxAmount;
-    data.carryover = prevBalance - paymentRcv;
-    data.total = (prevBalance - paymentRcv) + subtotal + taxAmount;
-  }
+  // Save field-level updates first
+  await prisma.invoice.update({ where: { id }, data });
 
-  const record = await prisma.invoice.update({ where: { id }, data });
+  // Recalculate carry-forward balance using centralized logic
+  await calculateInvoiceBalance(id);
+
+  const record = await prisma.invoice.findUnique({
+    where: { id },
+    include: {
+      customer: { select: { id: true, code: true, name: true } },
+      revenues: { select: { id: true, revenueNumber: true, amount: true } },
+    },
+  });
   return NextResponse.json(record);
 }
 

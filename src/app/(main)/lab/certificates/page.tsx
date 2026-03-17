@@ -241,6 +241,9 @@ export default function LabCertificatesPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        <button onClick={() => window.open(`/api/documents/analysis-certificate/${c.id}`, "_blank")} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="PDF印刷">
+                          <Printer className="w-4 h-4 text-text-tertiary" />
+                        </button>
                         <button onClick={() => setShowPreview(c.id)} className="p-1.5 hover:bg-surface-tertiary rounded transition-colors" title="プレビュー">
                           <Eye className="w-4 h-4 text-text-tertiary" />
                         </button>
@@ -292,7 +295,7 @@ export default function LabCertificatesPage() {
       {/* 成績書プレビューモーダル */}
       <Modal isOpen={!!showPreview} onClose={() => setShowPreview(null)} title={selected ? `分析成績書: ${selected.certificateNumber}` : ""}
         footer={<>
-          <button onClick={() => showToast("PDF生成（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Printer className="w-4 h-4" />PDF出力</button>
+          <button onClick={() => { if (selected) window.open(`/api/documents/analysis-certificate/${selected.id}`, "_blank"); }} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Printer className="w-4 h-4" />PDF出力</button>
           <button onClick={() => showToast("メール送信（開発中）", "info")} className="flex items-center gap-1 px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary"><Mail className="w-4 h-4" />メール</button>
           {selected?.sample.status === "JUDGED" && <button onClick={() => selected && handleIssue(selected)} className="px-4 py-2 text-sm bg-primary-600 text-text-inverse rounded-lg font-medium hover:bg-primary-700">発行する</button>}
           <button onClick={() => setShowPreview(null)} className="px-4 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary">閉じる</button>
