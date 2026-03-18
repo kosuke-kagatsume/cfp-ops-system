@@ -1,22 +1,125 @@
 import { prisma } from "@/lib/db";
-import { Prisma } from "@prisma/client";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET() {
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const currentMonth = now.getMonth(); // 0-indexed
+type Period = "month" | "quarter" | "year";
 
-  // Current month range
-  const monthStart = new Date(currentYear, currentMonth, 1);
-  const monthEnd = new Date(currentYear, currentMonth + 1, 1);
+function getDateRange(period: Period, date: Date) {
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0-indexed
 
-  // Previous month range
-  const prevMonthStart = new Date(currentYear, currentMonth - 1, 1);
-  const prevMonthEnd = new Date(currentYear, currentMonth, 1);
+  let start: Date, end: Date, prevStart: Date, prevEnd: Date;
+  let label: string;
 
-  // 6-month range for trend query
-  const trendStart = new Date(currentYear, currentMonth - 5, 1);
+  switch (period) {
+    case "month":
+      start = new Date(year, month, 1);
+      end = new Date(year, month + 1, 1);
+      prevStart = new Date(year, month - 1, 1);
+      prevEnd = new Date(year, month, 1);
+      label = `${year}年${month + 1}月`;
+      break;
+    case "quarter": {
+      const q = Math.floor(month / 3); // 0-3
+      start = new Date(year, q * 3, 1);
+      end = new Date(year, q * 3 + 3, 1);
+      prevStart = new Date(year, q * 3 - 3, 1);
+      prevEnd = new Date(year, q * 3, 1);
+      label = `${year}年 Q${q + 1}`;
+      break;
+    }
+    case "year":
+      start = new Date(year, 0, 1);
+      end = new Date(year + 1, 0, 1);
+      prevStart = new Date(year - 1, 0, 1);
+      prevEnd = new Date(year, 0, 1);
+      label = `${year}年度`;
+      break;
+  }
+
+  return { start, end, prevStart, prevEnd, label };
+}
+
+function getTrendConfig(period: Period, end: Date) {
+  switch (period) {
+    case "month": {
+      const trendStart = new Date(end.getFullYear(), end.getMonth() - 6, 1);
+      return {
+        trendStart,
+        groupExpr: `to_char("DATE_COL", 'YYYY-MM')`,
+        bucketCount: 6,
+      };
+    }
+    case "quarter": {
+      const trendStart = new Date(end.getFullYear() - 1, end.getMonth(), 1);
+      return {
+        trendStart,
+        groupExpr: `to_char("DATE_COL", 'YYYY') || '-Q' || CEIL(EXTRACT(MONTH FROM "DATE_COL")::numeric / 3)::int`,
+        bucketCount: 4,
+      };
+    }
+    case "year": {
+      const trendStart = new Date(end.getFullYear() - 3, 0, 1);
+      return {
+        trendStart,
+        groupExpr: `to_char("DATE_COL", 'YYYY')`,
+        bucketCount: 3,
+      };
+    }
+  }
+}
+
+function generateTrendBuckets(period: Period, end: Date, count: number): string[] {
+  const buckets: string[] = [];
+  switch (period) {
+    case "month": {
+      for (let i = count - 1; i >= 0; i--) {
+        const d = new Date(end.getFullYear(), end.getMonth() - 1 - i, 1);
+        buckets.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+      }
+      break;
+    }
+    case "quarter": {
+      const currentQ = Math.floor((end.getMonth()) / 3); // end is exclusive, so end.getMonth() is the first month of next period
+      const currentYear = end.getFullYear();
+      for (let i = count - 1; i >= 0; i--) {
+        let qIdx = currentQ - i;
+        let y = currentYear;
+        while (qIdx < 0) { qIdx += 4; y--; }
+        while (qIdx > 3) { qIdx -= 4; y++; }
+        buckets.push(`${y}-Q${qIdx + 1}`);
+      }
+      break;
+    }
+    case "year": {
+      for (let i = count - 1; i >= 0; i--) {
+        buckets.push(`${end.getFullYear() - 1 - i}`);
+      }
+      break;
+    }
+  }
+  return buckets;
+}
+
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const period = (searchParams.get("period") ?? "month") as Period;
+  const dateParam = searchParams.get("date");
+  const now = dateParam ? new Date(dateParam) : new Date();
+
+  if (!["month", "quarter", "year"].includes(period)) {
+    return NextResponse.json({ error: "Invalid period" }, { status: 400 });
+  }
+
+  const { start: monthStart, end: monthEnd, prevStart: prevMonthStart, prevEnd: prevMonthEnd, label: monthLabel } = getDateRange(period, now);
+
+  const trendConfig = getTrendConfig(period, monthEnd);
+
+  // Build raw SQL for trend based on period
+  const revenueDateCol = '"revenueDate"';
+  const purchaseDateCol = '"purchaseDate"';
+
+  const revenueGroupExpr = trendConfig.groupExpr.replace(/"DATE_COL"/g, revenueDateCol);
+  const costGroupExpr = trendConfig.groupExpr.replace(/"DATE_COL"/g, purchaseDateCol);
 
   // --- All queries in parallel ---
   const [
@@ -31,7 +134,7 @@ export async function GET() {
     costTrend,
     inventoryValuation,
   ] = await Promise.all([
-    // Revenue aggregation (current & previous month)
+    // Revenue aggregation (current & previous period)
     prisma.revenue.aggregate({
       _sum: { amount: true },
       where: {
@@ -74,32 +177,36 @@ export async function GET() {
       orderBy: { code: "asc" },
     }),
 
-    // Monthly revenue trend (single query with GROUP BY)
-    prisma.$queryRaw<Array<{ month: string; total: number }>>`
-      SELECT to_char("revenueDate", 'YYYY-MM') as month,
-             COALESCE(SUM(amount), 0)::float as total
-      FROM "Revenue"
-      WHERE "revenueDate" >= ${trendStart}
-        AND "revenueDate" < ${monthEnd}
-        AND "salesCategory" = 'SALES'
-        AND "deletedAt" IS NULL
-      GROUP BY to_char("revenueDate", 'YYYY-MM')
-      ORDER BY month
-    `,
+    // Revenue trend (dynamic GROUP BY)
+    prisma.$queryRawUnsafe<Array<{ bucket: string; total: number }>>(
+      `SELECT ${revenueGroupExpr} as bucket,
+              COALESCE(SUM(amount), 0)::float as total
+       FROM "Revenue"
+       WHERE "revenueDate" >= $1
+         AND "revenueDate" < $2
+         AND "salesCategory" = 'SALES'
+         AND "deletedAt" IS NULL
+       GROUP BY ${revenueGroupExpr}
+       ORDER BY bucket`,
+      trendConfig.trendStart,
+      monthEnd
+    ),
 
-    // Monthly cost trend (single query with GROUP BY)
-    prisma.$queryRaw<Array<{ month: string; total: number }>>`
-      SELECT to_char("purchaseDate", 'YYYY-MM') as month,
-             COALESCE(SUM(amount), 0)::float as total
-      FROM "Purchase"
-      WHERE "purchaseDate" >= ${trendStart}
-        AND "purchaseDate" < ${monthEnd}
-        AND "deletedAt" IS NULL
-      GROUP BY to_char("purchaseDate", 'YYYY-MM')
-      ORDER BY month
-    `,
+    // Cost trend (dynamic GROUP BY)
+    prisma.$queryRawUnsafe<Array<{ bucket: string; total: number }>>(
+      `SELECT ${costGroupExpr} as bucket,
+              COALESCE(SUM(amount), 0)::float as total
+       FROM "Purchase"
+       WHERE "purchaseDate" >= $1
+         AND "purchaseDate" < $2
+         AND "deletedAt" IS NULL
+       GROUP BY ${costGroupExpr}
+       ORDER BY bucket`,
+      trendConfig.trendStart,
+      monthEnd
+    ),
 
-    // Inventory valuation via aggregate (avoid fetching all rows)
+    // Inventory valuation via aggregate
     prisma.$queryRaw<[{ valuation: number }]>`
       SELECT COALESCE(SUM(quantity * "movingAvgCost"), 0)::float as valuation
       FROM "Inventory"
@@ -107,29 +214,16 @@ export async function GET() {
     `,
   ]);
 
-  // Build monthly trend from raw query results
-  const revenueByMonth = new Map(revenueTrend.map((r) => [r.month, r.total]));
-  const costByMonth = new Map(costTrend.map((r) => [r.month, r.total]));
+  // Build trend from raw query results
+  const revenueByBucket = new Map(revenueTrend.map((r) => [r.bucket, r.total]));
+  const costByBucket = new Map(costTrend.map((r) => [r.bucket, r.total]));
 
-  const monthlyTrend: Array<{
-    month: string;
-    revenue: number;
-    cost: number;
-    profit: number;
-  }> = [];
-
-  for (let i = 5; i >= 0; i--) {
-    const mStart = new Date(currentYear, currentMonth - i, 1);
-    const mKey = `${mStart.getFullYear()}-${String(mStart.getMonth() + 1).padStart(2, "0")}`;
-    const revenue = revenueByMonth.get(mKey) ?? 0;
-    const cost = costByMonth.get(mKey) ?? 0;
-    monthlyTrend.push({
-      month: mKey,
-      revenue,
-      cost,
-      profit: revenue - cost,
-    });
-  }
+  const buckets = generateTrendBuckets(period, monthEnd, trendConfig.bucketCount);
+  const monthlyTrend = buckets.map((key) => {
+    const revenue = revenueByBucket.get(key) ?? 0;
+    const cost = costByBucket.get(key) ?? 0;
+    return { month: key, revenue, cost, profit: revenue - cost };
+  });
 
   // Build response
   const revenueTotal = currentRevenue._sum.amount ?? 0;
@@ -156,13 +250,14 @@ export async function GET() {
     plant: tank.plant.name,
   }));
 
-  // Revenue target: placeholder (could come from SystemSetting)
-  const revenueTarget = revenueTotal > 0 ? Math.round(revenueTotal * 1.2) : 15000000;
-
-  const monthLabel = `${currentYear}年${currentMonth + 1}月`;
+  // Revenue target: placeholder, scaled by period
+  const baseTarget = revenueTotal > 0 ? Math.round(revenueTotal * 1.2) : 15000000;
+  const revenueTarget = period === "month" ? baseTarget :
+    period === "quarter" ? baseTarget * 3 : baseTarget * 12;
 
   const data = {
     currentMonth: monthLabel,
+    period,
     revenue: { total: revenueTotal, prevMonth: revenuePrev, target: revenueTarget },
     cost: { total: costTotal, prevMonth: costPrev },
     grossProfit: { total: grossProfit, prevMonth: grossProfitPrev, margin },

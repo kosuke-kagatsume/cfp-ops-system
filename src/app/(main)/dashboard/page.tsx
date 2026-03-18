@@ -1,7 +1,6 @@
 "use client";
 
 import { Header } from "@/components/header";
-import { useToast } from "@/components/toast";
 import {
   TrendingUp,
   TrendingDown,
@@ -15,12 +14,16 @@ import {
   Loader2,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import useSWR from "swr";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
+type Period = "month" | "quarter" | "year";
+
 type DashboardData = {
   currentMonth: string;
+  period: Period;
   revenue: { total: number; prevMonth: number; target: number };
   cost: { total: number; prevMonth: number };
   grossProfit: { total: number; prevMonth: number; margin: number };
@@ -46,6 +49,18 @@ type DashboardData = {
   }>;
 };
 
+const periodLabels: Record<Period, string> = {
+  month: "月次",
+  quarter: "四半期",
+  year: "年次",
+};
+
+const comparisonLabels: Record<Period, string> = {
+  month: "前月比",
+  quarter: "前四半期比",
+  year: "前年比",
+};
+
 function formatJpy(n: number) {
   if (n >= 10000000) return `¥${(n / 10000000).toFixed(1)}千万`;
   if (n >= 10000) return `¥${Math.round(n / 10000).toLocaleString()}万`;
@@ -58,9 +73,22 @@ function changeRate(current: number, prev: number) {
   return { rate: rate.toFixed(1), isUp: rate >= 0 };
 }
 
+function formatTrendLabel(key: string, period: Period): string {
+  switch (period) {
+    case "month": {
+      const parts = key.split("-");
+      return `${parts[1]}月`;
+    }
+    case "quarter":
+      return key.split("-")[1] ?? key; // "Q1" etc.
+    case "year":
+      return `${key}年`;
+  }
+}
+
 export default function DashboardPage() {
-  const { showToast } = useToast();
-  const { data, isLoading } = useSWR<DashboardData>("/api/dashboard");
+  const [period, setPeriod] = useState<Period>("month");
+  const { data, isLoading } = useSWR<DashboardData>(`/api/dashboard?period=${period}`);
 
   if (isLoading || !data) {
     return (
@@ -76,6 +104,7 @@ export default function DashboardPage() {
 
   const d = data;
   const pendingApprovals = d.pendingApprovals;
+  const compLabel = comparisonLabels[period];
 
   const revenueChange = changeRate(d.revenue.total, d.revenue.prevMonth);
   const costChange = changeRate(d.cost.total, d.cost.prevMonth);
@@ -92,10 +121,10 @@ export default function DashboardPage() {
             <p className="text-xs text-text-tertiary">経営KPI概要</p>
           </div>
           <div className="flex items-center gap-2">
-            {["月次", "四半期", "年次"].map((period) => (
-              <button key={period} onClick={() => showToast(`${period}表示（開発中）`, "info")}
-                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${period === "月次" ? "bg-primary-100 text-primary-700 font-medium" : "text-text-secondary hover:bg-surface-tertiary"}`}>
-                {period}
+            {(["month", "quarter", "year"] as const).map((p) => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${period === p ? "bg-primary-100 text-primary-700 font-medium" : "text-text-secondary hover:bg-surface-tertiary"}`}>
+                {periodLabels[p]}
               </button>
             ))}
           </div>
@@ -111,7 +140,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-1 mt-1">
                   {revenueChange.isUp ? <TrendingUp className="w-3 h-3 text-emerald-500" /> : <TrendingDown className="w-3 h-3 text-red-500" />}
                   <span className={`text-xs font-medium ${revenueChange.isUp ? "text-emerald-600" : "text-red-600"}`}>{revenueChange.isUp ? "+" : ""}{revenueChange.rate}%</span>
-                  <span className="text-xs text-text-tertiary">前月比</span>
+                  <span className="text-xs text-text-tertiary">{compLabel}</span>
                 </div>
               </div>
               <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
@@ -192,7 +221,7 @@ export default function DashboardPage() {
                           <div className="flex-1 bg-blue-200 rounded-t" style={{ height: `${revenueH}%` }} title={`売上: ¥${m.revenue.toLocaleString()}`} />
                           <div className="flex-1 bg-orange-200 rounded-t" style={{ height: `${costH}%` }} title={`仕入: ¥${m.cost.toLocaleString()}`} />
                         </div>
-                        <span className="text-xs text-text-tertiary">{m.month.split("-")[1]}月</span>
+                        <span className="text-xs text-text-tertiary">{formatTrendLabel(m.month, period)}</span>
                       </div>
                     );
                   })}

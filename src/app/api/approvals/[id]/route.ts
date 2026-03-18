@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { notifyApprovalActioned } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -60,6 +61,21 @@ export async function PUT(
         },
       },
     });
+
+    // Notify the applicant
+    if (record.createdBy) {
+      try {
+        await notifyApprovalActioned({
+          id: record.id,
+          title: record.title,
+          requestNumber: record.requestNumber,
+          createdBy: record.createdBy,
+          action: body.action,
+        });
+      } catch (e) {
+        console.error("Failed to create notification:", e);
+      }
+    }
 
     return NextResponse.json(record);
   }

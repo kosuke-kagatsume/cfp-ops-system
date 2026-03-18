@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getNextNumber } from "@/lib/auto-number";
+import { notifyApprovalCreated } from "@/lib/notifications";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -80,6 +81,13 @@ export async function POST(request: NextRequest) {
       },
     },
   });
+
+  // Notify approvers
+  try {
+    await notifyApprovalCreated(record);
+  } catch (e) {
+    console.error("Failed to create notifications:", e);
+  }
 
   return NextResponse.json(record, { status: 201 });
 }

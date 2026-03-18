@@ -1,16 +1,16 @@
 import { prisma } from "@/lib/db";
+import { buildInvoicePDF } from "@/lib/pdf-builders/invoice";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { NextRequest, NextResponse } from "next/server";
 import React from "react";
 
-import { InvoicePDF } from "@/lib/pdf-templates/invoice";
 import { DeliveryNotePDF } from "@/lib/pdf-templates/delivery-note";
 import { PurchaseOrderPDF } from "@/lib/pdf-templates/purchase-order";
 import { QuotationPDF } from "@/lib/pdf-templates/quotation";
 import { AnalysisCertificatePDF } from "@/lib/pdf-templates/analysis-certificate";
 import { ShippingLabelPDF } from "@/lib/pdf-templates/shipping-label";
 
-import type { InvoiceData, DeliveryNoteData, PurchaseOrderData, QuotationData, CertificateData, ShippingData } from "@/lib/document-templates";
+import type { DeliveryNoteData, PurchaseOrderData, QuotationData, CertificateData, ShippingData } from "@/lib/document-templates";
 
 const VALID_TYPES = ["invoice", "delivery-note", "purchase-order", "quotation", "analysis-certificate", "shipping-label"] as const;
 type DocType = (typeof VALID_TYPES)[number];
@@ -71,56 +71,6 @@ async function buildPDF(
     case "shipping-label":
       return buildShippingLabelPDF(id);
   }
-}
-
-// --- Invoice ---
-async function buildInvoicePDF(id: string) {
-  const invoice = await prisma.invoice.findUnique({
-    where: { id },
-    include: {
-      customer: {
-        select: { name: true, address: true, prefecture: true, city: true },
-      },
-      revenues: {
-        select: {
-          revenueNumber: true,
-          amount: true,
-          product: { select: { name: { select: { name: true } } } },
-        },
-      },
-    },
-  });
-  if (!invoice) throw new NotFoundError();
-
-  const customerAddress = [invoice.customer.prefecture, invoice.customer.city, invoice.customer.address]
-    .filter(Boolean)
-    .join("");
-
-  const data: InvoiceData = {
-    invoiceNumber: invoice.invoiceNumber,
-    billingDate: invoice.billingDate,
-    dueDate: invoice.dueDate,
-    customerName: invoice.customer.name,
-    customerAddress: customerAddress || undefined,
-    prevBalance: invoice.prevBalance,
-    paymentReceived: invoice.paymentReceived,
-    carryover: invoice.carryover,
-    subtotal: invoice.subtotal,
-    taxAmount: invoice.taxAmount,
-    total: invoice.total,
-    currency: invoice.currency,
-    note: invoice.note,
-    revenues: invoice.revenues.map((r) => ({
-      revenueNumber: r.revenueNumber,
-      productName: r.product?.name?.name ?? undefined,
-      amount: r.amount,
-    })),
-  };
-
-  return {
-    element: React.createElement(InvoicePDF, { data }),
-    filename: `請求書_${invoice.invoiceNumber}.pdf`,
-  };
 }
 
 // --- Delivery Note ---

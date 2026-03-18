@@ -5,7 +5,7 @@ import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { Pagination } from "@/components/pagination";
 import { useToast } from "@/components/toast";
 import { usePaginated } from "@/lib/use-paginated";
-import { Plus, Download, Search, Eye, Pencil, Trash2, FileText, Loader2, Printer } from "lucide-react";
+import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2, Printer, FileText } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -57,6 +57,8 @@ export default function InvoicesPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editTarget, setEditTarget] = useState<Invoice | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchLoading, setBatchLoading] = useState(false);
   const { showToast } = useToast();
 
   const params = new URLSearchParams();
@@ -97,6 +99,48 @@ export default function InvoicesPage() {
     taxAmount: "",
     note: "",
   });
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === invoices.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(invoices.map((inv) => inv.id)));
+    }
+  };
+
+  const handleBatchPDF = async () => {
+    if (selectedIds.size === 0) return;
+    setBatchLoading(true);
+    try {
+      const res = await fetch("/api/pdf/invoice/batch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "請求書一括.zip";
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast("一括PDFをダウンロードしました", "success");
+    } catch {
+      showToast("一括PDFの生成に失敗しました", "error");
+    } finally {
+      setBatchLoading(false);
+    }
+  };
 
   const handleCreate = async () => {
     try {
@@ -220,6 +264,16 @@ export default function InvoicesPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
+            {selectedIds.size > 0 && (
+              <button
+                onClick={handleBatchPDF}
+                disabled={batchLoading}
+                className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {batchLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                一括PDF（{selectedIds.size}件）
+              </button>
+            )}
             <button onClick={() => {
               const res = fetch(`/api/export/excel?type=invoices`);
               res.then(r => r.blob()).then(blob => {
@@ -251,6 +305,14 @@ export default function InvoicesPage() {
               <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
+                    <th className="w-10 px-3 py-3">
+                      <input
+                        type="checkbox"
+                        checked={invoices.length > 0 && selectedIds.size === invoices.length}
+                        onChange={toggleSelectAll}
+                        className="w-4 h-4 rounded border-border text-primary-600 focus:ring-primary-500"
+                      />
+                    </th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">請求番号</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">顧客</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">請求日</th>
@@ -267,6 +329,14 @@ export default function InvoicesPage() {
                 <tbody>
                   {invoices.map((inv) => (
                     <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(inv.id)}
+                          onChange={() => toggleSelect(inv.id)}
+                          className="w-4 h-4 rounded border-border text-primary-600 focus:ring-primary-500"
+                        />
+                      </td>
                       <td className="px-4 py-3 text-sm font-mono text-primary-600">{inv.invoiceNumber}</td>
                       <td className="px-4 py-3 text-sm text-text">{inv.customer.name}</td>
                       <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(inv.billingDate)}</td>
@@ -302,7 +372,7 @@ export default function InvoicesPage() {
                   ))}
                   {invoices.length === 0 && (
                     <tr>
-                      <td colSpan={11} className="px-4 py-12 text-center text-sm text-text-tertiary">
+                      <td colSpan={12} className="px-4 py-12 text-center text-sm text-text-tertiary">
                         請求データがありません
                       </td>
                     </tr>

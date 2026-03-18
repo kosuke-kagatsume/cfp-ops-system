@@ -1,10 +1,13 @@
 "use client";
 
-import { Bell, Menu, Search } from "lucide-react";
+import { Menu, Search } from "lucide-react";
+import { useState } from "react";
 import { useSidebar } from "./sidebar-context";
+import { NotificationBell, NotificationPanel } from "./notification-panel";
 
 export function Header({ title }: { title: string }) {
   const { toggle } = useSidebar();
+  const [showNotifications, setShowNotifications] = useState(false);
 
   return (
     <header className="h-16 bg-surface border-b border-border flex items-center justify-between px-4 md:px-6">
@@ -26,10 +29,17 @@ export function Header({ title }: { title: string }) {
             className="pl-10 pr-4 py-2 w-64 text-sm border border-border rounded-lg bg-surface-secondary focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
           />
         </div>
-        <button className="relative p-2 text-text-secondary hover:bg-surface-tertiary rounded-lg transition-colors">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-danger rounded-full" />
-        </button>
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2 text-text-secondary hover:bg-surface-tertiary rounded-lg transition-colors"
+          >
+            <NotificationBell />
+          </button>
+          {showNotifications && (
+            <NotificationPanel onClose={() => setShowNotifications(false)} />
+          )}
+        </div>
       </div>
     </header>
   );
