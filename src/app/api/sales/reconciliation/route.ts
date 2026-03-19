@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { autoReconcile, manualReconcile } from "@/lib/reconciliation";
 import { validateBody } from "@/lib/validate";
 import { reconciliationAction } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -38,7 +39,7 @@ export async function GET() {
     })
   );
 
-  return NextResponse.json(paymentWithCandidates);
+  return NextResponse.json(paymentWithCandidates, { headers: cacheHeaders("TRANSACTION") });
 }
 
 /**

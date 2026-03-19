@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { priceCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -37,9 +38,9 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: prices, total, page, limit }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+    return NextResponse.json({ items: prices, total, page, limit }, { headers: cacheHeaders("MASTER") });
   }
-  return NextResponse.json(prices, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  return NextResponse.json(prices, { headers: cacheHeaders("MASTER") });
 }
 
 export async function POST(request: NextRequest) {

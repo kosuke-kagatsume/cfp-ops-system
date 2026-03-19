@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { partnerCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/masters/partners - 取引先一覧
@@ -44,9 +45,9 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: partners, total, page, limit }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+    return NextResponse.json({ items: partners, total, page, limit }, { headers: cacheHeaders("MASTER") });
   }
-  return NextResponse.json(partners, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  return NextResponse.json(partners, { headers: cacheHeaders("MASTER") });
 }
 
 // POST /api/masters/partners - 取引先新規登録

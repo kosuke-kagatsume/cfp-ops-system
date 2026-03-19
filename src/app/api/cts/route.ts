@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { ctsCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -38,9 +39,9 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: transactions, total, page, limit });
+    return NextResponse.json({ items: transactions, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
-  return NextResponse.json(transactions);
+  return NextResponse.json(transactions, { headers: cacheHeaders("TRANSACTION") });
 }
 
 export async function POST(request: NextRequest) {

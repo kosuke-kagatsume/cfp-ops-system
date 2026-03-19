@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 type Period = "month" | "quarter" | "year";
@@ -283,5 +284,5 @@ export async function GET(request: NextRequest) {
     })),
   };
 
-  return NextResponse.json(data);
+  return NextResponse.json(data, { headers: cacheHeaders("REALTIME") });
 }

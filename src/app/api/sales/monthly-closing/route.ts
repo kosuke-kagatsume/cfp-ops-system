@@ -6,6 +6,7 @@ import {
 } from "@/lib/monthly-closing";
 import { validateBody } from "@/lib/validate";
 import { monthlyClosingAction } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     }
 
     const result = await preCheckMonthlyClosing(year, month);
-    return NextResponse.json(result);
+    return NextResponse.json(result, { headers: cacheHeaders("TRANSACTION") });
   }
 
   // 一覧を返す（直近12ヶ月分を生成して返す）
@@ -66,7 +67,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(months);
+  return NextResponse.json(months, { headers: cacheHeaders("TRANSACTION") });
 }
 
 /**

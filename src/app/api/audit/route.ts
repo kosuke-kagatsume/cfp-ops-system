@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: logs, total, page, limit }, { headers: { "Cache-Control": "private, no-cache" } });
+    return NextResponse.json({ items: logs, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
-  return NextResponse.json(logs, { headers: { "Cache-Control": "private, no-cache" } });
+  return NextResponse.json(logs, { headers: cacheHeaders("TRANSACTION") });
 }

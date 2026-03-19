@@ -3,6 +3,7 @@ import { getNextNumber } from "@/lib/auto-number";
 import { generateRevenueJournal } from "@/lib/journal";
 import { validateBody } from "@/lib/validate";
 import { revenueCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -43,9 +44,9 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: revenues, total, page, limit }, { headers: { "Cache-Control": "private, no-cache" } });
+    return NextResponse.json({ items: revenues, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
-  return NextResponse.json(revenues, { headers: { "Cache-Control": "private, no-cache" } });
+  return NextResponse.json(revenues, { headers: cacheHeaders("TRANSACTION") });
 }
 
 export async function POST(request: NextRequest) {

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { simpleCodeName } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -19,9 +20,9 @@ export async function GET(request: NextRequest) {
     prisma.productGrade.count(),
   ]);
   if (pageParam) {
-    return NextResponse.json({ items: grades, total, page, limit }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+    return NextResponse.json({ items: grades, total, page, limit }, { headers: cacheHeaders("MASTER") });
   }
-  return NextResponse.json(grades, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  return NextResponse.json(grades, { headers: cacheHeaders("MASTER") });
 }
 
 export async function POST(request: NextRequest) {

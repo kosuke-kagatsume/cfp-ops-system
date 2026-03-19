@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { getNextNumber } from "@/lib/auto-number";
 import { validateBody } from "@/lib/validate";
 import { traceCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(data);
+  return NextResponse.json(data, { headers: cacheHeaders("TRANSACTION") });
 }
 
 export async function POST(request: NextRequest) {

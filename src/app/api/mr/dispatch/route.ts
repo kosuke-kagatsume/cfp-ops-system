@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { dispatchCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -31,9 +32,9 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: dispatches, total, page, limit });
+    return NextResponse.json({ items: dispatches, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
-  return NextResponse.json(dispatches);
+  return NextResponse.json(dispatches, { headers: cacheHeaders("TRANSACTION") });
 }
 
 export async function POST(request: NextRequest) {

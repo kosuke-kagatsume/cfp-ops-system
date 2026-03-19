@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { assetCreate, assetUpdate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     orderBy: { assetNumber: "asc" },
   });
 
-  return NextResponse.json(assets);
+  return NextResponse.json(assets, { headers: cacheHeaders("TRANSACTION") });
 }
 
 /**

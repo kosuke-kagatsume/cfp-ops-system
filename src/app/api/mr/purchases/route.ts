@@ -4,6 +4,7 @@ import { updateMovingAverage } from "@/lib/inventory";
 import { generatePurchaseJournal } from "@/lib/journal";
 import { validateBody } from "@/lib/validate";
 import { purchaseCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -46,9 +47,9 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: purchases, total, page, limit }, { headers: { "Cache-Control": "private, no-cache" } });
+    return NextResponse.json({ items: purchases, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
-  return NextResponse.json(purchases, { headers: { "Cache-Control": "private, no-cache" } });
+  return NextResponse.json(purchases, { headers: cacheHeaders("TRANSACTION") });
 }
 
 export async function POST(request: NextRequest) {

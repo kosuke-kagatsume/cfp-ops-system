@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { productCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/masters/products - 品目一覧（4軸結合）
@@ -42,9 +43,9 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: products, total, page, limit }, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+    return NextResponse.json({ items: products, total, page, limit }, { headers: cacheHeaders("MASTER") });
   }
-  return NextResponse.json(products, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" } });
+  return NextResponse.json(products, { headers: cacheHeaders("MASTER") });
 }
 
 // POST /api/masters/products - 品目新規登録

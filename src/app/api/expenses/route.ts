@@ -4,6 +4,7 @@ import { generateExpenseJournal } from "@/lib/journal";
 import { createApprovalFlow } from "@/lib/approval";
 import { validateBody } from "@/lib/validate";
 import { expenseCreate } from "@/lib/schemas";
+import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -43,9 +44,9 @@ export async function GET(request: NextRequest) {
   ]);
 
   if (pageParam) {
-    return NextResponse.json({ items: expenses, total, page, limit });
+    return NextResponse.json({ items: expenses, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
-  return NextResponse.json(expenses);
+  return NextResponse.json(expenses, { headers: cacheHeaders("TRANSACTION") });
 }
 
 export async function POST(request: NextRequest) {
