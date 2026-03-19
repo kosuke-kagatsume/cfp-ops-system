@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { priceUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/masters/prices/[id]
@@ -31,7 +33,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const result = await validateBody(request, priceUpdate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   const price = await prisma.customerPrice.update({
     where: { id },

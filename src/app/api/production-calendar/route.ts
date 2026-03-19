@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { productionCalendarCreate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -38,7 +40,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, productionCalendarCreate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   // Support bulk creation for a month
   if (Array.isArray(body)) {

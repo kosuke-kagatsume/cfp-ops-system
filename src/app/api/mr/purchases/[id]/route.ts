@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { updateMovingAverage } from "@/lib/inventory";
+import { validateBody } from "@/lib/validate";
+import { purchaseUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -25,7 +27,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const result = await validateBody(request, purchaseUpdate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   const data: Record<string, unknown> = {};
   if (body.supplierId !== undefined) data.supplierId = body.supplierId;

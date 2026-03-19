@@ -4,6 +4,8 @@ import {
   executeMonthlyClosing,
   reopenMonthlyClosing,
 } from "@/lib/monthly-closing";
+import { validateBody } from "@/lib/validate";
+import { monthlyClosingAction } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -73,7 +75,9 @@ export async function GET(request: NextRequest) {
  * body.action = "reopen" + body.year, body.month → 締め解除
  */
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, monthlyClosingAction);
+  if ("error" in result) return result.error;
+  const body = result.data;
   const { year, month, action } = body;
 
   if (!year || !month || !action) {

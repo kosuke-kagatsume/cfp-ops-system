@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { productCreate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/masters/products - 品目一覧（4軸結合）
@@ -47,7 +49,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/masters/products - 品目新規登録
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, productCreate);
+  if ("error" in result) return result.error;
+  const body = result.data;
 
   // 4軸からコード自動生成
   const [nameRec, shapeRec, colorRec, gradeRec] = await Promise.all([

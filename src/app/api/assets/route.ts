@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { assetCreate, assetUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -35,7 +37,9 @@ export async function GET(request: NextRequest) {
  * POST: 固定資産登録
  */
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, assetCreate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   // 自動採番
   const last = await prisma.asset.findFirst({
@@ -70,15 +74,26 @@ export async function POST(request: NextRequest) {
  * PUT: 固定資産更新
  */
 export async function PUT(request: NextRequest) {
-  const body = await request.json();
-  const { id, ...data } = body;
+  const raw = await request.json();
+  const { id, ...rest } = raw;
+  const parsed = assetUpdate.safeParse(rest);
+  if (!parsed.success) {
+    const messages = (parsed.error.issues as any[]).map(
+      (e) => `${e.path.join(".")}: ${e.message}`
+    );
+    return NextResponse.json(
+      { error: "バリデーションエラー", details: messages },
+      { status: 400 }
+    );
+  }
+  const data = parsed.data as any;
 
   if (!id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
   if (data.acquisitionDate) {
-    data.acquisitionDate = new Date(data.acquisitionDate);
+    data.acquisitionDate = new Date(data.acquisitionDate as string);
   }
 
   const asset = await prisma.asset.update({

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getNextNumber } from "@/lib/auto-number";
+import { validateBody } from "@/lib/validate";
+import { crMaterialCreate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -47,7 +49,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, crMaterialCreate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   // 採番
   const materialNumber = await getNextNumber("CRM");

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { generateZenginFB } from "@/lib/zengin";
+import { validateBody } from "@/lib/validate";
+import { bankTransferCreate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -86,14 +88,13 @@ export async function GET() {
  * body.transferDate: string - 振込指定日（MMDD）
  */
 export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const ids: string[] = body.ids ?? [];
-  const transferDate: string = body.transferDate ?? "";
+  const result = await validateBody(request, bankTransferCreate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
+  const ids: string[] = body.ids;
+  const transferDate: string = body.transferDate;
 
-  if (ids.length === 0) {
-    return NextResponse.json({ error: "ids is required" }, { status: 400 });
-  }
-  if (!transferDate || transferDate.length !== 4) {
+  if (transferDate.length !== 4) {
     return NextResponse.json(
       { error: "transferDate (MMDD format) is required" },
       { status: 400 }

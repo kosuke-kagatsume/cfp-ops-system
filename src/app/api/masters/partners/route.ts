@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { partnerCreate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/masters/partners - 取引先一覧
@@ -49,7 +51,9 @@ export async function GET(request: NextRequest) {
 
 // POST /api/masters/partners - 取引先新規登録
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, partnerCreate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   const partner = await prisma.businessPartner.create({
     data: {

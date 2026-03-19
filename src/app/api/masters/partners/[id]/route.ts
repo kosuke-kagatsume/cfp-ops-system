@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { partnerUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 // GET /api/masters/partners/[id]
@@ -25,7 +27,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const result = await validateBody(request, partnerUpdate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   const partner = await prisma.businessPartner.update({
     where: { id },

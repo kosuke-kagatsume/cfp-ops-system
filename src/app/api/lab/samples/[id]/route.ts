@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { labSampleUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -24,7 +26,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const result = await validateBody(request, labSampleUpdate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   const data: Record<string, unknown> = {};
   if (body.sampleName !== undefined) data.sampleName = body.sampleName;

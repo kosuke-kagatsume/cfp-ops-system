@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { notifyApprovalActioned } from "@/lib/notifications";
+import { validateBody } from "@/lib/validate";
+import { approvalAction, approvalUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -27,10 +29,21 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const raw = await request.json();
 
   // Special: approve/reject actions
-  if (body.action === "approve" || body.action === "reject") {
+  if (raw.action === "approve" || raw.action === "reject") {
+    const actionResult = approvalAction.safeParse(raw);
+    if (!actionResult.success) {
+      const messages = (actionResult.error.issues as any[]).map(
+        (e) => `${e.path.join(".")}: ${e.message}`
+      );
+      return NextResponse.json(
+        { error: "バリデーションエラー", details: messages },
+        { status: 400 }
+      );
+    }
+    const body = actionResult.data as any;
     const newStatus = body.action === "approve" ? "APPROVED" : "REJECTED";
 
     // Update the approval request status
@@ -81,6 +94,18 @@ export async function PUT(
   }
 
   // Regular update
+  const updateResult = approvalUpdate.safeParse(raw);
+  if (!updateResult.success) {
+    const messages = (updateResult.error.issues as any[]).map(
+      (e) => `${e.path.join(".")}: ${e.message}`
+    );
+    return NextResponse.json(
+      { error: "バリデーションエラー", details: messages },
+      { status: 400 }
+    );
+  }
+  const body = updateResult.data as any;
+
   const data: Record<string, unknown> = {};
   if (body.title !== undefined) data.title = body.title;
   if (body.description !== undefined) data.description = body.description || null;

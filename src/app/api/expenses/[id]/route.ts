@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { expenseUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -19,7 +21,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const result = await validateBody(request, expenseUpdate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   // Handle nested items: delete existing + recreate
   const { items, ...rest } = body;

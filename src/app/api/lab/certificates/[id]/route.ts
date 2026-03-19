@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { certificateUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -26,7 +28,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await request.json();
+  const result = await validateBody(request, certificateUpdate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   const data: Record<string, unknown> = {};
   if (body.sampleId !== undefined) data.sampleId = body.sampleId;

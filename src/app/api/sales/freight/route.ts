@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { freightCreate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -46,7 +48,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, freightCreate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   const dispatch = await prisma.dispatch.create({
     data: {

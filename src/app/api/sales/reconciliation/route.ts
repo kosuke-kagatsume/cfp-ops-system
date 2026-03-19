@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/db";
 import { autoReconcile, manualReconcile } from "@/lib/reconciliation";
+import { validateBody } from "@/lib/validate";
+import { reconciliationAction } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -45,7 +47,9 @@ export async function GET() {
  * body.action = "manual" + body.paymentId, body.invoiceId → 手動消込
  */
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, reconciliationAction);
+  if ("error" in result) return result.error;
+  const body = result.data;
 
   if (body.action === "auto") {
     const result = await autoReconcile();

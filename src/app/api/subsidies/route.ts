@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { validateBody } from "@/lib/validate";
+import { subsidyCreate, subsidyUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -34,7 +36,9 @@ export async function GET(request: NextRequest) {
  * POST: 補助金書類登録
  */
 export async function POST(request: NextRequest) {
-  const body = await request.json();
+  const result = await validateBody(request, subsidyCreate);
+  if ("error" in result) return result.error;
+  const body = result.data as any;
 
   const doc = await prisma.subsidyDocument.create({
     data: {
@@ -57,14 +61,26 @@ export async function POST(request: NextRequest) {
  * PUT: 補助金書類更新
  */
 export async function PUT(request: NextRequest) {
-  const body = await request.json();
+  const raw = await request.json();
 
-  if (!body.id) {
+  if (!raw.id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
   }
 
+  const parsed = subsidyUpdate.safeParse(raw);
+  if (!parsed.success) {
+    const messages = (parsed.error.issues as any[]).map(
+      (e) => `${e.path.join(".")}: ${e.message}`
+    );
+    return NextResponse.json(
+      { error: "バリデーションエラー", details: messages },
+      { status: 400 }
+    );
+  }
+  const body = parsed.data as any;
+
   const doc = await prisma.subsidyDocument.update({
-    where: { id: body.id },
+    where: { id: raw.id },
     data: {
       subsidyName: body.subsidyName,
       documentType: body.documentType,
