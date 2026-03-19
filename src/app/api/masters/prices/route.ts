@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
     include: {
       partner: { select: { id: true, code: true, name: true } },
       product: {
-        select: { id: true, code: true },
         include: { name: true, shape: true, color: true, grade: true },
       },
     },
