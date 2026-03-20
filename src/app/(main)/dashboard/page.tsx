@@ -21,6 +21,16 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 type Period = "month" | "quarter" | "year";
 
+type PLData = {
+  items: Array<{ division: string; plantName: string; revenue: number; cost: number; grossProfit: number; margin: number }>;
+  summary: { revenue: number; cost: number; grossProfit: number; margin: number };
+};
+
+type AgingData = {
+  items: Array<{ customerName?: string; supplierName?: string; current: number; days1_30: number; days31_60: number; days61_90: number; over90: number; total: number }>;
+  totals: { current: number; days1_30: number; days31_60: number; days61_90: number; over90: number; total: number };
+};
+
 type DashboardData = {
   currentMonth: string;
   period: Period;
@@ -89,6 +99,9 @@ function formatTrendLabel(key: string, period: Period): string {
 export default function DashboardPage() {
   const [period, setPeriod] = useState<Period>("month");
   const { data, isLoading } = useSWR<DashboardData>(`/api/dashboard?period=${period}`);
+  const { data: plData } = useSWR<PLData>(`/api/dashboard/pl?period=${period}`);
+  const { data: arData } = useSWR<AgingData>(`/api/dashboard/aging-receivable`);
+  const { data: apData } = useSWR<AgingData>(`/api/dashboard/aging-payable`);
 
   if (isLoading || !data) {
     return (
@@ -329,6 +342,97 @@ export default function DashboardPage() {
               <p className="text-xs text-text-tertiary text-center py-4">油化実績データなし</p>
             )}
           </div>
+        </div>
+
+        {/* 部門別P/L */}
+        {plData && plData.items.length > 0 && (
+          <div className="bg-surface rounded-xl border border-border p-5">
+            <h3 className="text-sm font-medium text-text mb-4">部門別 損益サマリー</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-text-tertiary border-b border-border">
+                    <th className="text-left pb-2 pr-4">部門/工場</th>
+                    <th className="text-right pb-2 px-2">売上</th>
+                    <th className="text-right pb-2 px-2">原価</th>
+                    <th className="text-right pb-2 px-2">粗利</th>
+                    <th className="text-right pb-2 pl-2">粗利率</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {plData.items.map((row, i) => (
+                    <tr key={i} className="border-b border-border/50">
+                      <td className="py-2 pr-4 text-text">{row.division} / {row.plantName}</td>
+                      <td className="py-2 px-2 text-right text-text">{formatJpy(row.revenue)}</td>
+                      <td className="py-2 px-2 text-right text-text">{formatJpy(row.cost)}</td>
+                      <td className={`py-2 px-2 text-right font-medium ${row.grossProfit >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatJpy(row.grossProfit)}</td>
+                      <td className="py-2 pl-2 text-right text-text-secondary">{row.margin}%</td>
+                    </tr>
+                  ))}
+                  <tr className="font-medium">
+                    <td className="py-2 pr-4 text-text">合計</td>
+                    <td className="py-2 px-2 text-right text-text">{formatJpy(plData.summary.revenue)}</td>
+                    <td className="py-2 px-2 text-right text-text">{formatJpy(plData.summary.cost)}</td>
+                    <td className={`py-2 px-2 text-right ${plData.summary.grossProfit >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatJpy(plData.summary.grossProfit)}</td>
+                    <td className="py-2 pl-2 text-right text-text-secondary">{plData.summary.margin}%</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* エイジングレポート */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {arData && arData.totals.total > 0 && (
+            <div className="bg-surface rounded-xl border border-border p-5">
+              <h3 className="text-sm font-medium text-text mb-4">売掛エイジング</h3>
+              <div className="flex items-end gap-2 h-24 mb-3">
+                {[
+                  { label: "当月", value: arData.totals.current, color: "bg-emerald-200" },
+                  { label: "1-30日", value: arData.totals.days1_30, color: "bg-yellow-200" },
+                  { label: "31-60日", value: arData.totals.days31_60, color: "bg-orange-200" },
+                  { label: "61-90日", value: arData.totals.days61_90, color: "bg-red-200" },
+                  { label: "90日超", value: arData.totals.over90, color: "bg-red-400" },
+                ].map((bucket) => {
+                  const maxVal = Math.max(arData.totals.current, arData.totals.days1_30, arData.totals.days31_60, arData.totals.days61_90, arData.totals.over90, 1);
+                  return (
+                    <div key={bucket.label} className="flex-1 text-center">
+                      <div className={`${bucket.color} rounded-t mx-auto w-full max-w-[40px]`} style={{ height: `${(bucket.value / maxVal) * 80}%`, minHeight: bucket.value > 0 ? 4 : 0 }} />
+                      <p className="text-xs text-text-tertiary mt-1">{bucket.label}</p>
+                      <p className="text-xs font-medium text-text">{formatJpy(bucket.value)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-text-tertiary text-right">合計: {formatJpy(arData.totals.total)}</p>
+            </div>
+          )}
+
+          {apData && apData.totals.total > 0 && (
+            <div className="bg-surface rounded-xl border border-border p-5">
+              <h3 className="text-sm font-medium text-text mb-4">買掛エイジング</h3>
+              <div className="flex items-end gap-2 h-24 mb-3">
+                {[
+                  { label: "当月", value: apData.totals.current, color: "bg-emerald-200" },
+                  { label: "1-30日", value: apData.totals.days1_30, color: "bg-yellow-200" },
+                  { label: "31-60日", value: apData.totals.days31_60, color: "bg-orange-200" },
+                  { label: "61-90日", value: apData.totals.days61_90, color: "bg-red-200" },
+                  { label: "90日超", value: apData.totals.over90, color: "bg-red-400" },
+                ].map((bucket) => {
+                  const maxVal = Math.max(apData.totals.current, apData.totals.days1_30, apData.totals.days31_60, apData.totals.days61_90, apData.totals.over90, 1);
+                  return (
+                    <div key={bucket.label} className="flex-1 text-center">
+                      <div className={`${bucket.color} rounded-t mx-auto w-full max-w-[40px]`} style={{ height: `${(bucket.value / maxVal) * 80}%`, minHeight: bucket.value > 0 ? 4 : 0 }} />
+                      <p className="text-xs text-text-tertiary mt-1">{bucket.label}</p>
+                      <p className="text-xs font-medium text-text">{formatJpy(bucket.value)}</p>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-text-tertiary text-right">合計: {formatJpy(apData.totals.total)}</p>
+            </div>
+          )}
         </div>
 
         {/* タンク稼働率 */}

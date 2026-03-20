@@ -2,12 +2,14 @@ import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { partnerUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
 // GET /api/masters/partners/[id]
-export async function GET(
+export const GET = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const partner = await prisma.businessPartner.findUnique({
     where: { id },
@@ -19,13 +21,13 @@ export async function GET(
   }
 
   return NextResponse.json(partner);
-}
+});
 
 // PUT /api/masters/partners/[id]
-export async function PUT(
+export const PUT = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const result = await validateBody(request, partnerUpdate);
   if ("error" in result) return result.error;
@@ -62,14 +64,16 @@ export async function PUT(
   });
 
   return NextResponse.json(partner);
-}
+});
 
 // DELETE /api/masters/partners/[id] (ソフトデリート)
-export async function DELETE(
+export const DELETE = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
+  await createAuditLog({ action: "DELETE", tableName: "BusinessPartner", recordId: id });
   await prisma.businessPartner.delete({ where: { id } });
+
   return NextResponse.json({ success: true });
-}
+});

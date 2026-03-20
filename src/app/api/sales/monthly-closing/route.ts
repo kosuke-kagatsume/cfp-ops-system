@@ -8,12 +8,13 @@ import { validateBody } from "@/lib/validate";
 import { monthlyClosingAction } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 /**
  * GET: 月次締め一覧 or プレチェック
  * ?check=true&year=2026&month=3 → プレチェック
  */
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const check = searchParams.get("check");
 
@@ -68,14 +69,14 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json(months, { headers: cacheHeaders("TRANSACTION") });
-}
+});
 
 /**
  * POST: 月次締め実行 or 締め解除
  * body.action = "close" + body.year, body.month → 締め実行
  * body.action = "reopen" + body.year, body.month → 締め解除
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, monthlyClosingAction);
   if ("error" in result) return result.error;
   const body = result.data;
@@ -102,4 +103,4 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-}
+});

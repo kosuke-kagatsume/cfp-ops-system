@@ -2,6 +2,7 @@
 // 領収書OCR - Claude Vision API
 // 領収書・請求書画像からメタデータを抽出する
 // =============================================================================
+import * as Sentry from "@sentry/nextjs";
 
 type OCRResult = {
   transactionDate: string | null;  // 日付 (YYYY-MM-DD)
@@ -78,7 +79,7 @@ JSONのみを返してください。`,
   });
 
   if (!response.ok) {
-    console.error("OCR API error:", response.status);
+    Sentry.captureException(new Error(`OCR API error: ${response.status}`));
     return {
       transactionDate: null,
       amount: null,

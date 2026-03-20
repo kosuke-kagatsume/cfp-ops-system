@@ -1,12 +1,21 @@
 import { prisma } from "@/lib/db";
 import { ACCOUNT_NAMES } from "@/lib/journal";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+
+/** CSVフィールドのエスケープ */
+function csvEscape(val: string): string {
+  if (val.includes('"') || val.includes(",") || val.includes("\n")) {
+    return `"${val.replace(/"/g, '""')}"`;
+  }
+  return `"${val}"`;
+}
 
 /**
  * 弥生会計仕訳日記帳インポート形式のCSV出力
  * GET /api/sales/journal-entries/export?from=2026-01-01&to=2026-03-31&format=yayoi
  */
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const from = searchParams.get("from");
   const to = searchParams.get("to");
@@ -95,19 +104,19 @@ export async function GET(request: NextRequest) {
       String(index + 1),                        // 伝票No.
       "",                                       // 決算
       dateStr,                                  // 取引日付
-      `"${debitName}"`,                         // 借方勘定科目
+      csvEscape(debitName),                       // 借方勘定科目
       "",                                       // 借方補助科目
       "",                                       // 借方部門
       '"対象外"',                                // 借方税区分
       String(Math.round(entry.debitAmount)),     // 借方金額
       "0",                                      // 借方税金額
-      `"${creditName}"`,                        // 貸方勘定科目
+      csvEscape(creditName),                    // 貸方勘定科目
       "",                                       // 貸方補助科目
       "",                                       // 貸方部門
       '"対象外"',                                // 貸方税区分
       String(Math.round(entry.creditAmount)),    // 貸方金額
       "0",                                      // 貸方税金額
-      `"${entry.description ?? ""}"`,           // 摘要
+      csvEscape(entry.description ?? ""),        // 摘要
       "",                                       // 番号
       "",                                       // 期日
       "0",                                      // タイプ
@@ -148,4 +157,4 @@ export async function GET(request: NextRequest) {
       "Content-Disposition": `attachment; filename="yayoi_journal_${fromStr}_${toStr}.csv"`,
     },
   });
-}
+});

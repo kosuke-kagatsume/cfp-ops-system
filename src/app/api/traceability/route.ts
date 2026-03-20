@@ -4,8 +4,10 @@ import { validateBody } from "@/lib/validate";
 import { traceCreate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
 
@@ -25,9 +27,9 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(data, { headers: cacheHeaders("TRANSACTION") });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, traceCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -57,5 +59,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "Traceability", recordId: record.id, newData: record });
+
   return NextResponse.json(record, { status: 201 });
-}
+});

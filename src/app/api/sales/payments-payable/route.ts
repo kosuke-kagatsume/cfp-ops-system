@@ -4,8 +4,11 @@ import { validateBody } from "@/lib/validate";
 import { paymentPayableCreate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
+import { createAndLinkApproval, linkApprovalToRecord } from "@/lib/approval-guard";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const pageParam = searchParams.get("page");
@@ -39,9 +42,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: payments, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
   return NextResponse.json(payments, { headers: cacheHeaders("TRANSACTION") });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, paymentPayableCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -63,5 +66,20 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  try {
+    const approvalId = await createAndLinkApproval({
+      recordId: payment.id,
+      tableName: "PaymentPayable",
+      category: "PAYMENT",
+      title: `支払 ${paymentNumber}`,
+      description: `${payment.supplier?.name}: ¥${body.amount.toLocaleString()}`,
+      amount: body.amount,
+      requesterId: body.createdBy,
+    });
+    await linkApprovalToRecord("PaymentPayable", payment.id, approvalId);
+  } catch {}
+
+  await createAuditLog({ action: "CREATE", tableName: "PaymentPayable", recordId: payment.id, newData: payment });
+
   return NextResponse.json(payment, { status: 201 });
-}
+});

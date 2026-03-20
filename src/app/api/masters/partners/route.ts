@@ -3,9 +3,11 @@ import { validateBody } from "@/lib/validate";
 import { partnerCreate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
 // GET /api/masters/partners - 取引先一覧
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const type = searchParams.get("type"); // customer, supplier, carrier
@@ -48,10 +50,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: partners, total, page, limit }, { headers: cacheHeaders("MASTER") });
   }
   return NextResponse.json(partners, { headers: cacheHeaders("MASTER") });
-}
+});
 
 // POST /api/masters/partners - 取引先新規登録
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, partnerCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -86,5 +88,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "BusinessPartner", recordId: partner.id, newData: partner });
+
   return NextResponse.json(partner, { status: 201 });
-}
+});

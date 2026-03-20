@@ -5,8 +5,11 @@ import { validateBody } from "@/lib/validate";
 import { invoiceCreate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
+import { createAndLinkApproval, linkApprovalToRecord } from "@/lib/approval-guard";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status");
@@ -46,9 +49,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: invoices, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
   return NextResponse.json(invoices, { headers: cacheHeaders("TRANSACTION") });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, invoiceCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -85,5 +88,23 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  // 承認フロー作成
+  try {
+    const approvalId = await createAndLinkApproval({
+      recordId: invoice.id,
+      tableName: "Invoice",
+      category: "INVOICE",
+      title: `請求書 ${invoiceNumber}`,
+      description: `${invoice.customer?.name}: ¥${total.toLocaleString()}`,
+      amount: total,
+      requesterId: body.createdBy,
+    });
+    await linkApprovalToRecord("Invoice", invoice.id, approvalId);
+  } catch {
+    // 承認フロー作成失敗は無視
+  }
+
+  await createAuditLog({ action: "CREATE", tableName: "Invoice", recordId: invoice.id, newData: invoice });
+
   return NextResponse.json(invoice, { status: 201 });
-}
+});

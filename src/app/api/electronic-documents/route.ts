@@ -2,6 +2,8 @@ import { prisma } from "@/lib/db";
 import { uploadFile } from "@/lib/file-storage";
 import { extractReceiptData } from "@/lib/ocr";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
 /**
  * GET: 電子帳簿保存データ一覧 + 検索3要件対応
@@ -9,7 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
  * ?amountFrom=1000&amountTo=50000 → 金額範囲
  * ?partner=xxx → 取引先名
  */
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const dateFrom = searchParams.get("dateFrom");
   const dateTo = searchParams.get("dateTo");
@@ -61,14 +63,14 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(documents);
-}
+});
 
 /**
  * POST: 電子帳簿保存 + OCR
  * multipart/form-data: file, transactionDate, amount, partnerName, documentType
  * fileがある場合はOCRを実行して自動入力
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const contentType = request.headers.get("content-type") ?? "";
 
   if (contentType.includes("multipart/form-data")) {
@@ -127,14 +129,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // 監査ログ記録
-    await prisma.auditLog.create({
-      data: {
-        tableName: "ElectronicDocument",
-        recordId: doc.id,
-        action: "CREATE",
-        newData: { originalFileName: file.name, amount, partnerName, documentType },
-      },
+    await createAuditLog({
+      action: "CREATE",
+      tableName: "ElectronicDocument",
+      recordId: doc.id,
+      newData: { originalFileName: file.name, amount, partnerName, documentType },
     });
 
     return NextResponse.json({ document: doc, ocrData }, { status: 201 });
@@ -160,13 +159,20 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  await createAuditLog({
+    action: "CREATE",
+    tableName: "ElectronicDocument",
+    recordId: doc.id,
+    newData: doc,
+  });
+
   return NextResponse.json(doc, { status: 201 });
-}
+});
 
 /**
  * DELETE: 電子帳簿保存データ削除
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -175,19 +181,15 @@ export async function DELETE(request: NextRequest) {
   }
 
   const doc = await prisma.electronicDocument.findUnique({ where: { id } });
+
+  await createAuditLog({
+    action: "DELETE",
+    tableName: "ElectronicDocument",
+    recordId: id,
+    oldData: doc ? { originalFileName: doc.originalFileName, amount: doc.amount, partnerName: doc.partnerName } : null,
+  });
+
   await prisma.electronicDocument.delete({ where: { id } });
 
-  // 監査ログ記録
-  if (doc) {
-    await prisma.auditLog.create({
-      data: {
-        tableName: "ElectronicDocument",
-        recordId: id,
-        action: "DELETE",
-        oldData: { originalFileName: doc.originalFileName, amount: doc.amount, partnerName: doc.partnerName },
-      },
-    });
-  }
-
   return NextResponse.json({ success: true });
-}
+});

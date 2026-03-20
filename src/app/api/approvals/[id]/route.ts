@@ -3,11 +3,14 @@ import { notifyApprovalActioned } from "@/lib/notifications";
 import { validateBody } from "@/lib/validate";
 import { approvalAction, approvalUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import * as Sentry from "@sentry/nextjs";
+import { createAuditLog } from "@/lib/audit";
 
-export async function GET(
+export const GET = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const record = await prisma.approvalRequest.findUnique({
     where: { id },
@@ -22,12 +25,12 @@ export async function GET(
   });
   if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(record);
-}
+});
 
-export async function PUT(
+export const PUT = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const raw = await request.json();
 
@@ -86,7 +89,7 @@ export async function PUT(
           action: body.action,
         });
       } catch (e) {
-        console.error("Failed to create notification:", e);
+        Sentry.captureException(e);
       }
     }
 
@@ -124,16 +127,21 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json(record);
-}
+  await createAuditLog({ action: "UPDATE", tableName: "ApprovalRequest", recordId: id });
 
-export async function DELETE(
+  return NextResponse.json(record);
+});
+
+export const DELETE = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
+  // Delete steps first
+  await createAuditLog({ action: "DELETE", tableName: "ApprovalRequest", recordId: id });
   // Delete steps first
   await prisma.approvalStep.deleteMany({ where: { requestId: id } });
   await prisma.approvalRequest.delete({ where: { id } });
+
   return NextResponse.json({ success: true });
-}
+});

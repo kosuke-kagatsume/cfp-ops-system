@@ -3,11 +3,14 @@ import { calculateInvoiceBalance } from "@/lib/invoice";
 import { validateBody } from "@/lib/validate";
 import { invoiceUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
+import { requireApproval } from "@/lib/approval-guard";
 
-export async function GET(
+export const GET = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const record = await prisma.invoice.findUnique({
     where: { id },
@@ -18,16 +21,27 @@ export async function GET(
   });
   if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(record);
-}
+});
 
-export async function PUT(
+export const PUT = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const result = await validateBody(request, invoiceUpdate);
   if ("error" in result) return result.error;
   const body = result.data;
+
+  // 承認ゲート: ステータス変更時は承認必須
+  if (body.status !== undefined) {
+    const existing = await prisma.invoice.findUnique({ where: { id } });
+    if (existing && body.status !== existing.status && existing.status === "DRAFT") {
+      const { approved } = await requireApproval("Invoice", id);
+      if (!approved) {
+        return NextResponse.json({ error: "承認が完了していません" }, { status: 403 });
+      }
+    }
+  }
 
   const data: Record<string, unknown> = {};
   if (body.customerId !== undefined) data.customerId = body.customerId;
@@ -57,14 +71,18 @@ export async function PUT(
       revenues: { select: { id: true, revenueNumber: true, amount: true } },
     },
   });
-  return NextResponse.json(record);
-}
 
-export async function DELETE(
+  await createAuditLog({ action: "UPDATE", tableName: "Invoice", recordId: id });
+
+  return NextResponse.json(record);
+});
+
+export const DELETE = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
+  await createAuditLog({ action: "DELETE", tableName: "Invoice", recordId: id });
   await prisma.invoice.delete({ where: { id } });
   return NextResponse.json({ success: true });
-}
+});

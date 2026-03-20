@@ -5,7 +5,8 @@ import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { Pagination } from "@/components/pagination";
 import { useToast } from "@/components/toast";
 import { usePaginated } from "@/lib/use-paginated";
-import { Plus, Download, Search, MoreHorizontal, CheckCircle, Edit, Trash2, Eye, Loader2 } from "lucide-react";
+import { ImportDialog } from "@/components/import-dialog";
+import { Plus, Download, Upload, Search, MoreHorizontal, CheckCircle, Edit, Trash2, Eye, Loader2 } from "lucide-react";
 import { useState } from "react";
 
 type Partner = {
@@ -61,6 +62,7 @@ export default function PartnersPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   const { showToast } = useToast();
 
   // Build query params
@@ -226,6 +228,13 @@ export default function PartnersPage() {
             >
               <Download className="w-4 h-4" />
               Excel出力
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              インポート
             </button>
             <button
               onClick={() => setShowNewModal(true)}
@@ -595,6 +604,15 @@ export default function PartnersPage() {
           </div>
         )}
       </Modal>
+
+      <ImportDialog
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="取引先インポート"
+        endpoint="/api/import/masters"
+        type="partners"
+        onSuccess={() => mutate()}
+      />
     </>
   );
 }

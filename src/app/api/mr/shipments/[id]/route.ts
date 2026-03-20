@@ -2,11 +2,14 @@ import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { shipmentUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
+import { requireApproval } from "@/lib/approval-guard";
 
-export async function GET(
+export const GET = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const record = await prisma.shipment.findUnique({
     where: { id },
@@ -20,16 +23,27 @@ export async function GET(
   });
   if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(record);
-}
+});
 
-export async function PUT(
+export const PUT = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const result = await validateBody(request, shipmentUpdate);
   if ("error" in result) return result.error;
   const body = result.data as any;
+
+  // 承認ゲート: ステータス変更時は承認必須
+  if (body.status !== undefined) {
+    const existing = await prisma.shipment.findUnique({ where: { id } });
+    if (existing && body.status !== existing.status) {
+      const { approved } = await requireApproval("Shipment", id);
+      if (!approved) {
+        return NextResponse.json({ error: "承認が完了していません" }, { status: 403 });
+      }
+    }
+  }
 
   const data: Record<string, unknown> = {};
   if (body.customerId !== undefined) data.customerId = body.customerId;
@@ -42,8 +56,6 @@ export async function PUT(
   if (body.quantity !== undefined && body.unitPrice !== undefined) {
     data.amount = body.quantity * body.unitPrice;
   } else if (body.unitPrice !== undefined || body.quantity !== undefined) {
-    // If only one changed, recalculate on server would need current values
-    // For simplicity, let the client send both or set amount directly
     if (body.amount !== undefined) data.amount = body.amount;
   }
   if (body.amount !== undefined) data.amount = body.amount;
@@ -64,14 +76,17 @@ export async function PUT(
     },
   });
 
-  return NextResponse.json(record);
-}
+  await createAuditLog({ action: "UPDATE", tableName: "Shipment", recordId: id });
 
-export async function DELETE(
+  return NextResponse.json(record);
+});
+
+export const DELETE = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
+  await createAuditLog({ action: "DELETE", tableName: "Shipment", recordId: id });
   await prisma.shipment.delete({ where: { id } });
   return NextResponse.json({ success: true });
-}
+});

@@ -3,11 +3,12 @@ import { generateZenginFB } from "@/lib/zengin";
 import { validateBody } from "@/lib/validate";
 import { bankTransferCreate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 /**
  * GET: 支払予定一覧（未払買掛金 + 承認済み経費）
  */
-export async function GET() {
+export const GET = withErrorHandler(async () => {
   // 未消込の買掛金（PaymentPayable と紐付かない Purchase）
   const unpaidPurchases = await prisma.purchase.findMany({
     where: {
@@ -80,14 +81,14 @@ export async function GET() {
   ];
 
   return NextResponse.json(transferItems);
-}
+});
 
 /**
  * POST: 全銀FBファイル生成
  * body.ids: string[] - 振込対象のID
  * body.transferDate: string - 振込指定日（MMDD）
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, bankTransferCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -162,4 +163,4 @@ export async function POST(request: NextRequest) {
       "Content-Disposition": `attachment; filename="zengin_transfer_${transferDate}.txt"`,
     },
   });
-}
+});

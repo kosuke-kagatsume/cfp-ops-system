@@ -6,8 +6,10 @@ import {
   generateInventoryExcel,
   generatePartnerExcel,
 } from "@/lib/excel-generator";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import * as Sentry from "@sentry/nextjs";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get("type");
   const fromStr = searchParams.get("from");
@@ -58,7 +60,7 @@ export async function GET(request: NextRequest) {
         );
     }
   } catch (err) {
-    console.error("Excel generation error:", err);
+    Sentry.captureException(err);
     return new Response(
       JSON.stringify({ error: "Excel generation failed" }),
       { status: 500, headers: { "Content-Type": "application/json" } }
@@ -74,4 +76,4 @@ export async function GET(request: NextRequest) {
       "Content-Disposition": `attachment; filename*=UTF-8''${encodedFilename}`,
     },
   });
-}
+});

@@ -3,8 +3,10 @@ import { validateBody } from "@/lib/validate";
 import { priceCreate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const pageParam = searchParams.get("page");
@@ -41,9 +43,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: prices, total, page, limit }, { headers: cacheHeaders("MASTER") });
   }
   return NextResponse.json(prices, { headers: cacheHeaders("MASTER") });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, priceCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -64,5 +66,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "CustomerPrice", recordId: price.id, newData: price });
+
   return NextResponse.json(price, { status: 201 });
-}
+});

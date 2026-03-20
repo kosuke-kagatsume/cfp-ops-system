@@ -4,11 +4,12 @@ import { validateBody } from "@/lib/validate";
 import { reconciliationAction } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 /**
  * GET: 未消込一覧取得
  */
-export async function GET() {
+export const GET = withErrorHandler(async () => {
   const unreconciledPayments = await prisma.paymentReceived.findMany({
     where: { isReconciled: false },
     include: { customer: { select: { id: true, name: true, code: true } } },
@@ -40,14 +41,14 @@ export async function GET() {
   );
 
   return NextResponse.json(paymentWithCandidates, { headers: cacheHeaders("TRANSACTION") });
-}
+});
 
 /**
  * POST: 消込実行
  * body.action = "auto" → 自動消込
  * body.action = "manual" + body.paymentId, body.invoiceId → 手動消込
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, reconciliationAction);
   if ("error" in result) return result.error;
   const body = result.data;
@@ -69,4 +70,4 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
-}
+});

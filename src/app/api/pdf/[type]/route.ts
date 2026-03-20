@@ -3,6 +3,7 @@ import { buildInvoicePDF } from "@/lib/pdf-builders/invoice";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { NextRequest, NextResponse } from "next/server";
 import React from "react";
+import * as Sentry from "@sentry/nextjs";
 
 import { DeliveryNotePDF } from "@/lib/pdf-templates/delivery-note";
 import { PurchaseOrderPDF } from "@/lib/pdf-templates/purchase-order";
@@ -11,14 +12,15 @@ import { AnalysisCertificatePDF } from "@/lib/pdf-templates/analysis-certificate
 import { ShippingLabelPDF } from "@/lib/pdf-templates/shipping-label";
 
 import type { DeliveryNoteData, PurchaseOrderData, QuotationData, CertificateData, ShippingData } from "@/lib/document-templates";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 const VALID_TYPES = ["invoice", "delivery-note", "purchase-order", "quotation", "analysis-certificate", "shipping-label"] as const;
 type DocType = (typeof VALID_TYPES)[number];
 
-export async function GET(
+export const GET = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ type: string }> }
-) {
+) => {
   const { type } = await params;
   const id = request.nextUrl.searchParams.get("id");
 
@@ -46,10 +48,10 @@ export async function GET(
     if (err instanceof NotFoundError) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    console.error("PDF generation error:", err);
+    Sentry.captureException(err);
     return NextResponse.json({ error: "PDF generation failed" }, { status: 500 });
   }
-}
+});
 
 class NotFoundError extends Error {}
 

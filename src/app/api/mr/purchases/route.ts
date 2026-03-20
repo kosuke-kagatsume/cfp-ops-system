@@ -6,8 +6,10 @@ import { validateBody } from "@/lib/validate";
 import { purchaseCreate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status");
@@ -50,9 +52,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: purchases, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
   return NextResponse.json(purchases, { headers: cacheHeaders("TRANSACTION") });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, purchaseCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -107,5 +109,7 @@ export async function POST(request: NextRequest) {
     freightCost: purchase.freightCost,
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "Purchase", recordId: purchase.id, newData: purchase });
+
   return NextResponse.json(purchase, { status: 201 });
-}
+});

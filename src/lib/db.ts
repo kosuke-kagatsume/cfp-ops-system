@@ -9,7 +9,8 @@ function createPrismaClient() {
   const connectionString = process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
   const adapter = new PrismaPg({
     connectionString,
-    max: 3,
+    max: 10,
+    idleTimeoutMillis: 20000,
   });
 
   const base = new PrismaClient({

@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/db";
 import { executeDepreciation, generateDepreciationSchedule } from "@/lib/depreciation";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 /**
  * GET: 減価償却スケジュール一覧
  * ?assetId=xxx → 特定資産のスケジュール
  * ?year=2026 → 年度の全償却記録
  */
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const assetId = searchParams.get("assetId");
   const year = searchParams.get("year");
@@ -57,13 +58,13 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(assets);
-}
+});
 
 /**
  * POST: 減価償却一括計算
  * body.fiscalYear: number
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const body = await request.json();
   const fiscalYear = body.fiscalYear;
 
@@ -81,4 +82,4 @@ export async function POST(request: NextRequest) {
     processedCount: results.length,
     results,
   });
-}
+});

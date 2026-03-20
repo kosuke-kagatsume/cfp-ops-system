@@ -3,11 +3,13 @@ import { validateBody } from "@/lib/validate";
 import { assetCreate, assetUpdate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
 /**
  * GET: 固定資産一覧
  */
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get("category");
   const disposed = searchParams.get("disposed");
@@ -32,12 +34,12 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(assets, { headers: cacheHeaders("TRANSACTION") });
-}
+});
 
 /**
  * POST: 固定資産登録
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, assetCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -68,13 +70,15 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "Asset", recordId: asset.id, newData: asset });
+
   return NextResponse.json(asset, { status: 201 });
-}
+});
 
 /**
  * PUT: 固定資産更新
  */
-export async function PUT(request: NextRequest) {
+export const PUT = withErrorHandler(async (request: NextRequest) => {
   const raw = await request.json();
   const { id, ...rest } = raw;
   const parsed = assetUpdate.safeParse(rest);
@@ -103,12 +107,12 @@ export async function PUT(request: NextRequest) {
   });
 
   return NextResponse.json(asset);
-}
+});
 
 /**
  * DELETE: 固定資産除却
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -125,4 +129,4 @@ export async function DELETE(request: NextRequest) {
   });
 
   return NextResponse.json(asset);
-}
+});

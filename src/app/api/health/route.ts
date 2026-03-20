@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
-export async function GET() {
+export const GET = withErrorHandler(async () => {
   try {
     const count = await prisma.businessPartner.count();
     return NextResponse.json({
@@ -24,4 +25,4 @@ export async function GET() {
       { status: 500 }
     );
   }
-}
+});

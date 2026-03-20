@@ -807,6 +807,9 @@ model Shipment {
   updatedBy       String?
   updatedByUser   User?            @relation("ShipmentUpdatedBy", fields: [updatedBy], references: [id])
 
+  approvalRequestId String?
+  approvalRequest   ApprovalRequest? @relation("ShipmentApproval", fields: [approvalRequestId], references: [id])
+
   inventoryMovements InventoryMovement[]
   dispatch           Dispatch?
   revenues           Revenue[]
@@ -1202,6 +1205,9 @@ model Invoice {
   updatedBy       String?
   updatedByUser   User?           @relation("InvoiceUpdatedBy", fields: [updatedBy], references: [id])
 
+  approvalRequestId String?
+  approvalRequest   ApprovalRequest? @relation("InvoiceApproval", fields: [approvalRequestId], references: [id])
+
   revenues        Revenue[]
 
   @@index([deletedAt])
@@ -1222,6 +1228,9 @@ model PaymentReceived {
   paymentMethod   PaymentMethod
 
   isReconciled    Boolean         @default(false) // 消込済
+
+  approvalRequestId String?
+  approvalRequest   ApprovalRequest? @relation("PaymentReceivedApproval", fields: [approvalRequestId], references: [id])
 
   note            String?
   legacyMysqlId   String?
@@ -1249,6 +1258,9 @@ model PaymentPayable {
   paymentMethod   PaymentMethod
 
   isReconciled    Boolean         @default(false)
+
+  approvalRequestId String?
+  approvalRequest   ApprovalRequest? @relation("PaymentPayableApproval", fields: [approvalRequestId], references: [id])
 
   note            String?
   createdAt       DateTime        @default(now())
@@ -1455,6 +1467,11 @@ model ApprovalRequest {
 
   steps           ApprovalStep[]
 
+  invoices         Invoice[]         @relation("InvoiceApproval")
+  paymentReceiveds PaymentReceived[] @relation("PaymentReceivedApproval")
+  paymentPayables  PaymentPayable[]  @relation("PaymentPayableApproval")
+  shipments        Shipment[]        @relation("ShipmentApproval")
+
   @@index([status])
 }
 
@@ -1627,10 +1644,26 @@ model AccountTitle {
   name        String                  // 勘定科目名 (e.g. "売掛金")
   category    String                  // 資産/負債/純資産/収益/費用
   yayoiCode   String?                // 弥生会計科目コード
+  freeeCode   String?                // Freee科目コード
   sortOrder   Int      @default(0)
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Budget {
+  id          String   @id @default(uuid())
+  fiscalYear  Int
+  month       Int
+  department  String
+  plantId     String?
+  category    String                  // REVENUE / COST / EXPENSE
+  amount      Float
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([fiscalYear, month, department, plantId, category])
 }
 
 model Asset {

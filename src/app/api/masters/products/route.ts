@@ -3,9 +3,11 @@ import { validateBody } from "@/lib/validate";
 import { productCreate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
 // GET /api/masters/products - 品目一覧（4軸結合）
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
 
@@ -46,10 +48,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: products, total, page, limit }, { headers: cacheHeaders("MASTER") });
   }
   return NextResponse.json(products, { headers: cacheHeaders("MASTER") });
-}
+});
 
 // POST /api/masters/products - 品目新規登録
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, productCreate);
   if ("error" in result) return result.error;
   const body = result.data;
@@ -81,5 +83,7 @@ export async function POST(request: NextRequest) {
     include: { name: true, shape: true, color: true, grade: true },
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "Product", recordId: product.id, newData: product });
+
   return NextResponse.json(product, { status: 201 });
-}
+});

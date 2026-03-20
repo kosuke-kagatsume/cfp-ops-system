@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get("limit") ?? "20"), 100);
 
@@ -18,4 +19,4 @@ export async function GET(request: NextRequest) {
   ]);
 
   return NextResponse.json({ items, unreadCount }, { headers: cacheHeaders("REALTIME") });
-}
+});

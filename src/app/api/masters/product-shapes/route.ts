@@ -3,8 +3,10 @@ import { validateBody } from "@/lib/validate";
 import { simpleCodeName } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const pageParam = searchParams.get("page");
   const page = pageParam ? parseInt(pageParam) : 1;
@@ -23,9 +25,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: shapes, total, page, limit }, { headers: cacheHeaders("MASTER") });
   }
   return NextResponse.json(shapes, { headers: cacheHeaders("MASTER") });
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, simpleCodeName);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -34,5 +36,7 @@ export async function POST(request: NextRequest) {
     data: { code: body.code, name: body.name },
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "ProductShape", recordId: item.id, newData: item });
+
   return NextResponse.json(item, { status: 201 });
-}
+});

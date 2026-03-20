@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const documentType = searchParams.get("documentType");
@@ -37,9 +39,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: documents, total, page, limit });
   }
   return NextResponse.json(documents);
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const body = await request.json();
 
   const record = await prisma.document.create({
@@ -56,5 +58,7 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "Document", recordId: record.id, newData: record });
+
   return NextResponse.json(record, { status: 201 });
-}
+});

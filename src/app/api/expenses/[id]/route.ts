@@ -2,11 +2,13 @@ import { prisma } from "@/lib/db";
 import { validateBody } from "@/lib/validate";
 import { expenseUpdate } from "@/lib/schemas";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
-export async function GET(
+export const GET = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const record = await prisma.expense.findUnique({
     where: { id },
@@ -14,12 +16,12 @@ export async function GET(
   });
   if (!record) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(record);
-}
+});
 
-export async function PUT(
+export const PUT = withErrorHandler(async (
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   const result = await validateBody(request, expenseUpdate);
   if ("error" in result) return result.error;
@@ -59,15 +61,17 @@ export async function PUT(
   });
 
   return NextResponse.json(record);
-}
+});
 
-export async function DELETE(
+export const DELETE = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
   // Delete items first, then expense
+  await createAuditLog({ action: "DELETE", tableName: "Expense", recordId: id });
   await prisma.expenseItem.deleteMany({ where: { expenseId: id } });
   await prisma.expense.delete({ where: { id } });
+
   return NextResponse.json({ success: true });
-}
+});

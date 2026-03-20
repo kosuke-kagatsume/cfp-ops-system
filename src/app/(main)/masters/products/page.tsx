@@ -5,7 +5,8 @@ import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormSelect, FormInput } from "@/components/modal";
 import { useToast } from "@/components/toast";
-import { Plus, Download, Search, MoreHorizontal, CheckCircle, Eye, Edit, Trash2, Loader2 } from "lucide-react";
+import { ImportDialog } from "@/components/import-dialog";
+import { Plus, Download, Upload, Search, MoreHorizontal, CheckCircle, Eye, Edit, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -27,6 +28,7 @@ export default function ProductsPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<string | null>(null);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [menuOpen, setMenuOpen] = useState<string | null>(null);
   const { showToast } = useToast();
 
@@ -154,6 +156,13 @@ export default function ProductsPage() {
             >
               <Download className="w-4 h-4" />
               CSV出力
+            </button>
+            <button
+              onClick={() => setShowImportModal(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors"
+            >
+              <Upload className="w-4 h-4" />
+              インポート
             </button>
             <button
               onClick={() => setShowNewModal(true)}
@@ -381,6 +390,15 @@ export default function ProductsPage() {
           </div>
         )}
       </Modal>
+
+      <ImportDialog
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        title="品目インポート"
+        endpoint="/api/import/masters"
+        type="products"
+        onSuccess={() => mutate()}
+      />
     </>
   );
 }

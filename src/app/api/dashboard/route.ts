@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
 type Period = "month" | "quarter" | "year";
 
@@ -101,7 +102,7 @@ function generateTrendBuckets(period: Period, end: Date, count: number): string[
   return buckets;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const period = (searchParams.get("period") ?? "month") as Period;
   const dateParam = searchParams.get("date");
@@ -285,4 +286,4 @@ export async function GET(request: NextRequest) {
   };
 
   return NextResponse.json(data, { headers: cacheHeaders("REALTIME") });
-}
+});

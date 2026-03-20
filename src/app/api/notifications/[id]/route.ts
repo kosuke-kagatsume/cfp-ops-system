@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
-export async function PUT(
+export const PUT = withErrorHandler(async (
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+) => {
   const { id } = await params;
 
   const notification = await prisma.notification.update({
@@ -13,4 +14,4 @@ export async function PUT(
   });
 
   return NextResponse.json(notification);
-}
+});

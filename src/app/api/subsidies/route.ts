@@ -3,11 +3,13 @@ import { validateBody } from "@/lib/validate";
 import { subsidyCreate, subsidyUpdate } from "@/lib/schemas";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
+import { createAuditLog } from "@/lib/audit";
 
 /**
  * GET: 補助金書類一覧
  */
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const status = searchParams.get("status");
@@ -31,12 +33,12 @@ export async function GET(request: NextRequest) {
   });
 
   return NextResponse.json(documents, { headers: cacheHeaders("TRANSACTION") });
-}
+});
 
 /**
  * POST: 補助金書類登録
  */
-export async function POST(request: NextRequest) {
+export const POST = withErrorHandler(async (request: NextRequest) => {
   const result = await validateBody(request, subsidyCreate);
   if ("error" in result) return result.error;
   const body = result.data as any;
@@ -55,13 +57,15 @@ export async function POST(request: NextRequest) {
     },
   });
 
+  await createAuditLog({ action: "CREATE", tableName: "Subsidy", recordId: doc.id, newData: doc });
+
   return NextResponse.json(doc, { status: 201 });
-}
+});
 
 /**
  * PUT: 補助金書類更新
  */
-export async function PUT(request: NextRequest) {
+export const PUT = withErrorHandler(async (request: NextRequest) => {
   const raw = await request.json();
 
   if (!raw.id) {
@@ -96,12 +100,12 @@ export async function PUT(request: NextRequest) {
   });
 
   return NextResponse.json(doc);
-}
+});
 
 /**
  * DELETE: 補助金書類削除
  */
-export async function DELETE(request: NextRequest) {
+export const DELETE = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
@@ -112,4 +116,4 @@ export async function DELETE(request: NextRequest) {
   await prisma.subsidyDocument.delete({ where: { id } });
 
   return NextResponse.json({ success: true });
-}
+});

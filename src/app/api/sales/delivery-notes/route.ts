@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
 
@@ -35,4 +36,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: documents, total, page, limit });
   }
   return NextResponse.json(documents);
-}
+});

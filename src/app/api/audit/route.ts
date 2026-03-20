@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db";
 import { cacheHeaders } from "@/lib/cache";
 import { NextRequest, NextResponse } from "next/server";
+import { withErrorHandler } from "@/lib/api-error-handler";
 
-export async function GET(request: NextRequest) {
+export const GET = withErrorHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const search = searchParams.get("search") ?? "";
   const action = searchParams.get("action");
@@ -43,4 +44,4 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ items: logs, total, page, limit }, { headers: cacheHeaders("TRANSACTION") });
   }
   return NextResponse.json(logs, { headers: cacheHeaders("TRANSACTION") });
-}
+});
