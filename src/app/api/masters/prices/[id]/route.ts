@@ -15,10 +15,7 @@ export const GET = withErrorHandler(async (
     where: { id },
     include: {
       partner: { select: { id: true, code: true, name: true } },
-      product: {
-        select: { id: true, code: true },
-        include: { name: true, shape: true, color: true, grade: true },
-      },
+      product: { include: { name: true, shape: true, color: true, grade: true } },
     },
   });
 
