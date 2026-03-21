@@ -56,6 +56,8 @@ export default function ExternalAnalysisPage() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const [editingId, setEditingId] = useState("");
+  const [newForm, setNewForm] = useState({ sampleId: "", laboratoryName: "", requestDate: new Date().toISOString().split("T")[0], cost: "", note: "" });
+  const [editForm, setEditForm] = useState({ sampleId: "", laboratoryName: "", requestDate: "", resultDate: "", cost: "", note: "" });
   const { showToast } = useToast();
 
   const { items: externals, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<ExternalAnalysisItem>(
@@ -89,9 +91,6 @@ export default function ExternalAnalysisPage() {
 
   const selected = withStatus.find((a) => a.id === showDetail);
   const totalCost = allExternals.reduce((sum, a) => sum + (a.cost ?? 0), 0);
-
-  const [newForm, setNewForm] = useState({ sampleId: "", laboratoryName: "", requestDate: new Date().toISOString().split("T")[0], cost: "", note: "" });
-  const [editForm, setEditForm] = useState({ sampleId: "", laboratoryName: "", requestDate: "", resultDate: "", cost: "", note: "" });
 
   const handleCreate = async () => {
     try {

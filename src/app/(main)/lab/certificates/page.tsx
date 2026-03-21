@@ -74,6 +74,8 @@ export default function LabCertificatesPage() {
   const { items: certificates, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<CertificateItem>(
     "/api/lab/certificates"
   );
+  const [newForm, setNewForm] = useState({ sampleId: "", issueDate: new Date().toISOString().split("T")[0], note: "" });
+  const [editForm, setEditForm] = useState({ sampleId: "", issueDate: "", note: "" });
   const needMasters = showNewModal || showEditModal;
   const { data: samples } = useSWR<SampleOption[]>(needMasters ? "/api/lab/samples" : null);
 
@@ -108,9 +110,6 @@ export default function LabCertificatesPage() {
 
   const judgedCount = allCerts.filter((c) => c.sample.status === "JUDGED").length;
   const reportedCount = allCerts.filter((c) => c.sample.status === "REPORTED").length;
-
-  const [newForm, setNewForm] = useState({ sampleId: "", issueDate: new Date().toISOString().split("T")[0], note: "" });
-  const [editForm, setEditForm] = useState({ sampleId: "", issueDate: "", note: "" });
 
   const handleCreate = async () => {
     try {
