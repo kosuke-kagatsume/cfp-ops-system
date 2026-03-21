@@ -22,7 +22,7 @@ const fetcher = (url: string) => fetch(url).then((r) => r.json());
 type Period = "month" | "quarter" | "year";
 
 type PLData = {
-  items: Array<{ division: string; plantName: string; revenue: number; cost: number; grossProfit: number; margin: number }>;
+  items: Array<{ division: string; revenue: number; cost: number; grossProfit: number; margin: number }>;
   summary: { revenue: number; cost: number; grossProfit: number; margin: number };
 };
 
@@ -352,7 +352,7 @@ export default function DashboardPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="text-text-tertiary border-b border-border">
-                    <th className="text-left pb-2 pr-4">部門/工場</th>
+                    <th className="text-left pb-2 pr-4">部門</th>
                     <th className="text-right pb-2 px-2">売上</th>
                     <th className="text-right pb-2 px-2">原価</th>
                     <th className="text-right pb-2 px-2">粗利</th>
@@ -362,7 +362,7 @@ export default function DashboardPage() {
                 <tbody>
                   {plData.items.map((row, i) => (
                     <tr key={i} className="border-b border-border/50">
-                      <td className="py-2 pr-4 text-text">{row.division} / {row.plantName}</td>
+                      <td className="py-2 pr-4 text-text">{row.division}</td>
                       <td className="py-2 px-2 text-right text-text">{formatJpy(row.revenue)}</td>
                       <td className="py-2 px-2 text-right text-text">{formatJpy(row.cost)}</td>
                       <td className={`py-2 px-2 text-right font-medium ${row.grossProfit >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatJpy(row.grossProfit)}</td>

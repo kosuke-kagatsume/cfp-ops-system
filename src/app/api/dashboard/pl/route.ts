@@ -36,7 +36,6 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
   const period = (searchParams.get("period") ?? "month") as Period;
   const dateParam = searchParams.get("date");
   const division = searchParams.get("division"); // MR or CR
-  const plantId = searchParams.get("plantId");
   const now = dateParam ? new Date(dateParam) : new Date();
 
   if (!["month", "quarter", "year"].includes(period)) {
@@ -45,82 +44,58 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
 
   const { start, end } = getDateRange(period, now);
 
-  // Build WHERE conditions for raw queries
-  const divisionFilter = division ? `AND "division" = '${division}'` : "";
-  const plantFilter = plantId ? `AND "plantId" = '${plantId}'` : "";
+  // Build parameterized queries
+  const params: unknown[] = [start, end];
+  let divisionFilter = "";
+  if (division) {
+    params.push(division);
+    divisionFilter = `AND "division" = $${params.length}`;
+  }
 
   const [revenueRows, costRows] = await Promise.all([
-    // Revenue by division/plant
-    prisma.$queryRawUnsafe<Array<{ division: string; plant_id: string | null; plant_name: string | null; total: number }>>(
-      `SELECT r."division"::text as division,
-              r."plantId" as plant_id,
-              p."name" as plant_name,
-              COALESCE(SUM(r.amount), 0)::float as total
-       FROM "Revenue" r
-       LEFT JOIN "Plant" p ON p.id = r."plantId"
-       WHERE r."revenueDate" >= $1
-         AND r."revenueDate" < $2
-         AND r."salesCategory" = 'SALES'
-         AND r."deletedAt" IS NULL
+    prisma.$queryRawUnsafe<Array<{ division: string; total: number }>>(
+      `SELECT "division"::text as division,
+              COALESCE(SUM(amount), 0)::float as total
+       FROM "Revenue"
+       WHERE "revenueDate" >= $1
+         AND "revenueDate" < $2
+         AND "salesCategory" = 'SALES'
+         AND "deletedAt" IS NULL
          ${divisionFilter}
-         ${plantFilter}
-       GROUP BY r."division", r."plantId", p."name"
-       ORDER BY r."division", p."name"`,
-      start,
-      end
+       GROUP BY "division"
+       ORDER BY "division"`,
+      ...params
     ),
 
-    // Cost (purchases) by division/plant
-    prisma.$queryRawUnsafe<Array<{ division: string; plant_id: string | null; plant_name: string | null; total: number }>>(
-      `SELECT pu."division"::text as division,
-              pu."plantId" as plant_id,
-              p."name" as plant_name,
-              COALESCE(SUM(pu.amount), 0)::float as total
-       FROM "Purchase" pu
-       LEFT JOIN "Plant" p ON p.id = pu."plantId"
-       WHERE pu."purchaseDate" >= $1
-         AND pu."purchaseDate" < $2
-         AND pu."deletedAt" IS NULL
+    prisma.$queryRawUnsafe<Array<{ division: string; total: number }>>(
+      `SELECT "division"::text as division,
+              COALESCE(SUM(amount), 0)::float as total
+       FROM "Purchase"
+       WHERE "purchaseDate" >= $1
+         AND "purchaseDate" < $2
+         AND "deletedAt" IS NULL
          ${divisionFilter}
-         ${plantFilter}
-       GROUP BY pu."division", pu."plantId", p."name"
-       ORDER BY pu."division", p."name"`,
-      start,
-      end
+       GROUP BY "division"
+       ORDER BY "division"`,
+      ...params
     ),
   ]);
 
-  // Build P/L table
-  const plMap = new Map<string, { division: string; plantId: string | null; plantName: string; revenue: number; cost: number; grossProfit: number; margin: number }>();
+  // Build P/L table by division
+  const plMap = new Map<string, { division: string; revenue: number; cost: number; grossProfit: number; margin: number }>();
 
   for (const row of revenueRows) {
-    const key = `${row.division}-${row.plant_id ?? "all"}`;
+    const key = row.division;
     if (!plMap.has(key)) {
-      plMap.set(key, {
-        division: row.division,
-        plantId: row.plant_id,
-        plantName: row.plant_name ?? "全体",
-        revenue: 0,
-        cost: 0,
-        grossProfit: 0,
-        margin: 0,
-      });
+      plMap.set(key, { division: row.division, revenue: 0, cost: 0, grossProfit: 0, margin: 0 });
     }
     plMap.get(key)!.revenue += row.total;
   }
 
   for (const row of costRows) {
-    const key = `${row.division}-${row.plant_id ?? "all"}`;
+    const key = row.division;
     if (!plMap.has(key)) {
-      plMap.set(key, {
-        division: row.division,
-        plantId: row.plant_id,
-        plantName: row.plant_name ?? "全体",
-        revenue: 0,
-        cost: 0,
-        grossProfit: 0,
-        margin: 0,
-      });
+      plMap.set(key, { division: row.division, revenue: 0, cost: 0, grossProfit: 0, margin: 0 });
     }
     plMap.get(key)!.cost += row.total;
   }
