@@ -15,7 +15,7 @@ export const GET = withErrorHandler(async (request: NextRequest) => {
     where,
     include: {
       certificate: { select: { id: true, certNumber: true, holderName: true } },
-      product: { select: { id: true, code: true }, include: { name: true } },
+      product: { include: { name: true } },
     },
     orderBy: [{ period: "desc" }, { createdAt: "desc" }],
   });
