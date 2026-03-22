@@ -52,6 +52,9 @@ import {
   FolderOpen,
   ScanLine,
   HardDrive,
+  ContactRound,
+  CalendarRange,
+  CalendarClock,
 } from "lucide-react";
 import { useState } from "react";
 import { useSidebar } from "./sidebar-context";
@@ -60,6 +63,13 @@ const navigation = [
   { name: "ダッシュボード", href: "/dashboard", icon: LayoutDashboard },
   { name: "承認管理", href: "/approvals", icon: CheckSquare },
   {
+    name: "商談管理",
+    icon: ContactRound,
+    children: [
+      { name: "名刺管理", href: "/business-cards", icon: ContactRound },
+    ],
+  },
+  {
     name: "MR事業部",
     icon: Boxes,
     children: [
@@ -67,6 +77,7 @@ const navigation = [
       { name: "在庫管理", href: "/inventory", icon: Package },
       { name: "加工管理", href: "/processing", icon: Cog },
       { name: "生産カレンダー", href: "/production-calendar", icon: CalendarDays },
+      { name: "業務カレンダー", href: "/operations-calendar", icon: CalendarRange },
       { name: "出荷管理", href: "/shipments", icon: PackageCheck },
       { name: "配車管理", href: "/dispatch", icon: Truck },
       { name: "帳票管理", href: "/documents", icon: FileText },
@@ -124,6 +135,7 @@ const navigation = [
       { name: "固定資産管理", href: "/assets", icon: HardDrive },
       { name: "補助金書類", href: "/subsidies", icon: FolderOpen },
       { name: "電子帳簿保存", href: "/electronic-documents", icon: ScanLine },
+      { name: "管理カレンダー", href: "/admin-calendar", icon: CalendarClock },
     ],
   },
   { name: "CTS管理", href: "/cts", icon: Plane },
@@ -152,6 +164,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
+    "商談管理": false,
     "MR事業部": true,
     "販売管理": false,
     "CR事業部": false,

@@ -634,3 +634,44 @@ export const userCreate = z.object({
 export const userUpdate = userCreate.partial();
 
 export const notificationReadAll = z.object({}).optional();
+
+// ============================================================
+// Business Cards (名刺管理)
+// ============================================================
+
+export const businessCardCreate = z.object({
+  companyName: optStr,
+  department: optStr,
+  position: optStr,
+  personName: reqStr,
+  email: optStr,
+  phone: optStr,
+  mobile: optStr,
+  fax: optStr,
+  address: optStr,
+  website: optStr,
+  imageUrl: optStr,
+  note: optStr,
+  partnerId: optStr,
+  status: z.string().default("NEW"),
+});
+
+export const businessCardUpdate = businessCardCreate.partial();
+
+// ============================================================
+// Admin Calendar Events (管理カレンダー)
+// ============================================================
+
+export const adminCalendarEventCreate = z.object({
+  title: reqStr,
+  description: optStr,
+  dueDate: isoDate,
+  category: reqStr,
+  priority: z.string().default("MEDIUM"),
+  assignee: optStr,
+  note: optStr,
+});
+
+export const adminCalendarEventUpdate = adminCalendarEventCreate.partial().extend({
+  isCompleted: z.boolean().optional(),
+});

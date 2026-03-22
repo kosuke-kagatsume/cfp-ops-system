@@ -459,6 +459,7 @@ model BusinessPartner {
   isccCertificates       IsccCertificate[]
   oilShipmentsAsCustomer OilShipment[]    @relation("OilShipmentCustomer")
   crMaterialsAsSupplier  CrMaterial[]     @relation("CrMaterialSupplier")
+  businessCards          BusinessCard[]
 
   @@index([deletedAt])
 }
@@ -1751,4 +1752,62 @@ model SensorData {
   data        Json              // センサーデータ(JSON)
   recordedAt  DateTime
   createdAt   DateTime @default(now())
+}
+
+// =============================================================================
+// K. 商談管理
+// =============================================================================
+
+model BusinessCard {
+  id            String          @id @default(uuid())
+  companyName   String?
+  department    String?
+  position      String?
+  personName    String
+  email         String?
+  phone         String?
+  mobile        String?
+  fax           String?
+  address       String?
+  website       String?
+  imageUrl      String?                          // Base64 or URL
+  note          String?
+  partnerId     String?                          // 既存顧客と紐づけ（任意）
+  partner       BusinessPartner? @relation(fields: [partnerId], references: [id])
+  contactId     String?                          // PartnerContactに変換後の紐づけ
+  status        String          @default("NEW")  // NEW / CONTACTED / CONVERTED / ARCHIVED
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  companyId     String          @default("cfp")
+
+  @@index([companyName])
+  @@index([personName])
+  @@index([status])
+}
+
+// =============================================================================
+// L. 管理カレンダー（総務・経理向け）
+// =============================================================================
+
+model AdminCalendarEvent {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  dueDate     DateTime
+  category    String                             // CONTRACT_RENEWAL / INSPECTION / FILING / PAYMENT / CUSTOM
+  priority    String    @default("MEDIUM")       // LOW / MEDIUM / HIGH / URGENT
+  isCompleted Boolean   @default(false)
+  completedAt DateTime?
+  completedBy String?
+  sourceType  String?                            // "Contract" / "Asset" / "Invoice" 等（自動生成元）
+  sourceId    String?
+  assignee    String?                            // 担当者名
+  note        String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  companyId   String    @default("cfp")
+
+  @@index([dueDate])
+  @@index([category])
+  @@index([isCompleted])
 }
