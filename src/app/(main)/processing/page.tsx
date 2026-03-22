@@ -4,6 +4,7 @@ import { Header } from "@/components/header";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { useToast } from "@/components/toast";
 import { Plus, ArrowRight, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -433,6 +434,7 @@ export default function ProcessingPage() {
               </div>
             </div>
             {selected.note && <div><p className="text-xs text-text-tertiary">指示内容</p><p className="text-sm text-text">{selected.note}</p></div>}
+            {selected && <RecordComments targetType="ProcessingOrder" targetId={selected.id} />}
           </div>
         )}
       </Modal>

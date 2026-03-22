@@ -4,6 +4,7 @@ import { Header } from "@/components/header";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2, Printer } from "lucide-react";
 import { useState } from "react";
@@ -429,6 +430,7 @@ export default function QuotationsPage() {
               <div><p className="text-xs text-text-tertiary">合計金額</p><p className="text-sm font-bold text-primary-700">{formatCurrency(selected.total, selected.currency)}</p></div>
               <div><p className="text-xs text-text-tertiary">備考</p><p className="text-sm text-text">{selected.note || "\u2014"}</p></div>
             </div>
+            {selected && <RecordComments targetType="Quotation" targetId={selected.id} />}
           </div>
         )}
       </Modal>

@@ -4,6 +4,7 @@ import { Header } from "@/components/header";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { useToast } from "@/components/toast";
 import {
   Plus, Upload, Loader2, Search, ArrowRightLeft,
@@ -419,6 +420,7 @@ export default function BusinessCardsPage() {
                 <p className="text-sm text-text">{selectedCard.note}</p>
               </div>
             )}
+            {selectedCard && <RecordComments targetType="BusinessCard" targetId={selectedCard.id} />}
           </div>
         )}
       </Modal>

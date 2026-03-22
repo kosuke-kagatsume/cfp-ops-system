@@ -2,6 +2,7 @@
 
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { Pagination } from "@/components/pagination";
 import { useToast } from "@/components/toast";
 import { usePaginated } from "@/lib/use-paginated";
@@ -515,6 +516,7 @@ export default function InvoicesPage() {
                 </div>
               </div>
             )}
+            {selected && <RecordComments targetType="Invoice" targetId={selected.id} />}
           </div>
         )}
       </Modal>

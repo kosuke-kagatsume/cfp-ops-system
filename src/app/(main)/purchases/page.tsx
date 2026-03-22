@@ -2,6 +2,7 @@
 
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { Pagination } from "@/components/pagination";
 import { useToast } from "@/components/toast";
 import { usePaginated } from "@/lib/use-paginated";
@@ -521,6 +522,7 @@ export default function PurchasesPage() {
               <div><p className="text-xs text-text-tertiary">運賃</p><p className="text-sm text-text">{selected.freightCost != null ? `¥${selected.freightCost.toLocaleString()}` : "-"}</p></div>
               <div><p className="text-xs text-text-tertiary">合計（在庫原価算入）</p><p className="text-sm font-bold text-primary-700">¥{(selected.amount + (selected.freightCost ?? 0)).toLocaleString()}</p></div>
             </div>
+            {selected && <RecordComments targetType="Purchase" targetId={selected.id} />}
           </div>
         )}
       </Modal>

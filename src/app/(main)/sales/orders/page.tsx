@@ -4,6 +4,7 @@ import { Header } from "@/components/header";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
 import { DivisionBadge } from "@/components/division-badge";
@@ -411,6 +412,7 @@ export default function OrdersPage() {
               <div><p className="text-xs text-text-tertiary">消費税</p><p className="text-sm text-text">{formatCurrency(selected.taxAmount, selected.currency)}</p></div>
               <div><p className="text-xs text-text-tertiary">合計</p><p className="text-sm font-bold text-primary-700">{formatCurrency(selected.total, selected.currency)}</p></div>
             </div>
+            {selected && <RecordComments targetType="SalesOrder" targetId={selected.id} />}
           </div>
         )}
       </Modal>

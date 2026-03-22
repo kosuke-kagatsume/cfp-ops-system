@@ -5,6 +5,7 @@ import { DivisionBadge } from "@/components/division-badge";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { useToast } from "@/components/toast";
 import { Plus, ArrowRight, Flame, Pencil, Trash2, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -286,6 +287,7 @@ export default function CrProductionOrdersPage() {
                 </div>
               )}
               {selected.note && <div><p className="text-xs text-text-tertiary">指示内容</p><p className="text-sm text-text">{selected.note}</p></div>}
+              <RecordComments targetType="CrProductionOrder" targetId={selected.id} />
             </div>
           );
         })()}

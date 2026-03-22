@@ -4,6 +4,7 @@ import { Header } from "@/components/header";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { useToast } from "@/components/toast";
 import { Plus, Search, Eye, AlertTriangle, FileText, Pencil, Trash2, RefreshCw, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -293,6 +294,7 @@ export default function ContractsPage() {
                 <p className="text-sm text-text">{selected.note}</p>
               </div>
             )}
+            {selected && <RecordComments targetType="Contract" targetId={selected.id} />}
           </div>
         )}
       </Modal>

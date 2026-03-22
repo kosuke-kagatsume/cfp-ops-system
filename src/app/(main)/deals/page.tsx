@@ -3,6 +3,7 @@
 import { Header } from "@/components/header";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { DivisionBadge } from "@/components/division-badge";
+import { RecordComments } from "@/components/record-comments";
 import { DivisionFilter } from "@/components/division-filter";
 import { useToast } from "@/components/toast";
 import {
@@ -556,6 +557,7 @@ export default function DealsPage() {
                 })}
               </div>
             )}
+            {selectedDeal && <RecordComments targetType="Deal" targetId={selectedDeal.id} />}
           </div>
         )}
       </Modal>

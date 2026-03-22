@@ -5,6 +5,7 @@ import { DivisionBadge } from "@/components/division-badge";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
+import { RecordComments } from "@/components/record-comments";
 import { useToast } from "@/components/toast";
 import { Plus, Search, Eye, Pencil, Trash2, Shield, Loader2 } from "lucide-react";
 import { useState } from "react";
@@ -201,6 +202,7 @@ export default function OilShipmentsPage() {
               </div>
             )}
             {selected.note && <div><p className="text-xs text-text-tertiary">備考</p><p className="text-sm text-text">{selected.note}</p></div>}
+            {selected && <RecordComments targetType="OilShipment" targetId={selected.id} />}
           </div>
         )}
       </Modal>
