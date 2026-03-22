@@ -19,6 +19,7 @@ import { prisma } from "@/lib/db";
  *   TRC: トレース (TraceRecord)
  *   CNT: 契約 (Contract) — existing data uses CNT
  *   APR: 承認 (ApprovalRequest)
+ *   CHT: チャットルーム (ChatRoom)
  */
 
 /**

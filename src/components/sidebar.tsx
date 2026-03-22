@@ -54,13 +54,18 @@ import {
   CalendarRange,
   CalendarClock,
   Handshake,
+  MessageSquare,
 } from "lucide-react";
 import { useState } from "react";
+import useSWR from "swr";
 import { useSidebar } from "./sidebar-context";
+
+const sidebarFetcher = (url: string) => fetch(url).then((r) => r.json());
 
 const navigation = [
   { name: "ダッシュボード", href: "/dashboard", icon: LayoutDashboard },
   { name: "承認管理", href: "/approvals", icon: CheckSquare },
+  { name: "トーク", href: "/chat", icon: MessageSquare },
   {
     name: "商談管理",
     icon: ContactRound,
@@ -174,6 +179,12 @@ const navigation = [
 export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
+  const { data: unreadData } = useSWR<{ unreadCount: number }>(
+    "/api/chat/unread",
+    sidebarFetcher,
+    { refreshInterval: 30000 }
+  );
+  const chatUnreadCount = unreadData?.unreadCount ?? 0;
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "商談管理": false,
     "仕入・受入": true,
@@ -257,6 +268,7 @@ export function Sidebar() {
           }
 
           const isActive = pathname === item.href;
+          const isChatItem = item.href === "/chat";
           return (
             <Link
               key={item.href}
@@ -268,7 +280,12 @@ export function Sidebar() {
               }`}
             >
               <item.icon className="w-5 h-5 shrink-0" />
-              {item.name}
+              <span className="flex-1">{item.name}</span>
+              {isChatItem && chatUnreadCount > 0 && (
+                <span className="min-w-[18px] h-[18px] flex items-center justify-center bg-danger text-white text-[10px] font-bold rounded-full px-1">
+                  {chatUnreadCount > 9 ? "9+" : chatUnreadCount}
+                </span>
+              )}
             </Link>
           );
         })}

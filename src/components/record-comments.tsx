@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import useSWR from "swr";
-import { MessageSquare, Send, Pencil, Trash2, X, Check } from "lucide-react";
+import { MessageSquare, Send, Pencil, Trash2, X, Check, ExternalLink } from "lucide-react";
+import Link from "next/link";
 
 type Comment = {
   id: string;
@@ -113,6 +114,13 @@ export function RecordComments({
         {list.length > 0 && (
           <span className="text-xs text-text-tertiary">({list.length})</span>
         )}
+        <Link
+          href={`/chat?open=record:${targetType}:${targetId}`}
+          className="ml-auto flex items-center gap-1 text-xs text-primary-600 hover:underline"
+        >
+          トークで見る
+          <ExternalLink className="w-3 h-3" />
+        </Link>
       </div>
 
       {/* コメント一覧 */}

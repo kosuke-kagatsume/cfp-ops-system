@@ -27,6 +27,12 @@ enum Division {
   CR
 }
 
+enum ChatRoomType {
+  GENERAL        // 全社連絡
+  TEAM           // チーム別
+  ANNOUNCEMENT   // 告知（管理者のみ投稿可）
+}
+
 enum ClosingDay {
   DAY_5
   DAY_10
@@ -243,6 +249,9 @@ model User {
   updatedProducts           Product[]           @relation("ProductUpdatedBy")
   createdCustomerPrices     CustomerPrice[]     @relation("CustomerPriceCreatedBy")
   updatedCustomerPrices     CustomerPrice[]     @relation("CustomerPriceUpdatedBy")
+  chatRoomsCreated          ChatRoom[]          @relation("ChatRoomCreatedBy")
+  chatRoomMembers           ChatRoomMember[]
+  chatReadCursors           ChatReadCursor[]
 }
 
 model Role {
@@ -1886,4 +1895,68 @@ model DealActivity {
   createdAt     DateTime @default(now())
 
   @@index([dealId])
+}
+
+// =============================================================================
+// L. チャット・トーク (4テーブル)
+// =============================================================================
+
+model ChatRoom {
+  id          String         @id @default(uuid())
+  roomNumber  String         @unique  // CHT-2026-0001
+  name        String
+  roomType    ChatRoomType
+  description String?
+  createdById String
+  createdBy   User           @relation("ChatRoomCreatedBy", fields: [createdById], references: [id])
+  isArchived  Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  messages    ChatMessage[]
+  members     ChatRoomMember[]
+  readCursors ChatReadCursor[]
+
+  @@index([roomType])
+}
+
+model ChatRoomMember {
+  id       String   @id @default(uuid())
+  roomId   String
+  room     ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id])
+  role     String   @default("MEMBER") // ADMIN, MEMBER
+  joinedAt DateTime @default(now())
+
+  @@unique([roomId, userId])
+  @@index([userId])
+}
+
+model ChatMessage {
+  id         String   @id @default(uuid())
+  roomId     String
+  room       ChatRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  authorId   String?
+  authorName String
+  body       String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([roomId, createdAt])
+}
+
+model ChatReadCursor {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  roomId     String?
+  room       ChatRoom? @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  targetType String?
+  targetId   String?
+  lastReadAt DateTime
+  updatedAt  DateTime  @updatedAt
+
+  @@unique([userId, roomId])
+  @@unique([userId, targetType, targetId])
+  @@index([userId])
 }
