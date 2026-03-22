@@ -204,19 +204,17 @@ export default function DealsPage() {
       <Header title="案件管理" />
       <div className="p-4 md:p-6 space-y-4">
         {/* ツールバー */}
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="relative">
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
               <input
                 type="text" placeholder="案件名、取引先で検索..."
                 value={search} onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full md:w-64 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
-            <DivisionFilter value={divisionFilter} onChange={setDivisionFilter} counts={divisionCounts} />
-          </div>
-          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
             <div className="flex items-center bg-surface-secondary rounded-lg p-0.5">
               <button
                 onClick={() => setViewMode("kanban")}
@@ -239,7 +237,9 @@ export default function DealsPage() {
             >
               <Plus className="w-4 h-4" />案件登録
             </button>
+            </div>
           </div>
+          <DivisionFilter value={divisionFilter} onChange={setDivisionFilter} counts={divisionCounts} />
         </div>
 
         {isLoading ? (
@@ -248,48 +248,48 @@ export default function DealsPage() {
           </div>
         ) : viewMode === "kanban" ? (
           /* カンバン表示 */
-          <div className="overflow-x-auto pb-4">
-            <div className="flex gap-4 min-w-max">
+          <div className="pb-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {stages.map((stage) => {
                 const stageDeals = allDeals.filter((d) => d.stage === stage.value);
                 const totalAmount = stageDeals.reduce((sum, d) => sum + (d.expectedAmount ?? 0), 0);
                 return (
-                  <div key={stage.value} className="w-72 flex-shrink-0">
-                    <div className={`px-3 py-2 rounded-t-lg border ${stage.color} flex items-center justify-between`}>
-                      <span className="text-sm font-medium">{stage.label}</span>
-                      <span className="text-xs">{stageDeals.length}件</span>
+                  <div key={stage.value} className="min-w-0">
+                    <div className={`px-2 py-1.5 rounded-t-lg border ${stage.color} flex items-center justify-between`}>
+                      <span className="text-xs font-medium truncate">{stage.label}</span>
+                      <span className="text-[10px] shrink-0 ml-1">{stageDeals.length}件</span>
                     </div>
                     {totalAmount > 0 && (
-                      <div className="px-3 py-1 text-xs text-text-secondary bg-surface-secondary border-x border-border">
-                        見込: ¥{totalAmount.toLocaleString()}
+                      <div className="px-2 py-1 text-[10px] text-text-secondary bg-surface-secondary border-x border-border truncate">
+                        ¥{totalAmount.toLocaleString()}
                       </div>
                     )}
-                    <div className="space-y-2 p-2 bg-surface-secondary/50 border-x border-b border-border rounded-b-lg min-h-[100px]">
+                    <div className="space-y-1.5 p-1.5 bg-surface-secondary/50 border-x border-b border-border rounded-b-lg min-h-[80px]">
                       {stageDeals.map((deal) => (
                         <button
                           key={deal.id}
                           onClick={() => openDetail(deal)}
-                          className="w-full p-3 bg-surface rounded-lg border border-border hover:border-primary-300 hover:shadow-sm transition-all text-left"
+                          className="w-full p-2 bg-surface rounded-lg border border-border hover:border-primary-300 hover:shadow-sm transition-all text-left"
                         >
-                          <div className="flex items-center gap-2 justify-between">
-                            <p className="text-sm font-medium text-text truncate">{deal.title}</p>
+                          <div className="flex items-center gap-1 justify-between">
+                            <p className="text-xs font-medium text-text truncate">{deal.title}</p>
                             {deal.division && <DivisionBadge division={deal.division} />}
                           </div>
                           {deal.partner && (
-                            <p className="text-xs text-text-secondary mt-1 truncate">{deal.partner.name}</p>
+                            <p className="text-[10px] text-text-secondary mt-0.5 truncate">{deal.partner.name}</p>
                           )}
-                          <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center justify-between mt-1">
                             {deal.expectedAmount ? (
-                              <span className="text-xs font-medium text-text">¥{deal.expectedAmount.toLocaleString()}</span>
+                              <span className="text-[10px] font-medium text-text">¥{deal.expectedAmount.toLocaleString()}</span>
                             ) : <span />}
                             {deal.assignee && (
-                              <span className="text-xs text-text-tertiary">{deal.assignee}</span>
+                              <span className="text-[10px] text-text-tertiary truncate ml-1">{deal.assignee}</span>
                             )}
                           </div>
                         </button>
                       ))}
                       {stageDeals.length === 0 && (
-                        <p className="text-xs text-text-tertiary text-center py-4">案件なし</p>
+                        <p className="text-[10px] text-text-tertiary text-center py-3">案件なし</p>
                       )}
                     </div>
                   </div>
