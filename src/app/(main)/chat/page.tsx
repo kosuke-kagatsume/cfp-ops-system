@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import { ArrowLeft, MessageSquare } from "lucide-react";
@@ -21,7 +21,7 @@ type UnifiedRoom = {
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
-export default function ChatPage() {
+function ChatContent() {
   const searchParams = useSearchParams();
   const openParam = searchParams.get("open");
 
@@ -139,5 +139,13 @@ export default function ChatPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <Suspense>
+      <ChatContent />
+    </Suspense>
   );
 }
