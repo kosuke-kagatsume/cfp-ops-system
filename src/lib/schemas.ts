@@ -659,6 +659,38 @@ export const businessCardCreate = z.object({
 export const businessCardUpdate = businessCardCreate.partial();
 
 // ============================================================
+// Deals (案件管理)
+// ============================================================
+
+export const dealCreate = z.object({
+  title: reqStr,
+  partnerId: optStr,
+  contactId: optStr,
+  businessCardId: optStr,
+  division: z.string().optional(),
+  expectedAmount: optNum,
+  probability: z.number().int().min(0).max(100).optional().nullable(),
+  startDate: optDate,
+  expectedCloseDate: optDate,
+  ndaDate: optDate,
+  ndaFileUrl: optStr,
+  note: optStr,
+  assignee: optStr,
+});
+
+export const dealUpdate = dealCreate.partial().extend({
+  stage: z.string().optional(),
+  closedDate: optDate,
+  lostReason: optStr,
+});
+
+export const dealActivityCreate = z.object({
+  activityType: reqStr,
+  description: reqStr,
+  activityDate: optDate,
+});
+
+// ============================================================
 // Admin Calendar Events (管理カレンダー)
 // ============================================================
 

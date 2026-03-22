@@ -7,7 +7,7 @@ import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import {
   Plus, Upload, Loader2, Search, ArrowRightLeft,
-  Pencil, Trash2, Eye,
+  Pencil, Trash2, Eye, Handshake,
 } from "lucide-react";
 import { useState, useRef } from "react";
 
@@ -151,6 +151,38 @@ export default function BusinessCardsPage() {
       showToast("削除しました", "success");
     } catch {
       showToast("削除に失敗しました", "error");
+    }
+  };
+
+  // 案件化
+  const [isCreatingDeal, setIsCreatingDeal] = useState(false);
+  const handleCreateDeal = async (card: BusinessCard) => {
+    if (!confirm(`${card.personName} の名刺から案件を作成しますか？`)) return;
+    setIsCreatingDeal(true);
+    try {
+      const res = await fetch("/api/deals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${card.companyName ?? card.personName} 案件`,
+          partnerId: card.partnerId || undefined,
+          businessCardId: card.id,
+        }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      // Update card status to CONTACTED
+      await fetch(`/api/business-cards/${card.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "CONTACTED" }),
+      });
+      setShowDetailModal(false);
+      mutate();
+      showToast("案件を作成しました", "success");
+    } catch {
+      showToast("案件作成に失敗しました", "error");
+    } finally {
+      setIsCreatingDeal(false);
     }
   };
 
@@ -320,14 +352,24 @@ export default function BusinessCardsPage() {
           selectedCard && (
             <>
               {selectedCard.status !== "CONVERTED" && (
-                <button
-                  onClick={() => handleConvert(selectedCard)}
-                  disabled={isConverting}
-                  className="flex items-center gap-1.5 px-4 py-2 text-sm bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
-                >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  {isConverting ? "変換中..." : "取引先に変換"}
-                </button>
+                <>
+                  <button
+                    onClick={() => handleCreateDeal(selectedCard)}
+                    disabled={isCreatingDeal}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    <Handshake className="w-4 h-4" />
+                    {isCreatingDeal ? "作成中..." : "案件化"}
+                  </button>
+                  <button
+                    onClick={() => handleConvert(selectedCard)}
+                    disabled={isConverting}
+                    className="flex items-center gap-1.5 px-4 py-2 text-sm bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50"
+                  >
+                    <ArrowRightLeft className="w-4 h-4" />
+                    {isConverting ? "変換中..." : "取引先に変換"}
+                  </button>
+                </>
               )}
               <button
                 onClick={() => { setShowDetailModal(false); setSelectedCard(selectedCard); setShowEditModal(true); }}

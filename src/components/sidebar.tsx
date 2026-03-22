@@ -15,9 +15,7 @@ import {
   ChevronRight,
   Settings,
   ShoppingCart,
-  Boxes,
   Cog,
-  CalendarDays,
   Truck,
   PackageCheck,
   FileText,
@@ -55,6 +53,7 @@ import {
   ContactRound,
   CalendarRange,
   CalendarClock,
+  Handshake,
 } from "lucide-react";
 import { useState } from "react";
 import { useSidebar } from "./sidebar-context";
@@ -67,23 +66,40 @@ const navigation = [
     icon: ContactRound,
     children: [
       { name: "名刺管理", href: "/business-cards", icon: ContactRound },
+      { name: "案件管理", href: "/deals", icon: Handshake },
     ],
   },
   {
-    name: "MR事業部",
-    icon: Boxes,
+    name: "仕入・受入",
+    icon: ShoppingCart,
     children: [
-      { name: "仕入・受入", href: "/purchases", icon: ShoppingCart },
-      { name: "在庫管理", href: "/inventory", icon: Package },
-      { name: "加工管理", href: "/processing", icon: Cog },
-      { name: "生産カレンダー", href: "/production-calendar", icon: CalendarDays },
-      { name: "業務カレンダー", href: "/operations-calendar", icon: CalendarRange },
-      { name: "出荷管理", href: "/shipments", icon: PackageCheck },
-      { name: "配車管理", href: "/dispatch", icon: Truck },
-      { name: "帳票管理", href: "/documents", icon: FileText },
-      { name: "トレーサビリティ", href: "/traceability", icon: GitBranch },
+      { name: "MR仕入・受入", href: "/purchases", icon: ShoppingCart },
+      { name: "CR原料受入", href: "/cr/materials", icon: Droplets },
     ],
   },
+  { name: "在庫管理", href: "/inventory", icon: Package },
+  {
+    name: "加工・製造",
+    icon: Cog,
+    children: [
+      { name: "加工管理", href: "/processing", icon: Cog },
+      { name: "製造指図(CR)", href: "/cr/production-orders", icon: ClipboardList },
+      { name: "タンク管理(CR)", href: "/cr/tanks", icon: Container },
+    ],
+  },
+  {
+    name: "出荷・物流",
+    icon: PackageCheck,
+    children: [
+      { name: "出荷管理", href: "/shipments", icon: PackageCheck },
+      { name: "出荷管理-油化(CR)", href: "/cr/oil-shipments", icon: Fuel },
+      { name: "配車管理", href: "/dispatch", icon: Truck },
+      { name: "残渣管理(CR)", href: "/cr/residue", icon: Trash2 },
+    ],
+  },
+  { name: "業務カレンダー", href: "/business-calendar", icon: CalendarRange },
+  { name: "帳票管理", href: "/documents", icon: FileText },
+  { name: "トレーサビリティ", href: "/traceability", icon: GitBranch },
   {
     name: "販売管理",
     icon: Receipt,
@@ -103,14 +119,9 @@ const navigation = [
     ],
   },
   {
-    name: "CR事業部",
-    icon: Droplets,
+    name: "ISCC・税務",
+    icon: ShieldCheck,
     children: [
-      { name: "原料受入", href: "/cr/materials", icon: ShoppingCart },
-      { name: "製造指図", href: "/cr/production-orders", icon: ClipboardList },
-      { name: "タンク管理", href: "/cr/tanks", icon: Container },
-      { name: "出荷管理(油化)", href: "/cr/oil-shipments", icon: Fuel },
-      { name: "残渣管理", href: "/cr/residue", icon: Trash2 },
       { name: "ISCC管理", href: "/cr/iscc", icon: ShieldCheck },
       { name: "税務帳票", href: "/cr/tax-reports", icon: Calculator },
     ],
@@ -165,9 +176,11 @@ export function Sidebar() {
   const { isOpen, close } = useSidebar();
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     "商談管理": false,
-    "MR事業部": true,
+    "仕入・受入": true,
+    "加工・製造": false,
+    "出荷・物流": false,
     "販売管理": false,
-    "CR事業部": false,
+    "ISCC・税務": false,
     "研究室": false,
     "経費・総務": false,
     "マスタ管理": false,

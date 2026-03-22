@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { DivisionBadge } from "@/components/division-badge";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
@@ -92,7 +93,7 @@ export default function OilShipmentsPage() {
 
   return (
     <>
-      <Header title="出荷管理（油化）" />
+      <Header title="出荷管理（油化）" badge={<DivisionBadge division="CR" />} />
       <div className="p-4 md:p-6 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div className="p-4 rounded-xl border border-border bg-surface text-center"><p className="text-2xl font-bold text-text">{shipments.length}</p><p className="text-sm text-text-secondary">出荷件数</p></div>

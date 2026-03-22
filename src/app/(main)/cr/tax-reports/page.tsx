@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { DivisionBadge } from "@/components/division-badge";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal } from "@/components/modal";
@@ -62,7 +63,7 @@ export default function TaxReportsPage() {
   if (isLoading) {
     return (
       <>
-        <Header title="税務帳票" />
+        <Header title="税務帳票" badge={<DivisionBadge division="CR" />} />
         <div className="flex items-center justify-center h-64">
           <Loader2 className="w-8 h-8 animate-spin text-primary-600" />
         </div>
@@ -72,7 +73,7 @@ export default function TaxReportsPage() {
 
   return (
     <>
-      <Header title="税務帳票" />
+      <Header title="税務帳票" badge={<DivisionBadge division="CR" />} />
       <div className="p-4 md:p-6 space-y-4">
         {/* 説明バナー */}
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">

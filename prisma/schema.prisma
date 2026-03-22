@@ -460,6 +460,7 @@ model BusinessPartner {
   oilShipmentsAsCustomer OilShipment[]    @relation("OilShipmentCustomer")
   crMaterialsAsSupplier  CrMaterial[]     @relation("CrMaterialSupplier")
   businessCards          BusinessCard[]
+  deals                  Deal[]
 
   @@index([deletedAt])
 }
@@ -1810,4 +1811,64 @@ model AdminCalendarEvent {
   @@index([dueDate])
   @@index([category])
   @@index([isCompleted])
+}
+
+// 案件管理（商談パイプライン）---
+
+enum DealStage {
+  LEAD              // 名刺・リード
+  NDA               // NDA締結
+  NEGOTIATION       // 商談中
+  PROPOSAL          // 提案・見積
+  CONTRACT          // 契約交渉
+  WON               // 成約
+  LOST              // 失注
+}
+
+model Deal {
+  id                String          @id @default(uuid())
+  dealNumber        String          @unique
+  title             String
+  stage             DealStage       @default(LEAD)
+
+  partnerId         String?
+  partner           BusinessPartner? @relation(fields: [partnerId], references: [id])
+  contactId         String?         // PartnerContact ID
+  businessCardId    String?         // 元の名刺ID
+
+  division          Division?       // MR or CR
+  expectedAmount    Float?          // 見込み金額
+  probability       Int?            // 受注確率(%)
+
+  startDate         DateTime        @default(now())
+  expectedCloseDate DateTime?
+  closedDate        DateTime?
+
+  ndaDate           DateTime?
+  ndaFileUrl        String?
+
+  lostReason        String?
+  note              String?
+  assignee          String?         // 担当者名
+
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  activities        DealActivity[]
+  companyId         String          @default("cfp")
+
+  @@index([stage])
+  @@index([partnerId])
+}
+
+model DealActivity {
+  id            String   @id @default(uuid())
+  dealId        String
+  deal          Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  activityType  String   // CALL / EMAIL / MEETING / NOTE / STAGE_CHANGE
+  description   String
+  activityDate  DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@index([dealId])
 }

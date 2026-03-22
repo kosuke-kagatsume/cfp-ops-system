@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { DivisionBadge } from "@/components/division-badge";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
@@ -94,7 +95,7 @@ export default function CrTanksPage() {
 
   return (
     <>
-      <Header title="タンク管理" />
+      <Header title="タンク管理" badge={<DivisionBadge division="CR" />} />
       <div className="p-4 md:p-6 space-y-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-surface rounded-xl border border-border p-4"><p className="text-xs text-text-tertiary">総タンク数</p><p className="text-2xl font-bold text-text">{tanks.length}基</p></div>

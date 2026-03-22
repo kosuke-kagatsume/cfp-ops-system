@@ -1,6 +1,7 @@
 "use client";
 
 import { Header } from "@/components/header";
+import { DivisionBadge } from "@/components/division-badge";
 import { Pagination } from "@/components/pagination";
 import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput } from "@/components/modal";
@@ -76,7 +77,7 @@ export default function CrResiduePage() {
 
   return (
     <>
-      <Header title="残渣管理" />
+      <Header title="残渣管理" badge={<DivisionBadge division="CR" />} />
       <div className="p-4 md:p-6 space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div className="bg-surface rounded-xl border border-border p-4"><div className="flex items-center gap-2 mb-1"><Trash2 className="w-4 h-4 text-text-tertiary" /><p className="text-xs text-text-tertiary">総排出量</p></div><p className="text-2xl font-bold text-text">{totalQuantity.toLocaleString()} kg</p></div>

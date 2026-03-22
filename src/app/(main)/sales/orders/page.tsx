@@ -6,6 +6,8 @@ import { usePaginated } from "@/lib/use-paginated";
 import { Modal, FormField, FormInput, FormSelect } from "@/components/modal";
 import { useToast } from "@/components/toast";
 import { Plus, Download, Search, Eye, Pencil, Trash2, Loader2 } from "lucide-react";
+import { DivisionBadge } from "@/components/division-badge";
+import { DivisionFilter } from "@/components/division-filter";
 import { useState } from "react";
 import useSWR from "swr";
 
@@ -69,6 +71,7 @@ const summaryStatuses = ["DRAFT", "SHIPPED", "COMPLETED"] as const;
 export default function OrdersPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [divisionFilter, setDivisionFilter] = useState("all");
   const [showNewModal, setShowNewModal] = useState(false);
   const [showDetail, setShowDetail] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -78,6 +81,7 @@ export default function OrdersPage() {
   const params = new URLSearchParams();
   if (search) params.set("search", search);
   if (statusFilter !== "all") params.set("status", statusFilter);
+  if (divisionFilter !== "all") params.set("division", divisionFilter);
 
   const { items: orders, total, page, limit, isLoading, mutate, onPageChange } = usePaginated<Order>(
     `/api/sales/orders?${params.toString(
@@ -215,6 +219,14 @@ export default function OrdersPage() {
               <button onClick={() => setStatusFilter("all")} className="text-xs text-primary-600 hover:underline">フィルタ解除</button>
             )}
           </div>
+          <DivisionFilter
+            value={divisionFilter}
+            onChange={setDivisionFilter}
+            counts={{
+              MR: allOrders?.filter((o) => o.division === "MR").length ?? 0,
+              CR: allOrders?.filter((o) => o.division === "CR").length ?? 0,
+            }}
+          />
           <div className="flex items-center gap-2">
             <button onClick={() => showToast("CSVダウンロードしました", "success")} className="flex items-center gap-2 px-3 py-2 text-sm border border-border rounded-lg text-text-secondary hover:bg-surface-tertiary transition-colors">
               <Download className="w-4 h-4" />CSV出力
@@ -237,6 +249,7 @@ export default function OrdersPage() {
                 <thead>
                   <tr className="border-b border-border bg-surface-secondary">
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">受注番号</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-text-secondary uppercase">区分</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">受注日</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">顧客</th>
                     <th className="text-left px-4 py-3 text-xs font-medium text-text-secondary uppercase">品目</th>
@@ -252,6 +265,7 @@ export default function OrdersPage() {
                     return (
                       <tr key={o.id} className="border-b border-border last:border-0 hover:bg-surface-secondary/50 transition-colors">
                         <td className="px-4 py-3 text-sm font-mono text-primary-600">{o.orderNumber}</td>
+                        <td className="px-4 py-3 text-center">{o.division ? <DivisionBadge division={o.division} /> : "-"}</td>
                         <td className="px-4 py-3 text-sm text-text-secondary">{formatDate(o.orderDate)}</td>
                         <td className="px-4 py-3 text-sm text-text">{o.customer.name}</td>
                         <td className="px-4 py-3">

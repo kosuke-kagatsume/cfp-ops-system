@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useSidebar } from "./sidebar-context";
 import { NotificationBell, NotificationPanel } from "./notification-panel";
 
-export function Header({ title }: { title: string }) {
+export function Header({ title, badge }: { title: string; badge?: React.ReactNode }) {
   const { toggle } = useSidebar();
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -19,6 +19,7 @@ export function Header({ title }: { title: string }) {
           <Menu className="w-5 h-5 text-text-secondary" />
         </button>
         <h1 className="text-lg font-bold text-text">{title}</h1>
+        {badge}
       </div>
       <div className="flex items-center gap-4">
         <div className="relative hidden md:block">
